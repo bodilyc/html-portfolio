@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Image Matching Game</title>
+    <link rel="stylesheet" href="FamilyMatchStyle.css">
+</head>
+<body>
+    <button onClick="window.location.reload();">Reset Game</button>
+    <button onClick="resetRecord();">Reset Record</button>
+    <div class="memory-game">
+        <div id="topdiv">
+            <h1>Family Matching</h1>
+            <h3 id="personName"></h3>
+        </div>
+        <div class="cards" id="card-container">
+            <!-- Cards will be generated dynamically by JavaScript -->
+        </div>
+    </div>
+    <script src="FamilyMatchScript.js"></script>
+</body>
+</html>
