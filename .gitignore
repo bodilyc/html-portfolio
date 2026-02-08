@@ -1,1 +1,17 @@
+# macOS system files
 .DS_Store
+.AppleDouble
+.LSOverride
+
+# VS Code settings
+.vscode/
+*.code-workspace
+
+# Node / npm (if you ever add it)
+node_modules/
+
+# Log files
+*.log
+
+# Temporary files
+*.tmp
