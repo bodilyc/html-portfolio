@@ -325,13 +325,22 @@ function showVictory() {
         initialsModal.style.display = 'flex';
         setTimeout(() => initialsInput.focus(), 100);
     } else {
-        // Show regular victory modal
+        // Show regular victory modal with leaderboard option
         modalTitle.textContent = 'Congratulations!';
         modalMessage.innerHTML = `You completed the game in <span class="highlight">${turnCount} turns</span>.<br>Best record: <span class="highlight">${bestRecord} turns</span>`;
-        victoryModal.style.display = 'flex';
+        showVictoryThenLeaderboard();
     }
 
     updateStats();
+}
+
+/**
+ * Shows victory modal, then leaderboard when closed
+ */
+function showVictoryThenLeaderboard() {
+    victoryModal.style.display = 'flex';
+    // Set flag to show leaderboard after victory modal closes
+    victoryModal.dataset.showLeaderboard = 'true';
 }
 
 /**
@@ -355,19 +364,10 @@ function submitHighScore() {
 
     addHighScore(initials, turnCount);
     hideInitialsModal();
-
-    // Show victory modal with new record message
-    const bestRecord = getBestRecord();
-    if (turnCount === bestRecord) {
-        modalTitle.textContent = '🎉 New Record!';
-        modalMessage.innerHTML = `You completed the game in <span class="highlight">${turnCount} turns</span>!<br>That's the best score!`;
-    } else {
-        modalTitle.textContent = '🏆 High Score!';
-        modalMessage.innerHTML = `You made the leaderboard with <span class="highlight">${turnCount} turns</span>!`;
-    }
-
     updateStats();
-    victoryModal.style.display = 'flex';
+
+    // Show leaderboard directly after submitting initials
+    showLeaderboard();
 }
 
 /**
@@ -423,10 +423,16 @@ function handleLeaderboardOverlayClick(event) {
 }
 
 /**
- * Hides the victory modal
+ * Hides the victory modal and optionally shows leaderboard
  */
 function hideVictory() {
+    const shouldShowLeaderboard = victoryModal.dataset.showLeaderboard === 'true';
     victoryModal.style.display = 'none';
+    victoryModal.dataset.showLeaderboard = 'false';
+
+    if (shouldShowLeaderboard) {
+        showLeaderboard();
+    }
 }
 
 // ============================================
