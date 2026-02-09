@@ -16,7 +16,8 @@
         <!-- Control Buttons -->
         <div class="controls">
             <button class="btn btn-primary" onclick="resetGame()">New Game</button>
-            <button class="btn btn-secondary" onclick="resetRecord()">Reset Record</button>
+            <button class="btn btn-secondary" onclick="showLeaderboard()">High Scores</button>
+            <button class="btn btn-secondary" onclick="resetRecord()">Reset Scores</button>
         </div>
         
         <!-- Stats Bar -->
@@ -59,6 +60,27 @@
             <h2 id="modal-title">Congratulations!</h2>
             <p id="modal-message"></p>
             <button class="btn btn-primary" onclick="resetGame()">Play Again</button>
+        </div>
+    </div>
+
+    <!-- Initials Input Modal (hidden by default) -->
+    <div class="modal-overlay" id="initials-modal" style="display: none;">
+        <div class="modal initials-modal">
+            <div class="trophy">🎉</div>
+            <h2>New High Score!</h2>
+            <p>You finished in <span id="initials-score" class="highlight"></span> turns!</p>
+            <p class="initials-prompt">Enter your initials:</p>
+            <input type="text" id="initials-input" class="initials-input" maxlength="3" placeholder="AAA" autocomplete="off">
+            <button class="btn btn-primary" id="submit-initials-btn" onclick="submitHighScore()">Submit</button>
+        </div>
+    </div>
+
+    <!-- Leaderboard Modal (hidden by default) -->
+    <div class="modal-overlay" id="leaderboard-modal" style="display: none;" onclick="handleLeaderboardOverlayClick(event)">
+        <div class="modal leaderboard-modal">
+            <h2>🏆 Top 10 High Scores</h2>
+            <ol class="leaderboard-list" id="leaderboard-list"></ol>
+            <button class="btn btn-secondary" onclick="hideLeaderboard()">Close</button>
         </div>
     </div>
 

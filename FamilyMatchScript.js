@@ -39,6 +39,11 @@ const matchedListDisplay = document.getElementById('matched-list');
 const victoryModal = document.getElementById('victory-modal');
 const modalTitle = document.getElementById('modal-title');
 const modalMessage = document.getElementById('modal-message');
+const initialsModal = document.getElementById('initials-modal');
+const initialsInput = document.getElementById('initials-input');
+const initialsScore = document.getElementById('initials-score');
+const leaderboardModal = document.getElementById('leaderboard-modal');
+const leaderboardList = document.getElementById('leaderboard-list');
 
 // ============================================
 // Utility Functions
@@ -68,20 +73,64 @@ function extractName(imagePath) {
 }
 
 /**
- * Gets the best record from localStorage
- * @returns {number|null} - The best record or null if none exists
+ * Gets all high scores from localStorage
+ * @returns {Array} - Array of high score objects {initials, turns, date}
  */
-function getBestRecord() {
-    const record = localStorage.getItem('familyMatchRecord');
-    return record ? parseInt(record, 10) : null;
+function getHighScores() {
+    const scores = localStorage.getItem('familyMatchHighScores');
+    return scores ? JSON.parse(scores) : [];
 }
 
 /**
- * Sets a new best record in localStorage
- * @param {number} turns - The number of turns to save
+ * Saves high scores to localStorage
+ * @param {Array} scores - Array of high score objects
  */
-function setBestRecord(turns) {
-    localStorage.setItem('familyMatchRecord', turns);
+function saveHighScores(scores) {
+    localStorage.setItem('familyMatchHighScores', JSON.stringify(scores));
+}
+
+/**
+ * Gets the best record from high scores
+ * @returns {number|null} - The best record or null if none exists
+ */
+function getBestRecord() {
+    const scores = getHighScores();
+    return scores.length > 0 ? scores[0].turns : null;
+}
+
+/**
+ * Checks if a score qualifies for the leaderboard
+ * @param {number} turns - The number of turns to check
+ * @returns {boolean} - True if score qualifies
+ */
+function isHighScore(turns) {
+    const scores = getHighScores();
+    if (scores.length < 10) return true;
+    return turns < scores[scores.length - 1].turns;
+}
+
+/**
+ * Adds a new high score to the leaderboard
+ * @param {string} initials - The player's 3-letter initials
+ * @param {number} turns - The number of turns
+ */
+function addHighScore(initials, turns) {
+    const scores = getHighScores();
+    const newScore = {
+        initials: initials.toUpperCase(),
+        turns: turns,
+        date: new Date().toLocaleDateString()
+    };
+
+    scores.push(newScore);
+    scores.sort((a, b) => a.turns - b.turns);
+
+    // Keep only top 10
+    if (scores.length > 10) {
+        scores.length = 10;
+    }
+
+    saveHighScores(scores);
 }
 
 // ============================================
@@ -263,23 +312,114 @@ function clearMatchedList() {
 }
 
 /**
- * Shows the victory modal
+ * Shows the victory modal or initials input if high score
  */
 function showVictory() {
     const bestRecord = getBestRecord();
-    const isNewRecord = bestRecord === null || turnCount < bestRecord;
+    const qualifiesForLeaderboard = isHighScore(turnCount);
 
-    if (isNewRecord) {
-        setBestRecord(turnCount);
-        modalTitle.textContent = '🎉 New Record!';
-        modalMessage.innerHTML = `You completed the game in <span class="highlight">${turnCount} turns</span>!<br>That's a new best record!`;
+    if (qualifiesForLeaderboard) {
+        // Show initials input modal
+        initialsScore.textContent = turnCount;
+        initialsInput.value = '';
+        initialsModal.style.display = 'flex';
+        setTimeout(() => initialsInput.focus(), 100);
     } else {
+        // Show regular victory modal
         modalTitle.textContent = 'Congratulations!';
         modalMessage.innerHTML = `You completed the game in <span class="highlight">${turnCount} turns</span>.<br>Best record: <span class="highlight">${bestRecord} turns</span>`;
+        victoryModal.style.display = 'flex';
     }
 
-    updateStats(); // Update the record display
+    updateStats();
+}
+
+/**
+ * Submits the high score with initials
+ */
+function submitHighScore() {
+    let initials = initialsInput.value.trim().toUpperCase();
+
+    // Validate initials (1-3 letters)
+    if (initials.length === 0) {
+        initials = 'AAA';
+    }
+
+    // Pad to 3 characters if needed
+    while (initials.length < 3) {
+        initials += '-';
+    }
+
+    // Only keep first 3 characters
+    initials = initials.substring(0, 3);
+
+    addHighScore(initials, turnCount);
+    hideInitialsModal();
+
+    // Show victory modal with new record message
+    const bestRecord = getBestRecord();
+    if (turnCount === bestRecord) {
+        modalTitle.textContent = '🎉 New Record!';
+        modalMessage.innerHTML = `You completed the game in <span class="highlight">${turnCount} turns</span>!<br>That's the best score!`;
+    } else {
+        modalTitle.textContent = '🏆 High Score!';
+        modalMessage.innerHTML = `You made the leaderboard with <span class="highlight">${turnCount} turns</span>!`;
+    }
+
+    updateStats();
     victoryModal.style.display = 'flex';
+}
+
+/**
+ * Hides the initials input modal
+ */
+function hideInitialsModal() {
+    initialsModal.style.display = 'none';
+}
+
+/**
+ * Shows the leaderboard modal
+ */
+function showLeaderboard() {
+    const scores = getHighScores();
+    leaderboardList.innerHTML = '';
+
+    if (scores.length === 0) {
+        leaderboardList.innerHTML = '<li class="no-scores">No high scores yet!</li>';
+    } else {
+        scores.forEach((score, index) => {
+            const li = document.createElement('li');
+            li.className = 'leaderboard-entry';
+            if (index === 0) li.classList.add('gold');
+            if (index === 1) li.classList.add('silver');
+            if (index === 2) li.classList.add('bronze');
+
+            li.innerHTML = `
+                <span class="rank">${index + 1}</span>
+                <span class="initials">${score.initials}</span>
+                <span class="turns">${score.turns} turns</span>
+            `;
+            leaderboardList.appendChild(li);
+        });
+    }
+
+    leaderboardModal.style.display = 'flex';
+}
+
+/**
+ * Hides the leaderboard modal
+ */
+function hideLeaderboard() {
+    leaderboardModal.style.display = 'none';
+}
+
+/**
+ * Handles clicking on the leaderboard overlay to close
+ */
+function handleLeaderboardOverlayClick(event) {
+    if (event.target === leaderboardModal) {
+        hideLeaderboard();
+    }
 }
 
 /**
@@ -309,11 +449,13 @@ function resetGame() {
 }
 
 /**
- * Resets the best record
+ * Resets all high scores
  */
 function resetRecord() {
-    localStorage.removeItem('familyMatchRecord');
-    updateStats();
+    if (confirm('Are you sure you want to reset all high scores?')) {
+        localStorage.removeItem('familyMatchHighScores');
+        updateStats();
+    }
 }
 
 // ============================================
@@ -322,4 +464,11 @@ function resetRecord() {
 document.addEventListener('DOMContentLoaded', () => {
     updateStats();
     initializeBoard();
+
+    // Add Enter key support for initials input
+    initialsInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            submitHighScore();
+        }
+    });
 });

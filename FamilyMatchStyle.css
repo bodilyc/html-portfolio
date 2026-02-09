@@ -404,3 +404,125 @@ body {
         font-size: 1.8rem;
     }
 }
+
+/* ===================================
+   Initials Input Modal
+   =================================== */
+.initials-modal {
+    max-width: 350px;
+}
+
+.initials-prompt {
+    font-size: 1rem;
+    color: #aaa;
+    margin-bottom: 15px;
+}
+
+.initials-input {
+    width: 120px;
+    padding: 15px 20px;
+    font-size: 2rem;
+    font-weight: 700;
+    text-align: center;
+    text-transform: uppercase;
+    letter-spacing: 8px;
+    background: rgba(255, 255, 255, 0.1);
+    border: 2px solid rgba(233, 69, 96, 0.5);
+    border-radius: 12px;
+    color: #fff;
+    outline: none;
+    transition: all 0.3s ease;
+}
+
+.initials-input::placeholder {
+    color: rgba(255, 255, 255, 0.3);
+    letter-spacing: 8px;
+}
+
+.initials-input:focus {
+    border-color: #e94560;
+    box-shadow: 0 0 20px rgba(233, 69, 96, 0.3);
+}
+
+/* ===================================
+   Leaderboard Modal
+   =================================== */
+.leaderboard-modal {
+    max-width: 400px;
+    padding: 30px 40px;
+}
+
+.leaderboard-modal h2 {
+    font-size: 1.5rem;
+    margin-bottom: 20px;
+    color: #ffa502;
+}
+
+.leaderboard-list {
+    list-style: none;
+    margin-bottom: 25px;
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.leaderboard-entry {
+    display: flex;
+    align-items: center;
+    padding: 12px 15px;
+    margin-bottom: 8px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 10px;
+    transition: all 0.2s ease;
+}
+
+.leaderboard-entry:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.leaderboard-entry .rank {
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 50%;
+    font-weight: 700;
+    margin-right: 15px;
+    font-size: 0.9rem;
+}
+
+.leaderboard-entry.gold .rank {
+    background: linear-gradient(135deg, #ffd700, #ffaa00);
+    color: #1a1a2e;
+}
+
+.leaderboard-entry.silver .rank {
+    background: linear-gradient(135deg, #c0c0c0, #a0a0a0);
+    color: #1a1a2e;
+}
+
+.leaderboard-entry.bronze .rank {
+    background: linear-gradient(135deg, #cd7f32, #b87333);
+    color: #1a1a2e;
+}
+
+.leaderboard-entry .initials {
+    font-weight: 700;
+    font-size: 1.1rem;
+    letter-spacing: 2px;
+    color: #e94560;
+    flex: 1;
+}
+
+.leaderboard-entry .turns {
+    color: #888;
+    font-size: 0.9rem;
+}
+
+.no-scores {
+    text-align: center;
+    color: #666;
+    font-style: italic;
+    padding: 30px;
+}
