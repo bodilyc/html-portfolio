@@ -3,21 +3,65 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Image Matching Game</title>
+    <title>Family Match - Memory Game</title>
+    <meta name="description" content="A fun family memory matching game to learn family members' names">
     <link rel="stylesheet" href="FamilyMatchStyle.css">
 </head>
 <body>
-    <button onClick="window.location.reload();">Reset Game</button>
-    <button onClick="resetRecord();">Reset Record</button>
-    <div class="memory-game">
-        <div id="topdiv">
-            <h1>Family Matching</h1>
-            <p id="personName"></p>
+    <!-- Header Section -->
+    <header class="header">
+        <h1>Family Match</h1>
+        <p class="subtitle">Match the photos to learn your family members' names!</p>
+        
+        <!-- Control Buttons -->
+        <div class="controls">
+            <button class="btn btn-primary" onclick="resetGame()">New Game</button>
+            <button class="btn btn-secondary" onclick="resetRecord()">Reset Record</button>
         </div>
+        
+        <!-- Stats Bar -->
+        <div class="stats-bar">
+            <div class="stat">
+                <div class="stat-label">Turns</div>
+                <div class="stat-value" id="turn-count">0</div>
+            </div>
+            <div class="stat">
+                <div class="stat-label">Matches</div>
+                <div class="stat-value" id="match-count">0</div>
+            </div>
+            <div class="stat">
+                <div class="stat-label">Best Record</div>
+                <div class="stat-value" id="best-record">-</div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Game Container -->
+    <div class="memory-game">
+        <!-- Cards Grid -->
         <div class="cards" id="card-container">
             <!-- Cards will be generated dynamically by JavaScript -->
         </div>
+
+        <!-- Matched Names Panel -->
+        <aside class="matched-panel">
+            <h2>Matched Family</h2>
+            <ul class="matched-list" id="matched-list">
+                <li class="empty-message">No matches yet - start playing!</li>
+            </ul>
+        </aside>
     </div>
+
+    <!-- Victory Modal (hidden by default) -->
+    <div class="modal-overlay" id="victory-modal" style="display: none;">
+        <div class="modal">
+            <div class="trophy">🏆</div>
+            <h2 id="modal-title">Congratulations!</h2>
+            <p id="modal-message"></p>
+            <button class="btn btn-primary" onclick="resetGame()">Play Again</button>
+        </div>
+    </div>
+
     <script src="FamilyMatchScript.js"></script>
 </body>
 </html>
