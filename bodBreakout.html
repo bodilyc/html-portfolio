@@ -450,14 +450,18 @@
         const brickWidth = (canvas.width - (brickOffsetLeft * 2) - (brickPadding * (brickColumns - 1))) / brickColumns;
         const brickHeight = 20;
         
-        // Colors for different levels
-        const levelColors = [
-            ['#FF5252', '#FF4081', '#E040FB', '#7C4DFF', '#536DFE'], // Level 1
-            ['#448AFF', '#40C4FF', '#18FFFF', '#64FFDA', '#69F0AE'], // Level 2
-            ['#FFD740', '#FFAB40', '#FF6E40', '#FF5252', '#FF4081'], // Level 3
-            ['#7C4DFF', '#536DFE', '#448AFF', '#40C4FF', '#18FFFF'], // Level 4
-            ['#69F0AE', '#64FFDA', '#18FFFF', '#40C4FF', '#448AFF']  // Level 5
-        ];
+        // Generate a random color palette for each level using HSL
+        function generateLevelColors() {
+            const baseHue = Math.floor(Math.random() * 360);
+            const colors = [];
+            for (let i = 0; i < 5; i++) {
+                const hue = (baseHue + i * 40 + Math.floor(Math.random() * 20)) % 360;
+                const sat = 70 + Math.floor(Math.random() * 25);
+                const lit = 50 + Math.floor(Math.random() * 15);
+                colors.push(`hsl(${hue}, ${sat}%, ${lit}%)`);
+            }
+            return colors;
+        }
         
         // Initialize game
         function init() {
@@ -496,45 +500,66 @@
         }
         
         // Create bricks for current level
-
         function createBricks() {
             bricks = [];
-            // Cycle colors based on level index
-            const colors = levelColors[(level - 1) % levelColors.length];
+            // Generate fresh random colors each level
+            const colors = generateLevelColors();
             
             // List of all brick coordinates
             let allCoordinates = [];
             
-            // Randomly select a pattern strategy
-            const strategies = ['full', 'checker', 'rows', 'columns', 'noise', 'noise', 'checker'];
+            // Randomly select a pattern strategy from a larger pool
+            const strategies = ['full', 'checker', 'rows', 'columns', 'noise',
+                                'diamond', 'cross', 'border', 'pyramid', 'zigzag'];
             const strategy = strategies[Math.floor(Math.random() * strategies.length)];
+            
+            // Pick a random shape for this level (all shapes fit within bounds)
+            const shapeTypes = ['rectangle', 'rounded-rect', 'diamond', 'hexagon'];
+            const shape = shapeTypes[Math.floor(Math.random() * shapeTypes.length)];
+            
+            const midC = (brickColumns - 1) / 2;
+            const midR = (brickRows - 1) / 2;
 
             for (let r = 0; r < brickRows; r++) {
                 bricks[r] = [];
                 for (let c = 0; c < brickColumns; c++) {
                     let visible = true;
-                    let shape = 'rectangle';
                     
-                    // Apply strategy
-                    if (strategy === 'checker') {
-                        visible = (r + c) % 2 === 0;
-                    } else if (strategy === 'rows') {
-                        visible = r % 2 === 0;
-                    } else if (strategy === 'columns') {
-                        visible = c % 2 === 0;
-                    } else if (strategy === 'noise') {
-                        visible = Math.random() > 0.3; // 70% chance of brick
+                    // Apply pattern strategy
+                    switch (strategy) {
+                        case 'checker':
+                            visible = (r + c) % 2 === 0;
+                            break;
+                        case 'rows':
+                            visible = r % 2 === 0;
+                            break;
+                        case 'columns':
+                            visible = c % 2 === 0;
+                            break;
+                        case 'noise':
+                            visible = Math.random() > 0.3;
+                            break;
+                        case 'diamond': {
+                            const distR = Math.abs(r - midR) / midR;
+                            const distC = Math.abs(c - midC) / midC;
+                            visible = (distR + distC) <= 1.05;
+                            break;
+                        }
+                        case 'cross':
+                            visible = (Math.abs(c - midC) <= 1.5) || (Math.abs(r - midR) <= 0.8);
+                            break;
+                        case 'border':
+                            visible = (r === 0 || r === brickRows - 1 || c === 0 || c === brickColumns - 1);
+                            break;
+                        case 'pyramid':
+                            visible = (c >= r && c < brickColumns - r);
+                            break;
+                        case 'zigzag':
+                            visible = (r % 2 === 0) ? (c % 3 !== 2) : (c % 3 !== 0);
+                            break;
+                        default: // 'full'
+                            visible = true;
                     }
-                    
-                    // Shape variety randomizer per level or per brick? 
-                    // Let's keep it simple: random shape per level
-                    const shapeTypes = ['rectangle', 'circle', 'triangle', 'diamond', 'hexagon'];
-                    const levelShapeIndex = (level - 1) % shapeTypes.length;
-                    // Or maybe mix it up for noise?
-                    shape = shapeTypes[levelShapeIndex];
-                    
-                    // If pattern is noise, always ensure at least SOME bricks exist? 
-                    // The random loop ensures probability, but let's assume it's fine.
                     
                     bricks[r][c] = {
                         x: c * (brickWidth + brickPadding) + brickOffsetLeft,
@@ -553,15 +578,20 @@
                 }
             }
             
-            // Ensure at least one brick exists if RNG failed hard (unlikely but safe)
-            if (allCoordinates.length === 0) {
-                 bricks[0][0].visible = true;
-                 allCoordinates.push({r:0, c:0});
+            // Ensure at least 5 bricks exist
+            if (allCoordinates.length < 5) {
+                for (let r = 0; r < brickRows && allCoordinates.length < 5; r++) {
+                    for (let c = 0; c < brickColumns && allCoordinates.length < 5; c++) {
+                        if (!bricks[r][c].visible) {
+                            bricks[r][c].visible = true;
+                            allCoordinates.push({r, c});
+                        }
+                    }
+                }
             }
             
-            // Randomly assign power-ups (0 to 5)
-            // Scale chance slightly with level? No fixed 0-5.
-            const numPowerUps = Math.floor(Math.random() * 6); // 0-5
+            // Randomly assign power-ups (1 to 5)
+            const numPowerUps = 1 + Math.floor(Math.random() * 5);
             for (let i = 0; i < numPowerUps; i++) {
                 if (allCoordinates.length === 0) break;
                 const index = Math.floor(Math.random() * allCoordinates.length);
@@ -709,51 +739,85 @@
             });
         }
         
+        // Helper to draw a rounded rectangle path
+        function roundedRectPath(ctx, x, y, w, h, r) {
+            r = Math.min(r, w / 2, h / 2);
+            ctx.moveTo(x + r, y);
+            ctx.lineTo(x + w - r, y);
+            ctx.arcTo(x + w, y, x + w, y + r, r);
+            ctx.lineTo(x + w, y + h - r);
+            ctx.arcTo(x + w, y + h, x + w - r, y + h, r);
+            ctx.lineTo(x + r, y + h);
+            ctx.arcTo(x, y + h, x, y + h - r, r);
+            ctx.lineTo(x, y + r);
+            ctx.arcTo(x, y, x + r, y, r);
+            ctx.closePath();
+        }
+        
         // Draw bricks
         function drawBricks() {
             for (let r = 0; r < brickRows; r++) {
                 for (let c = 0; c < brickColumns; c++) {
                     const brick = bricks[r][c];
                     if (brick.visible) {
+                        const inset = 1; // Small inset to prevent any edge touching
+                        const bx = brick.x + inset;
+                        const by = brick.y + inset;
+                        const bw = brick.width - inset * 2;
+                        const bh = brick.height - inset * 2;
+                        
                         ctx.beginPath();
                         
                         switch(brick.shape) {
-                            case 'circle':
-                                ctx.arc(brick.x + brick.width/2, brick.y + brick.height/2, brick.width/2, 0, Math.PI * 2);
-                                break;
-                            case 'triangle':
-                                ctx.moveTo(brick.x + brick.width/2, brick.y);
-                                ctx.lineTo(brick.x, brick.y + brick.height);
-                                ctx.lineTo(brick.x + brick.width, brick.y + brick.height);
-                                ctx.closePath();
+                            case 'rounded-rect':
+                                roundedRectPath(ctx, bx, by, bw, bh, 6);
                                 break;
                             case 'diamond':
-                                ctx.moveTo(brick.x + brick.width/2, brick.y);
-                                ctx.lineTo(brick.x + brick.width, brick.y + brick.height/2);
-                                ctx.lineTo(brick.x + brick.width/2, brick.y + brick.height);
-                                ctx.lineTo(brick.x, brick.y + brick.height/2);
+                                ctx.moveTo(bx + bw / 2, by);
+                                ctx.lineTo(bx + bw, by + bh / 2);
+                                ctx.lineTo(bx + bw / 2, by + bh);
+                                ctx.lineTo(bx, by + bh / 2);
                                 ctx.closePath();
                                 break;
-                            case 'hexagon':
-                                const centerX = brick.x + brick.width/2;
-                                const centerY = brick.y + brick.height/2;
-                                const radius = Math.min(brick.width, brick.height) / 2;
-                                ctx.moveTo(centerX + radius, centerY);
+                            case 'hexagon': {
+                                const cx2 = bx + bw / 2;
+                                const cy2 = by + bh / 2;
+                                // Fit hexagon inside the brick: use half-height as radius
+                                const hr = bh / 2;
+                                // For a flat-top hexagon that fits width too
+                                const wr = bw / 2;
+                                const rad = Math.min(hr, wr * 0.95);
+                                ctx.moveTo(cx2 + rad, cy2);
                                 for (let i = 1; i <= 6; i++) {
                                     const angle = Math.PI / 3 * i;
                                     ctx.lineTo(
-                                        centerX + radius * Math.cos(angle),
-                                        centerY + radius * Math.sin(angle)
+                                        cx2 + rad * Math.cos(angle),
+                                        cy2 + rad * Math.sin(angle)
                                     );
                                 }
                                 ctx.closePath();
                                 break;
+                            }
                             default: // rectangle
-                                ctx.rect(brick.x, brick.y, brick.width, brick.height);
+                                ctx.rect(bx, by, bw, bh);
                         }
                         
                         ctx.fillStyle = brick.color;
                         ctx.fill();
+                        
+                        // Add a subtle top highlight for a 3D look
+                        if (brick.shape === 'rectangle' || brick.shape === 'rounded-rect') {
+                            ctx.save();
+                            ctx.beginPath();
+                            if (brick.shape === 'rounded-rect') {
+                                roundedRectPath(ctx, bx, by, bw, bh / 3, 6);
+                            } else {
+                                ctx.rect(bx, by, bw, bh / 3);
+                            }
+                            ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
+                            ctx.fill();
+                            ctx.restore();
+                        }
                         
                         // Special Effect for PowerUp Bricks
                         if (brick.powerUp) {
