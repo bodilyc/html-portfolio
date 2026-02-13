@@ -437,9 +437,10 @@
         let activeBricksCount = 0;
         
         // Power-ups
-        const powerUpTypes = ['through', 'wide', 'sticky', 'narrow', 'multiball', 'shooter'];
+        const powerUpTypes = ['through', 'wide', 'sticky', 'narrow', 'multiball', 'shooter', 'bomb'];
         let activePowerUp = null;
         let bullets = [];
+        let bombs = [];
         let canShoot = false;
         let lastShotTime = 0;
         
@@ -730,13 +731,52 @@
                 ctx.fillRect(paddle.x + paddle.width - 4, paddle.y - 5, 6, 10);
             }
             
-            // Add shine effect
-            ctx.beginPath();
-            ctx.rect(paddle.x, paddle.y, paddle.width, 5);
-            ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
-            ctx.fill();
-            ctx.closePath();
-        }
+                // Add shine effect
+                ctx.beginPath();
+                ctx.rect(paddle.x, paddle.y, paddle.width, 5);
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+                ctx.fill();
+                ctx.closePath();
+            }
+            
+            // Draw bombs
+            function drawBombs() {
+                bombs.forEach(bomb => {
+                    // Bomb body
+                    ctx.beginPath();
+                    ctx.arc(bomb.x, bomb.y, bomb.radius, 0, Math.PI * 2);
+                    ctx.fillStyle = '#ff0000'; // Red
+                    ctx.fill();
+                    ctx.strokeStyle = '#000';
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
+                    ctx.closePath();
+                    
+                    // Bomb fuse
+                    ctx.beginPath();
+                    ctx.moveTo(bomb.x, bomb.y - bomb.radius);
+                    ctx.quadraticCurveTo(bomb.x + 5, bomb.y - bomb.radius - 5, bomb.x + 8, bomb.y - bomb.radius - 2);
+                    ctx.strokeStyle = '#ccc';
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
+                    ctx.closePath();
+                    
+                    // Spark
+                    const sparkColor = Math.random() > 0.5 ? '#ffcc00' : '#ffff00';
+                    ctx.beginPath();
+                    ctx.arc(bomb.x + 8, bomb.y - bomb.radius - 2, 2, 0, Math.PI * 2);
+                    ctx.fillStyle = sparkColor;
+                    ctx.fill();
+                    ctx.closePath();
+                    
+                    // "B" label
+                    ctx.fillStyle = 'white';
+                    ctx.font = 'bold 10px Arial';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText('B', bomb.x, bomb.y);
+                });
+            }
         
         // Draw balls
         function drawBalls() {
@@ -852,8 +892,13 @@
                             ctx.lineWidth = 3;
                             ctx.stroke();
                             
-                            // Inner glow/highlight to make it obvious
-                            ctx.fillStyle = `rgba(255, 255, 255, 0.3)`;
+                            // Color code if needed, but keeping mystery implies specific look not needed
+                            // Except maybe Bomb could look different?
+                            if (brick.powerUp === 'bomb') {
+                                ctx.fillStyle = `rgba(255, 0, 0, 0.3)`;
+                            } else {
+                                ctx.fillStyle = `rgba(255, 255, 255, 0.3)`;
+                            }
                             ctx.fill();
                         } else {
                            // Regular border
@@ -987,9 +1032,13 @@
                                 activeBricksCount--;
                                 score += 10;
                                 
-                                // Activate Power-up if present
+                                // Activate Power-up or Spawn Bomb
                                 if (brick.powerUp) {
-                                    activatePowerUp(brick.powerUp);
+                                    if (brick.powerUp === 'bomb') {
+                                        spawnBomb(brick.x + brick.width / 2, brick.y + brick.height / 2);
+                                    } else {
+                                        activatePowerUp(brick.powerUp);
+                                    }
                                 }
                                 
                                 updateUI();
@@ -1039,6 +1088,68 @@
             });
             canShoot = false;
             bullets.forEach(b => b.active = false);
+            bombs = []; // Clear bombs
+        }
+
+        // Spawn a bomb
+        function spawnBomb(x, y) {
+            bombs.push({
+                x: x,
+                y: y,
+                radius: 10,
+                speed: 3,
+                active: true
+            });
+        }
+        
+        // Move bombs
+        function moveBombs() {
+            for (let i = bombs.length - 1; i >= 0; i--) {
+                const bomb = bombs[i];
+                if (!bomb.active) {
+                    bombs.splice(i, 1);
+                    continue;
+                }
+                
+                bomb.y += bomb.speed;
+                
+                // Off screen
+                if (bomb.y > canvas.height) {
+                    bombs.splice(i, 1);
+                    continue;
+                }
+                
+                // Paddle Collision
+                // Simple circle-rect collision
+                let testX = bomb.x;
+                let testY = bomb.y;
+                
+                if (bomb.x < paddle.x) testX = paddle.x;
+                else if (bomb.x > paddle.x + paddle.width) testX = paddle.x + paddle.width;
+                
+                if (bomb.y < paddle.y) testY = paddle.y;
+                else if (bomb.y > paddle.y + paddle.height) testY = paddle.y + paddle.height;
+                
+                const distX = bomb.x - testX;
+                const distY = bomb.y - testY;
+                const distance = Math.sqrt(distX * distX + distY * distY);
+                
+                if (distance <= bomb.radius) {
+                    // Hit paddle!
+                    lives--;
+                    updateUI();
+                    
+                    if (lives <= 0) {
+                        gameOver();
+                    } else {
+                        // Reset level state (balls, powerups, bombs)
+                        resetBalls();
+                        resetPowerUps();
+                        // bombs ar cleared in resetPowerUps
+                    }
+                    return; // Stop processing frame on life loss
+                }
+            }
         }
 
         // Activate Power-Up
@@ -1189,6 +1300,7 @@
             drawPaddle();
             drawBalls();
             drawBullets();
+            drawBombs(); // New
             
             // Draw background grid
             drawGrid();
@@ -1257,9 +1369,15 @@
                                 activeBricksCount--;
                                 score += 10;
                                 
-                                // Activate Power-up if present (even if shot!)
+                                score += 10;
+                                
+                                // Activate Power-up or Spawn Bomb (even if shot!)
                                 if (brick.powerUp) {
-                                    activatePowerUp(brick.powerUp);
+                                    if (brick.powerUp === 'bomb') {
+                                        spawnBomb(brick.x + brick.width / 2, brick.y + brick.height / 2);
+                                    } else {
+                                        activatePowerUp(brick.powerUp);
+                                    }
                                 }
                                 
                                 updateUI();
@@ -1329,6 +1447,7 @@
             movePaddle();
             moveBalls();
             moveBullets();
+            moveBombs(); // New
             moveBricks();
             draw();
             
