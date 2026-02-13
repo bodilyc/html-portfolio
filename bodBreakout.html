@@ -444,6 +444,11 @@
         let canShoot = false;
         let lastShotTime = 0;
         
+        // Particles for explosion
+        let particles = [];
+        let gameResetting = false;
+        let resetTimer = 0;
+        
         // Brick properties
         let bricks = [];
         const brickRows = 5;
@@ -716,6 +721,9 @@
 
         // Draw paddle
         function drawPaddle() {
+            // Don't draw paddle if exploding
+            if (gameResetting) return;
+            
             ctx.beginPath();
             ctx.rect(paddle.x, paddle.y, paddle.width, paddle.height);
             ctx.fillStyle = paddle.color;
@@ -1061,13 +1069,8 @@
             
             // Check lives only if no balls left
             if (balls.length === 0) {
-                lives--;
-                updateUI();
-                
-                if (lives <= 0) {
-                    gameOver();
-                } else {
-                    resetBalls();
+                if (!gameResetting) {
+                    explodePaddle();
                 }
             }
         }
@@ -1089,6 +1092,70 @@
             canShoot = false;
             bullets.forEach(b => b.active = false);
             bombs = []; // Clear bombs
+        }
+        
+        // Paddle Explosion Logic
+        function explodePaddle() {
+            gameResetting = true;
+            resetTimer = Date.now() + 1500; // 1.5 seconds delay
+            createExplosion(paddle.x + paddle.width/2, paddle.y + paddle.height/2, paddle.color);
+            
+            // "Hide" paddle visually but keep object
+            // We'll handle drawing effectively by checking gameResetting in drawPaddle
+        }
+        
+        function resetLife() {
+             gameResetting = false;
+             lives--;
+             updateUI();
+             
+             if (lives <= 0) {
+                 gameOver();
+             } else {
+                 resetBalls();
+                 resetPowerUps();
+             }
+        }
+
+        // Particle System
+        function createExplosion(x, y, color) {
+            for (let i = 0; i < 30; i++) {
+                particles.push({
+                    x: x,
+                    y: y,
+                    dx: (Math.random() - 0.5) * 10,
+                    dy: (Math.random() - 0.5) * 10,
+                    radius: Math.random() * 5 + 2,
+                    color: color,
+                    alpha: 1,
+                    life: 1.0
+                });
+            }
+        }
+        
+        function moveParticles() {
+            for (let i = particles.length - 1; i >= 0; i--) {
+                const p = particles[i];
+                p.x += p.dx;
+                p.y += p.dy;
+                p.alpha -= 0.02;
+                
+                if (p.alpha <= 0) {
+                    particles.splice(i, 1);
+                }
+            }
+        }
+        
+        function drawParticles() {
+            particles.forEach(p => {
+                ctx.save();
+                ctx.globalAlpha = p.alpha;
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+                ctx.fillStyle = p.color;
+                ctx.fill();
+                ctx.restore();
+            });
         }
 
         // Spawn a bomb
@@ -1136,16 +1203,8 @@
                 
                 if (distance <= bomb.radius) {
                     // Hit paddle!
-                    lives--;
-                    updateUI();
-                    
-                    if (lives <= 0) {
-                        gameOver();
-                    } else {
-                        // Reset level state (balls, powerups, bombs)
-                        resetBalls();
-                        resetPowerUps();
-                        // bombs ar cleared in resetPowerUps
+                    if (!gameResetting) {
+                        explodePaddle();
                     }
                     return; // Stop processing frame on life loss
                 }
@@ -1301,6 +1360,7 @@
             drawBalls();
             drawBullets();
             drawBombs(); // New
+            drawParticles(); // New
             
             // Draw background grid
             drawGrid();
@@ -1444,11 +1504,24 @@
         function update() {
             if (!gameRunning || gamePaused) return;
             
+            if (gameResetting) {
+                moveParticles();
+                draw(); // Draw frame with particles
+                
+                if (Date.now() > resetTimer) {
+                    resetLife();
+                }
+                
+                animationId = requestAnimationFrame(update);
+                return;
+            }
+            
             movePaddle();
             moveBalls();
             moveBullets();
             moveBombs(); // New
             moveBricks();
+            moveParticles(); // Process any lingering particles
             draw();
             
             animationId = requestAnimationFrame(update);
