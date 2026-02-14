@@ -801,48 +801,25 @@
                         ctx.lineWidth = 1;
                         ctx.stroke();
                         
-                    } else if (item.type === 'slow') {
-                        // Slow Ball (Ball with S)
-                        
-                        // Rotate for effect
-                        ctx.rotate(item.rotation);
-                        
-                        ctx.beginPath();
-                        ctx.arc(0, 0, item.radius, 0, Math.PI * 2);
-                        ctx.fillStyle = '#32CD32'; // Lime Green
-                        ctx.fill();
-                        ctx.strokeStyle = 'white';
-                        ctx.lineWidth = 2;
-                        ctx.stroke();
-                        
-                        // "S"
-                        ctx.rotate(-item.rotation); // Keep text upright? Or rotate?
-                        // Actually, rotation makes it harder to read. Let's counter-rotate the text.
-                        ctx.fillStyle = 'white';
-                        ctx.font = 'bold 14px Verdana';
-                        ctx.textAlign = 'center';
-                        ctx.textBaseline = 'middle';
-                        ctx.fillText('S', 0, 1);
-                        
-                    } else if (item.type === 'fast') {
-                        // Fast Ball (Ball with F)
+                    } else if (item.type === 'slow' || item.type === 'fast') {
+                        // Mystery Ball (looks the same for both!)
                          ctx.rotate(item.rotation);
                         
                         ctx.beginPath();
                         ctx.arc(0, 0, item.radius, 0, Math.PI * 2);
-                        ctx.fillStyle = '#FF4500'; // Orange Red
+                        ctx.fillStyle = '#9932CC'; // Dark Orchid (Purple)
                         ctx.fill();
                         ctx.strokeStyle = 'white';
                         ctx.lineWidth = 2;
                         ctx.stroke();
                         
-                        // "F"
+                        // "?"
                         ctx.rotate(-item.rotation);
                         ctx.fillStyle = 'white';
-                        ctx.font = 'bold 14px Verdana';
+                        ctx.font = 'bold 16px Verdana';
                         ctx.textAlign = 'center';
                         ctx.textBaseline = 'middle';
-                        ctx.fillText('F', 0, 1);
+                        ctx.fillText('?', 0, 1);
                     }
                     
                     ctx.restore();
