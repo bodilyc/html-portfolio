@@ -437,7 +437,7 @@
         let activeBricksCount = 0;
         
         // Power-ups
-        const powerUpTypes = ['through', 'wide', 'sticky', 'narrow', 'multiball', 'shooter', 'bomb', 'rain', 'slow'];
+        const powerUpTypes = ['through', 'wide', 'sticky', 'narrow', 'multiball', 'shooter', 'bomb', 'rain', 'slow', 'fast'];
         let activePowerUp = null;
         let bullets = [];
         let fallingItems = [];
@@ -816,12 +816,33 @@
                         ctx.stroke();
                         
                         // "S"
-                        ctx.rotate(-item.rotation); // Rotate text back? Or let it spin. Let it spin!
+                        ctx.rotate(-item.rotation); // Keep text upright? Or rotate?
+                        // Actually, rotation makes it harder to read. Let's counter-rotate the text.
                         ctx.fillStyle = 'white';
                         ctx.font = 'bold 14px Verdana';
                         ctx.textAlign = 'center';
                         ctx.textBaseline = 'middle';
                         ctx.fillText('S', 0, 1);
+                        
+                    } else if (item.type === 'fast') {
+                        // Fast Ball (Ball with F)
+                         ctx.rotate(item.rotation);
+                        
+                        ctx.beginPath();
+                        ctx.arc(0, 0, item.radius, 0, Math.PI * 2);
+                        ctx.fillStyle = '#FF4500'; // Orange Red
+                        ctx.fill();
+                        ctx.strokeStyle = 'white';
+                        ctx.lineWidth = 2;
+                        ctx.stroke();
+                        
+                        // "F"
+                        ctx.rotate(-item.rotation);
+                        ctx.fillStyle = 'white';
+                        ctx.font = 'bold 14px Verdana';
+                        ctx.textAlign = 'center';
+                        ctx.textBaseline = 'middle';
+                        ctx.fillText('F', 0, 1);
                     }
                     
                     ctx.restore();
@@ -1223,8 +1244,20 @@
                     continue;
                 }
                 
+                // Vertical movement
                 item.y += item.speed;
                 item.rotation += 0.05;
+
+                // Homing Logic for BOMBS
+                if (item.type === 'bomb') {
+                    const paddleCenter = paddle.x + paddle.width / 2;
+                    // Move towards paddle center horizontally
+                    if (item.x < paddleCenter) {
+                        item.x += 1.5; // Horizontal speed (slower than paddle)
+                    } else if (item.x > paddleCenter) {
+                        item.x -= 1.5;
+                    }
+                }
                 
                 // Off screen
                 if (item.y > canvas.height) {
@@ -1260,17 +1293,27 @@
                         createExplosion(paddle.x + paddle.width/2, paddle.y, '#00CED1');
                     } else if (item.type === 'slow') {
                         // Slow Ball
-                        if (currentBallSpeed > 2) currentBallSpeed -= 1.5;
+                        if (currentBallSpeed > 2) currentBallSpeed -= 2.0;
                         if (currentBallSpeed < 2) currentBallSpeed = 2;
                         
                         balls.forEach(b => {
-                            // Scale current velocity down
                             const speedRatio = currentBallSpeed / b.speed;
                             b.speed = currentBallSpeed;
                             b.dx *= speedRatio;
                             b.dy *= speedRatio;
                         });
                         createExplosion(paddle.x + paddle.width/2, paddle.y, '#32CD32');
+                    } else if (item.type === 'fast') {
+                        // Fast Ball
+                        if (currentBallSpeed < 12) currentBallSpeed += 2.0;
+                        
+                        balls.forEach(b => {
+                            const speedRatio = currentBallSpeed / b.speed;
+                            b.speed = currentBallSpeed;
+                            b.dx *= speedRatio;
+                            b.dy *= speedRatio;
+                        });
+                        createExplosion(paddle.x + paddle.width/2, paddle.y, '#FF4500'); // Orange-Red
                     }
                     
                     item.active = false;
@@ -1509,7 +1552,7 @@
                                 
                                 // Activate Power-up or Spawn Bomb (even if shot!)
                                 if (brick.powerUp) {
-                                    if (brick.powerUp === 'bomb' || brick.powerUp === 'rain' || brick.powerUp === 'slow') {
+                                    if (brick.powerUp === 'bomb' || brick.powerUp === 'rain' || brick.powerUp === 'slow' || brick.powerUp === 'fast') {
                                         spawnFallingItem(brick.x + brick.width / 2, brick.y + brick.height / 2, brick.powerUp);
                                     } else {
                                         activatePowerUp(brick.powerUp);
