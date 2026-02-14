@@ -990,23 +990,16 @@
                 ball.x += ball.dx;
                 ball.y += ball.dy;
 
-                // **BETTER FIX: Detect if stuck near wall and force away**
-                const nearLeftWall = ball.x - ball.radius < 5;
-                const nearRightWall = ball.x + ball.radius > canvas.width - 5;
-                
-                if ((nearLeftWall || nearRightWall) && Math.abs(ball.dx) < 1.0) {
-                    // Ball is stuck bouncing vertically near a wall - push it away
-                    if (nearLeftWall) {
-                        ball.dx = ball.speed * 0.7;  // Force right
-                    } else {
-                        ball.dx = -ball.speed * 0.7; // Force left
-                    }
-                    ball.dy = ball.dy > 0 ? ball.speed * 0.7 : -ball.speed * 0.7;
+                // **ROBUST FIX: Wall Collision with Position Clamping**
+                // Left Wall
+                if (ball.x - ball.radius < 0) {
+                    ball.x = ball.radius; // Clamp position inside
+                    ball.dx = Math.abs(ball.dx); // Force exact positive direction
                 }
-                
-                // Wall collision (left/right)
-                if (ball.x + ball.radius > canvas.width || ball.x - ball.radius < 0) {
-                    ball.dx = -ball.dx;
+                // Right Wall
+                else if (ball.x + ball.radius > canvas.width) {
+                    ball.x = canvas.width - ball.radius; // Clamp position inside
+                    ball.dx = -Math.abs(ball.dx); // Force exact negative direction
                 }
                 
                 // Wall collision (top)
