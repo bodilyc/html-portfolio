@@ -743,10 +743,6 @@
                 ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
                 ctx.fill();
                 ctx.closePath();
-                ctx.rect(paddle.x, paddle.y, paddle.width, 5);
-                ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
-                ctx.fill();
-                ctx.closePath();
 
                 // Sticky Glue Visual
                 if (activePowerUp === 'sticky') {
@@ -755,8 +751,6 @@
                     ctx.fillStyle = '#32CD32'; // Lime Green Glue
                     ctx.fill();
                     ctx.closePath();
-                    
-                    // Optional drips? Keep it simple for now.
                 }
             }
             
@@ -1161,7 +1155,6 @@
             // Reset existing balls properties to default unless they override?
             // "reset effects on new powerup".
             // So we loop balls and reset them.
-            // So we loop balls and reset them.
             balls.forEach(b => {
                 b.color = '#FFFF00';
                 b.through = false;
@@ -1312,22 +1305,22 @@
                         if (currentBallSpeed > 2) currentBallSpeed -= 2.0;
                         if (currentBallSpeed < 2) currentBallSpeed = 2;
                         
+                        balls.forEach(b => {
                             const speedRatio = currentBallSpeed / b.speed;
                             b.speed = currentBallSpeed;
                             b.dx *= speedRatio;
                             b.dy *= speedRatio;
-                            // b.color = 'red'; // Visual feedback REMOVED
                         });
                         createExplosion(paddle.x + paddle.width/2, paddle.y, '#32CD32');
                     } else if (item.type === 'fast') {
                         // Fast Ball
                         if (currentBallSpeed < 12) currentBallSpeed += 2.0;
                         
+                        balls.forEach(b => {
                             const speedRatio = currentBallSpeed / b.speed;
                             b.speed = currentBallSpeed;
                             b.dx *= speedRatio;
                             b.dy *= speedRatio;
-                            // b.color = 'green'; // Visual feedback REMOVED
                         });
                         createExplosion(paddle.x + paddle.width/2, paddle.y, '#FF4500'); // Orange-Red
                     } else {
