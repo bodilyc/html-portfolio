@@ -1870,6 +1870,7 @@
         
         closeLeaderboardBtn.addEventListener('click', function() {
             leaderboard.style.display = 'none';
+            cancelAnimationFrame(animationId);
             init();
             update();
         });
