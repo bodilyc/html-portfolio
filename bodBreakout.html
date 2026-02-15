@@ -548,24 +548,7 @@
         }
         
         // Initialize game
-        function init() {
-            score = 0;
-            lastLifeScore = 0;
-            lives = 3;
-            level = 1;
-            currentBallSpeed = baseBallSpeed;
-            updateUI();
-            const topScore = highScores.length > 0 ? highScores[0].score : 0;
-            highScoreElement.textContent = topScore;
-            createBricks();
-            resetBalls(); // Reset to one ball on paddle
-            resetPowerUps();
-            gameRunning = true;
-            gamePaused = false;
-            gameOverScreen.style.display = 'none';
-            gameWinScreen.style.display = 'none';
-            levelIndicator.style.display = 'none';
-        }
+
         
         function launchBall() {
             if (gameRunning && !gamePaused) {
@@ -760,8 +743,26 @@
             
             levelElement.textContent = level;
             // Display top high score
-            const topScore = highScores.length > 0 ? highScores[0].score : 0;
-            highScoreElement.textContent = topScore;
+            updateHighScoreDisplay();
+        }
+
+        function init() {
+            score = 0;
+            lastLifeScore = 0;
+            lives = 3;
+            level = 1;
+            currentBallSpeed = baseBallSpeed;
+            updateUI();
+            updateHighScoreDisplay();
+            createBricks();
+            resetBalls(); // Reset to one ball on paddle
+            resetPowerUps();
+            gameRunning = true;
+            gamePaused = false;
+            gameOverScreen.style.display = 'none';
+            gameWinScreen.style.display = 'none';
+            levelIndicator.style.display = 'none';
+            draw(); // Draw initial state
         }
         
         // Shoot bullets
@@ -1904,7 +1905,7 @@
         
         // Initialize game
         init();
-        update();
+        // The first update() will be called via start button logic
     </script>
 </body>
 </html>
