@@ -820,25 +820,6 @@
                         ctx.textAlign = 'center';
                         ctx.textBaseline = 'middle';
                         ctx.fillText('?', 0, 1);
-                    } else if (item.type === 'slow' || item.type === 'fast') {
-                        // Mystery Ball (looks the same for both!)
-                         ctx.rotate(item.rotation);
-                        
-                        ctx.beginPath();
-                        ctx.arc(0, 0, item.radius, 0, Math.PI * 2);
-                        ctx.fillStyle = '#9932CC'; // Dark Orchid (Purple)
-                        ctx.fill();
-                        ctx.strokeStyle = 'white';
-                        ctx.lineWidth = 2;
-                        ctx.stroke();
-                        
-                        // "?"
-                        ctx.rotate(-item.rotation);
-                        ctx.fillStyle = 'white';
-                        ctx.font = 'bold 16px Verdana';
-                        ctx.textAlign = 'center';
-                        ctx.textBaseline = 'middle';
-                        ctx.fillText('?', 0, 1);
                     } else {
                         // Standard Power-ups (W, N, M, T, C, G)
                         // They get their own colors and letters
@@ -874,6 +855,8 @@
                         ctx.textBaseline = 'middle';
                         ctx.fillText(letter, 0, 1);
                     }
+                    
+                    ctx.restore();
                 });
             }
         
