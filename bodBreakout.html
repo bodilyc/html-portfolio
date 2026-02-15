@@ -1108,12 +1108,10 @@
                                 score += 10;
                                 
                                 // Activate Power-up or Spawn Bomb
+                                // Activate Power-up or Spawn Bomb
                                 if (brick.powerUp) {
-                                    if (brick.powerUp === 'bomb' || brick.powerUp === 'rain' || brick.powerUp === 'slow') {
-                                        spawnFallingItem(brick.x + brick.width / 2, brick.y + brick.height / 2, brick.powerUp);
-                                    } else {
-                                        activatePowerUp(brick.powerUp);
-                                    }
+                                    // ALL power-ups are now falling items
+                                    spawnFallingItem(brick.x + brick.width / 2, brick.y + brick.height / 2, brick.powerUp);
                                 }
                                 
                                 updateUI();
