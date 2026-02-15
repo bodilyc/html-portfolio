@@ -274,6 +274,47 @@
         .rank-1 { color: #FFD700; font-weight: bold; }
         .rank-2 { color: #C0C0C0; font-weight: bold; }
         .rank-3 { color: #CD7F32; font-weight: bold; }
+
+        /* Tabs and Reset */
+        .tab-container {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        .tab-btn {
+            background: #333;
+            color: #aaa;
+            border: 1px solid #555;
+            padding: 8px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-family: inherit;
+        }
+        .tab-btn.active {
+            background: #ffcc00;
+            color: #000;
+            border-color: #ffcc00;
+            font-weight: bold;
+        }
+        .reset-container {
+            margin-bottom: 15px;
+            text-align: right;
+        }
+        .reset-btn {
+            background: #d32f2f;
+            color: white;
+            padding: 5px 10px;
+            font-size: 0.8rem;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            opacity: 0.8;
+        }
+        .reset-btn:hover {
+            opacity: 1;
+        }
     </style>
 </head>
 <body>
@@ -335,7 +376,16 @@
         </div>
         
         <div id="leaderboard" class="modal">
-            <h2>HIGH SCORES</h2>
+            <h2>LEADERBOARD</h2>
+            <div class="tab-container">
+                <button id="worldTabBtn" class="tab-btn active" onclick="switchTab('world')">WORLD RECORDS</button>
+                <button id="myTabBtn" class="tab-btn" onclick="switchTab('my')">MY RECORDS</button>
+            </div>
+            
+            <div id="resetContainer" class="reset-container" style="display:none;">
+                <button class="reset-btn" onclick="resetMyScores()">RESET MY RECORDS</button>
+            </div>
+
             <table class="leaderboard-table">
                 <thead>
                     <tr>
@@ -397,12 +447,35 @@
         let lastLifeScore = 0; // Track score for extra lives
         let lives = 3;
         let level = 1;
-        let highScores = JSON.parse(localStorage.getItem('breakoutHighScores')) || [];
-        // Extract legacy high score if exists and merge
-        const legacyHighScore = localStorage.getItem('breakoutHighScore');
-        if (legacyHighScore && highScores.length === 0) {
-            highScores.push({ name: 'YOU', score: parseInt(legacyHighScore) });
+        
+        // High Score System
+        let currentTab = 'world';
+        let worldScores = JSON.parse(localStorage.getItem('breakoutWorldScores')) || [];
+        let myScores = JSON.parse(localStorage.getItem('breakoutMyScores')) || [];
+        
+        // Refresh World Scores to 0 for this update if legacy scores exist or specifically required
+        // (User asked to reset world records to 0 now)
+        if (!localStorage.getItem('worldReset_v2')) {
+            worldScores = [];
+            localStorage.setItem('breakoutWorldScores', JSON.stringify(worldScores));
+            localStorage.setItem('worldReset_v2', 'true');
         }
+        
+        // Handle migration from legacy single highScores if needed
+        let legacyScores = JSON.parse(localStorage.getItem('breakoutHighScores'));
+        if (legacyScores && myScores.length === 0) {
+            myScores = legacyScores;
+            localStorage.setItem('breakoutMyScores', JSON.stringify(myScores));
+        }
+        
+        // Update high score display in UI
+        function updateHighScoreDisplay() {
+            const best = myScores.length > 0 ? myScores[0].score : 0;
+            highScoreElement.textContent = best;
+        }
+        
+        updateHighScoreDisplay();
+        // Legacy cleanup (unnecessary now)
         
         let gameRunning = false;
         let gamePaused = false;
@@ -1416,45 +1489,90 @@
         }
 
         function checkHighScore(newScore) {
-            if (highScores.length < 10) return true;
-            return newScore > highScores[highScores.length - 1].score;
+            // Check world
+            const isWorld = worldScores.length < 10 || newScore > worldScores[worldScores.length - 1].score;
+            // Check my
+            const isMy = myScores.length < 10 || newScore > myScores[myScores.length - 1].score;
+            
+            return isWorld || isMy;
         }
 
         function submitHighScore() {
             const initials = initialsInput.value.toUpperCase() || 'UNK';
             const newEntry = { name: initials, score: score };
             
-            highScores.push(newEntry);
-            highScores.sort((a, b) => b.score - a.score);
-            if (highScores.length > 10) highScores.pop();
-            
-            localStorage.setItem('breakoutHighScores', JSON.stringify(highScores));
+            // Add to World if qualified
+            if (worldScores.length < 10 || score > worldScores[worldScores.length - 1].score) {
+                worldScores.push(newEntry);
+                worldScores.sort((a, b) => b.score - a.score);
+                if (worldScores.length > 10) worldScores.pop();
+                localStorage.setItem('breakoutWorldScores', JSON.stringify(worldScores));
+            }
+
+            // Add to My if qualified
+            if (myScores.length < 10 || score > myScores[myScores.length - 1].score) {
+                myScores.push(newEntry);
+                myScores.sort((a, b) => b.score - a.score);
+                if (myScores.length > 10) myScores.pop();
+                localStorage.setItem('breakoutMyScores', JSON.stringify(myScores));
+            }
             
             highScoreModal.style.display = 'none';
+            currentTab = 'world'; // Default to world view after submit
             showLeaderboard();
             updateUI();
+            updateHighScoreDisplay();
+        }
+
+        function switchTab(type) {
+            currentTab = type;
+            showLeaderboard();
+        }
+
+        function resetMyScores() {
+            if (confirm('Are you sure you want to reset your personal records?')) {
+                myScores = [];
+                localStorage.setItem('breakoutMyScores', JSON.stringify(myScores));
+                showLeaderboard();
+                updateHighScoreDisplay();
+            }
         }
 
         function showLeaderboard() {
             leaderboardBody.innerHTML = '';
+            const scores = currentTab === 'world' ? worldScores : myScores;
+            const worldTabBtn = document.getElementById('worldTabBtn');
+            const myTabBtn = document.getElementById('myTabBtn');
+            const resetContainer = document.getElementById('resetContainer');
+
+            // Update tab button styles
+            if (currentTab === 'world') {
+                worldTabBtn.classList.add('active');
+                myTabBtn.classList.remove('active');
+                resetContainer.style.display = 'none';
+            } else {
+                myTabBtn.classList.add('active');
+                worldTabBtn.classList.remove('active');
+                resetContainer.style.display = 'block';
+            }
             
             // If no scores, show a placeholder
-            if (highScores.length === 0) {
+            if (scores.length === 0) {
                  const row = document.createElement('tr');
-                 row.innerHTML = `<td colspan="3">No High Scores Yet</td>`;
+                 row.innerHTML = `<td colspan="3">No Records Yet</td>`;
                  leaderboardBody.appendChild(row);
+            } else {
+                scores.forEach((entry, index) => {
+                    const row = document.createElement('tr');
+                    if (index < 3) row.classList.add(`rank-${index + 1}`);
+                    row.innerHTML = `
+                        <td>${index + 1}</td>
+                        <td>${entry.name}</td>
+                        <td>${entry.score}</td>
+                    `;
+                    leaderboardBody.appendChild(row);
+                });
             }
-
-            highScores.forEach((entry, index) => {
-                const row = document.createElement('tr');
-                if (index < 3) row.classList.add(`rank-${index + 1}`);
-                row.innerHTML = `
-                    <td>${index + 1}</td>
-                    <td>${entry.name}</td>
-                    <td>${entry.score}</td>
-                `;
-                leaderboardBody.appendChild(row);
-            });
             
             leaderboard.style.display = 'block';
             gameOverScreen.style.display = 'none'; // Hide generic game over
