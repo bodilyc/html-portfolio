@@ -677,10 +677,10 @@
             scoreElement.textContent = score;
             livesElement.textContent = lives;
             
-            // Extra Life check
-            if (score - lastLifeScore >= 500) {
+            // Extra Life check (Now every 2000 points)
+            if (score - lastLifeScore >= 2000) {
                 lives++;
-                lastLifeScore += 500;
+                lastLifeScore += 2000;
                 livesElement.textContent = lives;
                 
                 // Animate
@@ -820,9 +820,60 @@
                         ctx.textAlign = 'center';
                         ctx.textBaseline = 'middle';
                         ctx.fillText('?', 0, 1);
+                    } else if (item.type === 'slow' || item.type === 'fast') {
+                        // Mystery Ball (looks the same for both!)
+                         ctx.rotate(item.rotation);
+                        
+                        ctx.beginPath();
+                        ctx.arc(0, 0, item.radius, 0, Math.PI * 2);
+                        ctx.fillStyle = '#9932CC'; // Dark Orchid (Purple)
+                        ctx.fill();
+                        ctx.strokeStyle = 'white';
+                        ctx.lineWidth = 2;
+                        ctx.stroke();
+                        
+                        // "?"
+                        ctx.rotate(-item.rotation);
+                        ctx.fillStyle = 'white';
+                        ctx.font = 'bold 16px Verdana';
+                        ctx.textAlign = 'center';
+                        ctx.textBaseline = 'middle';
+                        ctx.fillText('?', 0, 1);
+                    } else {
+                        // Standard Power-ups (W, N, M, T, C, G)
+                        // They get their own colors and letters
+                        let color = 'white';
+                        let letter = '';
+                        
+                        switch(item.type) {
+                            case 'wide': color = 'green'; letter = 'W'; break;
+                            case 'narrow': color = 'red'; letter = 'N'; break;
+                            case 'multiball': color = 'blue'; letter = 'M'; break;
+                            case 'through': color = 'black'; letter = 'T'; break;
+                            case 'sticky': color = 'yellow'; letter = 'C'; break; // 'C' for Catch
+                            case 'shooter': color = 'purple'; letter = 'G'; break; // 'G' for Gun
+                        }
+                        
+                         ctx.rotate(item.rotation);
+                        
+                        ctx.beginPath();
+                        ctx.arc(0, 0, item.radius, 0, Math.PI * 2);
+                        ctx.fillStyle = color;
+                        ctx.fill();
+                        ctx.strokeStyle = 'white';
+                        ctx.lineWidth = 2;
+                        if (color === 'black') ctx.strokeStyle = 'white'; // ensuring visibility
+                        ctx.stroke();
+                        
+                        // Letter
+                        ctx.rotate(-item.rotation);
+                        ctx.fillStyle = 'white';
+                        if (color === 'yellow') ctx.fillStyle = 'black'; // contrast
+                        ctx.font = 'bold 14px Verdana';
+                        ctx.textAlign = 'center';
+                        ctx.textBaseline = 'middle';
+                        ctx.fillText(letter, 0, 1);
                     }
-                    
-                    ctx.restore();
                 });
             }
         
@@ -1284,6 +1335,12 @@
                             b.dy *= speedRatio;
                         });
                         createExplosion(paddle.x + paddle.width/2, paddle.y, '#FF4500'); // Orange-Red
+                    } else {
+                        // Regular Power-ups (Wide, Narrow, etc)
+                        activatePowerUp(item.type);
+                        
+                        // Optional visual feedback
+                        createExplosion(paddle.x + paddle.width/2, paddle.y, 'white');
                     }
                     
                     item.active = false;
@@ -1522,11 +1579,8 @@
                                 
                                 // Activate Power-up or Spawn Bomb (even if shot!)
                                 if (brick.powerUp) {
-                                    if (brick.powerUp === 'bomb' || brick.powerUp === 'rain' || brick.powerUp === 'slow' || brick.powerUp === 'fast') {
-                                        spawnFallingItem(brick.x + brick.width / 2, brick.y + brick.height / 2, brick.powerUp);
-                                    } else {
-                                        activatePowerUp(brick.powerUp);
-                                    }
+                                    // ALL power-ups are now falling items
+                                    spawnFallingItem(brick.x + brick.width / 2, brick.y + brick.height / 2, brick.powerUp);
                                 }
                                 
                                 updateUI();
