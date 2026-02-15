@@ -437,7 +437,7 @@
         let activeBricksCount = 0;
         
         // Power-ups
-        const powerUpTypes = ['through', 'wide', 'sticky', 'narrow', 'multiball', 'shooter', 'bomb', 'rain', 'slow', 'fast'];
+        const powerUpTypes = ['through', 'wide', 'sticky', 'narrow', 'multiball', 'shooter', 'bomb', 'rain', 'slow', 'fast', 'blast'];
         let activePowerUp = null;
         let bullets = [];
         let fallingItems = [];
@@ -666,8 +666,6 @@
 
         function spawnExtraBall() {
              createBall(false);
-             // Ensure all balls turn blue to match powerup
-             balls.forEach(b => b.color = 'blue');
         }
         
         // Update UI elements
@@ -836,10 +834,11 @@
                         switch(item.type) {
                             case 'wide': color = 'green'; letter = 'W'; break;
                             case 'narrow': color = 'red'; letter = 'N'; break;
-                            case 'multiball': color = 'blue'; letter = 'M'; break;
+                            case 'multiball': color = '#FFFF00'; letter = 'M'; break;
                             case 'through': color = 'black'; letter = 'T'; break;
                             case 'sticky': color = 'yellow'; letter = 'C'; break; // 'C' for Catch
                             case 'shooter': color = 'purple'; letter = 'G'; break; // 'G' for Gun
+                            case 'blast': color = '#FF6600'; letter = 'X'; break; // 'X' for eXplosion
                         }
                         
                          ctx.rotate(item.rotation);
@@ -1368,6 +1367,12 @@
                  case 'multiball':
                      // balls.forEach(b => b.color = 'blue'); // Remove blue
                      spawnExtraBall();
+                     spawnExtraBall(); // Spawn 2 extra (total 3 balls)
+                     break;
+                 case 'blast':
+                     for (let i = 0; i < 9; i++) {
+                         spawnExtraBall();
+                     }
                      break;
                  case 'shooter':
                      paddle.color = 'purple';
