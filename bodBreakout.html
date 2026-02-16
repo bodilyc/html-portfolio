@@ -1525,11 +1525,13 @@
             showLeaderboard();
             updateUI();
             updateHighScoreDisplay();
+            if (document.activeElement) document.activeElement.blur();
         }
 
         function switchTab(type) {
             currentTab = type;
             showLeaderboard();
+            if (document.activeElement) document.activeElement.blur();
         }
 
         function resetMyScores() {
@@ -1897,10 +1899,13 @@
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Enter') {
                 if (gameWinScreen.style.display === 'block') {
+                    e.preventDefault();
                     nextLevelBtn.click();
                 } else if (gameOverScreen.style.display === 'block') {
+                    e.preventDefault();
                     restartBtn.click();
                 } else if (leaderboard.style.display === 'block') {
+                    e.preventDefault();
                     closeLeaderboardBtn.click();
                 }
             }
