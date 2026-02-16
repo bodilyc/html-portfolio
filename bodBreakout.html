@@ -275,29 +275,7 @@
         .rank-2 { color: #C0C0C0; font-weight: bold; }
         .rank-3 { color: #CD7F32; font-weight: bold; }
 
-        /* Tabs and Reset */
-        .tab-container {
-            display: flex;
-            justify-content: center;
-            gap: 10px;
-            margin-bottom: 20px;
-        }
-        .tab-btn {
-            background: #333;
-            color: #aaa;
-            border: 1px solid #555;
-            padding: 8px 15px;
-            border-radius: 5px;
-            cursor: pointer;
-            transition: all 0.3s;
-            font-family: inherit;
-        }
-        .tab-btn.active {
-            background: #ffcc00;
-            color: #000;
-            border-color: #ffcc00;
-            font-weight: bold;
-        }
+        /* Reset */
         .reset-container {
             margin-bottom: 15px;
             text-align: right;
@@ -376,14 +354,10 @@
         </div>
         
         <div id="leaderboard" class="modal">
-            <h2>LEADERBOARD</h2>
-            <div class="tab-container">
-                <button id="worldTabBtn" class="tab-btn active" onclick="switchTab('world')">WORLD RECORDS</button>
-                <button id="myTabBtn" class="tab-btn" onclick="switchTab('my')">MY RECORDS</button>
-            </div>
+            <h2>MY RECORDS</h2>
             
-            <div id="resetContainer" class="reset-container" style="display:none;">
-                <button class="reset-btn" onclick="resetMyScores()">RESET MY RECORDS</button>
+            <div id="resetContainer" class="reset-container">
+                <button class="reset-btn" onclick="resetMyScores()">RESET RECORDS</button>
             </div>
 
             <table class="leaderboard-table">
@@ -449,17 +423,7 @@
         let level = 1;
         
         // High Score System
-        let currentTab = 'world';
-        let worldScores = JSON.parse(localStorage.getItem('breakoutWorldScores')) || [];
         let myScores = JSON.parse(localStorage.getItem('breakoutMyScores')) || [];
-        
-        // Refresh World Scores to 0 for this update if legacy scores exist or specifically required
-        // (User asked to reset world records to 0 now)
-        if (!localStorage.getItem('worldReset_v2')) {
-            worldScores = [];
-            localStorage.setItem('breakoutWorldScores', JSON.stringify(worldScores));
-            localStorage.setItem('worldReset_v2', 'true');
-        }
         
         // Handle migration from legacy single highScores if needed
         let legacyScores = JSON.parse(localStorage.getItem('breakoutHighScores'));
@@ -1492,27 +1456,13 @@
         }
 
         function checkHighScore(newScore) {
-            // Check world
-            const isWorld = worldScores.length < 10 || newScore > worldScores[worldScores.length - 1].score;
-            // Check my
-            const isMy = myScores.length < 10 || newScore > myScores[myScores.length - 1].score;
-            
-            return isWorld || isMy;
+            return myScores.length < 10 || newScore > myScores[myScores.length - 1].score;
         }
 
         function submitHighScore() {
             const initials = initialsInput.value.toUpperCase() || 'UNK';
             const newEntry = { name: initials, score: score };
             
-            // Add to World if qualified
-            if (worldScores.length < 10 || score > worldScores[worldScores.length - 1].score) {
-                worldScores.push(newEntry);
-                worldScores.sort((a, b) => b.score - a.score);
-                if (worldScores.length > 10) worldScores.pop();
-                localStorage.setItem('breakoutWorldScores', JSON.stringify(worldScores));
-            }
-
-            // Add to My if qualified
             if (myScores.length < 10 || score > myScores[myScores.length - 1].score) {
                 myScores.push(newEntry);
                 myScores.sort((a, b) => b.score - a.score);
@@ -1521,16 +1471,9 @@
             }
             
             highScoreModal.style.display = 'none';
-            currentTab = 'world'; // Default to world view after submit
             showLeaderboard();
             updateUI();
             updateHighScoreDisplay();
-            if (document.activeElement) document.activeElement.blur();
-        }
-
-        function switchTab(type) {
-            currentTab = type;
-            showLeaderboard();
             if (document.activeElement) document.activeElement.blur();
         }
 
@@ -1545,29 +1488,13 @@
 
         function showLeaderboard() {
             leaderboardBody.innerHTML = '';
-            const scores = currentTab === 'world' ? worldScores : myScores;
-            const worldTabBtn = document.getElementById('worldTabBtn');
-            const myTabBtn = document.getElementById('myTabBtn');
-            const resetContainer = document.getElementById('resetContainer');
-
-            // Update tab button styles
-            if (currentTab === 'world') {
-                worldTabBtn.classList.add('active');
-                myTabBtn.classList.remove('active');
-                resetContainer.style.display = 'none';
-            } else {
-                myTabBtn.classList.add('active');
-                worldTabBtn.classList.remove('active');
-                resetContainer.style.display = 'block';
-            }
             
-            // If no scores, show a placeholder
-            if (scores.length === 0) {
+            if (myScores.length === 0) {
                  const row = document.createElement('tr');
                  row.innerHTML = `<td colspan="3">No Records Yet</td>`;
                  leaderboardBody.appendChild(row);
             } else {
-                scores.forEach((entry, index) => {
+                myScores.forEach((entry, index) => {
                     const row = document.createElement('tr');
                     if (index < 3) row.classList.add(`rank-${index + 1}`);
                     row.innerHTML = `
@@ -1580,7 +1507,7 @@
             }
             
             leaderboard.style.display = 'block';
-            gameOverScreen.style.display = 'none'; // Hide generic game over
+            gameOverScreen.style.display = 'none';
         }
         
         // Next level
