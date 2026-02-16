@@ -1,23 +1,16 @@
 /**
  * Family Match - Memory Game
  * A fun game to help learn family members' names
+ * Dynamically loads family images from FamilyImages/manifest.json
  */
 
 // ============================================
-// Game Configuration - Add or remove images here
+// Game Configuration
 // ============================================
-const familyImages = [
-    "images/Gordon Bodily.jpg",
-    "images/Harriett Ann Roberts.jpg",
-    "images/Jackie Barlow Bodily.jpg",
-    "images/Lois Carrigan Barlow.jpg",
-    "images/Olive Marie Merkley Bodily.jpg",
-    "images/Robert Bodily Jr.jpg",
-    "images/Vinal Stoker Barlow.jpg",
-    "images/Walton Edwin Bodily.jpg",
-    "images/George Davis Merkley.jpg",
-    "images/Zelpha Allen Bodily.jpg"
-];
+const MAX_PAIRS = 15; // Maximum pairs (30 cards) for grid layout
+let familyImages = [];    // Populated dynamically from selected family
+let selectedFamily = '';  // Name of the currently selected family
+let manifest = {};        // Full manifest data
 
 // ============================================
 // Game State
@@ -26,7 +19,7 @@ let gameCards = [];
 let flippedCards = [];
 let matchedPairs = [];
 let turnCount = 0;
-let isProcessing = false; // Prevents clicking during card flip animation
+let isProcessing = false;
 
 // ============================================
 // DOM Elements
@@ -44,6 +37,8 @@ const initialsInput = document.getElementById('initials-input');
 const initialsScore = document.getElementById('initials-score');
 const leaderboardModal = document.getElementById('leaderboard-modal');
 const leaderboardList = document.getElementById('leaderboard-list');
+const familySelectModal = document.getElementById('family-select-modal');
+const familyButtonsContainer = document.getElementById('family-buttons');
 
 // ============================================
 // Utility Functions
@@ -51,8 +46,6 @@ const leaderboardList = document.getElementById('leaderboard-list');
 
 /**
  * Shuffles an array using Fisher-Yates algorithm
- * @param {Array} array - The array to shuffle
- * @returns {Array} - The shuffled array
  */
 function shuffleArray(array) {
     const shuffled = [...array];
@@ -65,33 +58,30 @@ function shuffleArray(array) {
 
 /**
  * Extracts the person's name from the image path
- * @param {string} imagePath - The full image path
- * @returns {string} - The person's name
  */
 function extractName(imagePath) {
     return imagePath.split("/").pop().split(".")[0];
 }
 
 /**
- * Gets all high scores from localStorage
- * @returns {Array} - Array of high score objects {initials, turns, date}
+ * Gets all high scores from localStorage (per-family)
  */
 function getHighScores() {
-    const scores = localStorage.getItem('familyMatchHighScores');
+    const key = `familyMatchHighScores_${selectedFamily}`;
+    const scores = localStorage.getItem(key);
     return scores ? JSON.parse(scores) : [];
 }
 
 /**
- * Saves high scores to localStorage
- * @param {Array} scores - Array of high score objects
+ * Saves high scores to localStorage (per-family)
  */
 function saveHighScores(scores) {
-    localStorage.setItem('familyMatchHighScores', JSON.stringify(scores));
+    const key = `familyMatchHighScores_${selectedFamily}`;
+    localStorage.setItem(key, JSON.stringify(scores));
 }
 
 /**
  * Gets the best record from high scores
- * @returns {number|null} - The best record or null if none exists
  */
 function getBestRecord() {
     const scores = getHighScores();
@@ -100,8 +90,6 @@ function getBestRecord() {
 
 /**
  * Checks if a score qualifies for the leaderboard
- * @param {number} turns - The number of turns to check
- * @returns {boolean} - True if score qualifies
  */
 function isHighScore(turns) {
     const scores = getHighScores();
@@ -111,8 +99,6 @@ function isHighScore(turns) {
 
 /**
  * Adds a new high score to the leaderboard
- * @param {string} initials - The player's 3-letter initials
- * @param {number} turns - The number of turns
  */
 function addHighScore(initials, turns) {
     const scores = getHighScores();
@@ -125,7 +111,6 @@ function addHighScore(initials, turns) {
     scores.push(newScore);
     scores.sort((a, b) => a.turns - b.turns);
 
-    // Keep only top 10
     if (scores.length > 10) {
         scores.length = 10;
     }
@@ -134,14 +119,121 @@ function addHighScore(initials, turns) {
 }
 
 // ============================================
+// Family Selection
+// ============================================
+
+/**
+ * Fetches manifest.json and populates the family selection modal
+ */
+async function loadManifest() {
+    try {
+        const response = await fetch('FamilyImages/manifest.json');
+        manifest = await response.json();
+        populateFamilyButtons();
+    } catch (err) {
+        console.error('Failed to load manifest:', err);
+        familyButtonsContainer.innerHTML = '<p style="color:#e94560;">Could not load family data. Make sure manifest.json exists.</p>';
+    }
+}
+
+/**
+ * Populates family selection buttons from manifest data
+ */
+function populateFamilyButtons() {
+    familyButtonsContainer.innerHTML = '';
+    const familyNames = Object.keys(manifest);
+
+    if (familyNames.length === 0) {
+        familyButtonsContainer.innerHTML = '<p style="color:#aaa;">No families found. Add image folders to FamilyImages/.</p>';
+        return;
+    }
+
+    const icons = ['👨‍👩‍👧‍👦', '👪', '🏠', '❤️', '🌟', '🎯', '🎨', '🌈'];
+
+    familyNames.forEach((name, index) => {
+        const count = manifest[name].length;
+        const icon = icons[index % icons.length];
+
+        const btn = document.createElement('button');
+        btn.className = 'family-btn';
+        btn.innerHTML = `
+            <div class="family-btn-icon">${icon}</div>
+            <div class="family-btn-info">
+                <div class="family-btn-name">${name}</div>
+                <div class="family-btn-count">${count} family member${count !== 1 ? 's' : ''}</div>
+            </div>
+        `;
+        btn.addEventListener('click', () => selectFamily(name));
+        familyButtonsContainer.appendChild(btn);
+    });
+}
+
+/**
+ * Selects a family and starts the game
+ */
+function selectFamily(familyName) {
+    selectedFamily = familyName;
+    const allImages = manifest[familyName];
+
+    // Build full image paths
+    let images = allImages.map(filename => `FamilyImages/${familyName}/${filename}`);
+
+    // If more images than max, randomly select a subset
+    if (images.length > MAX_PAIRS) {
+        images = shuffleArray(images).slice(0, MAX_PAIRS);
+    }
+
+    familyImages = images;
+
+    // Update subtitle to show selected family
+    const subtitle = document.querySelector('.header .subtitle');
+    subtitle.innerHTML = `<span class="family-label">Playing: ${familyName}</span>`;
+
+    // Hide family selection modal
+    familySelectModal.style.display = 'none';
+
+    // Update grid columns based on card count
+    updateGridColumns(familyImages.length);
+
+    // Start the game
+    resetGame();
+}
+
+/**
+ * Shows the family selection modal
+ */
+function showFamilySelect() {
+    familySelectModal.style.display = 'flex';
+}
+
+/**
+ * Dynamically adjusts grid columns based on number of pairs
+ */
+function updateGridColumns(numPairs) {
+    const totalCards = numPairs * 2;
+    let cols;
+
+    if (totalCards <= 8) {
+        cols = 4;
+    } else if (totalCards <= 12) {
+        cols = 4;
+    } else if (totalCards <= 20) {
+        cols = 5;
+    } else if (totalCards <= 24) {
+        cols = 6;
+    } else {
+        cols = 6;
+    }
+
+    cardContainer.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
+}
+
+// ============================================
 // Card Creation & Management
 // ============================================
 
 /**
  * Creates a single card element
- * @param {string} imagePath - The path to the family member's image
- * @param {number} index - The card's index in the game
- * @returns {HTMLElement} - The card element
  */
 function createCard(imagePath, index) {
     const card = document.createElement('div');
@@ -152,11 +244,9 @@ function createCard(imagePath, index) {
     const cardInner = document.createElement('div');
     cardInner.classList.add('card-inner');
 
-    // Front of card (hidden side)
     const cardFront = document.createElement('div');
     cardFront.classList.add('card-front');
 
-    // Back of card (shows the image)
     const cardBack = document.createElement('div');
     cardBack.classList.add('card-back');
 
@@ -179,13 +269,9 @@ function createCard(imagePath, index) {
  * Initializes the game board with shuffled cards
  */
 function initializeBoard() {
-    // Create pairs of each image
     gameCards = shuffleArray([...familyImages, ...familyImages]);
-
-    // Clear existing cards
     cardContainer.innerHTML = '';
 
-    // Create and add card elements
     gameCards.forEach((imagePath, index) => {
         const card = createCard(imagePath, index);
         cardContainer.appendChild(card);
@@ -198,21 +284,17 @@ function initializeBoard() {
 
 /**
  * Handles a card click event
- * @param {HTMLElement} card - The card element that was clicked
  */
 function handleCardClick(card) {
-    // Ignore clicks if processing, card is already flipped, or card is matched
     if (isProcessing ||
         card.classList.contains('flipped') ||
         card.classList.contains('matched')) {
         return;
     }
 
-    // Flip the card
     card.classList.add('flipped');
     flippedCards.push(card);
 
-    // Check if two cards are flipped
     if (flippedCards.length === 2) {
         isProcessing = true;
         turnCount++;
@@ -237,8 +319,6 @@ function checkForMatch() {
 
 /**
  * Handles a successful match
- * @param {HTMLElement} card1 - First matching card
- * @param {HTMLElement} card2 - Second matching card
  */
 function handleMatch(card1, card2) {
     const personName = extractName(card1.dataset.imagePath);
@@ -260,9 +340,7 @@ function handleMatch(card1, card2) {
 }
 
 /**
- * Handles a mismatch - flips cards back
- * @param {HTMLElement} card1 - First card
- * @param {HTMLElement} card2 - Second card
+ * Handles a mismatch
  */
 function handleMismatch(card1, card2) {
     setTimeout(() => {
@@ -290,10 +368,8 @@ function updateStats() {
 
 /**
  * Adds a name to the matched list display
- * @param {string} name - The person's name to add
  */
 function updateMatchedList(name) {
-    // Remove "no matches" message if present
     const emptyMessage = matchedListDisplay.querySelector('.empty-message');
     if (emptyMessage) {
         emptyMessage.remove();
@@ -319,13 +395,11 @@ function showVictory() {
     const qualifiesForLeaderboard = isHighScore(turnCount);
 
     if (qualifiesForLeaderboard) {
-        // Show initials input modal
         initialsScore.textContent = turnCount;
         initialsInput.value = '';
         initialsModal.style.display = 'flex';
         setTimeout(() => initialsInput.focus(), 100);
     } else {
-        // Show regular victory modal with leaderboard option
         modalTitle.textContent = 'Congratulations!';
         modalMessage.innerHTML = `You completed the game in <span class="highlight">${turnCount} turns</span>.<br>Best record: <span class="highlight">${bestRecord} turns</span>`;
         showVictoryThenLeaderboard();
@@ -339,7 +413,6 @@ function showVictory() {
  */
 function showVictoryThenLeaderboard() {
     victoryModal.style.display = 'flex';
-    // Set flag to show leaderboard after victory modal closes
     victoryModal.dataset.showLeaderboard = 'true';
 }
 
@@ -349,24 +422,20 @@ function showVictoryThenLeaderboard() {
 function submitHighScore() {
     let initials = initialsInput.value.trim().toUpperCase();
 
-    // Validate initials (1-3 letters)
     if (initials.length === 0) {
         initials = 'AAA';
     }
 
-    // Pad to 3 characters if needed
     while (initials.length < 3) {
         initials += '-';
     }
 
-    // Only keep first 3 characters
     initials = initials.substring(0, 3);
 
     addHighScore(initials, turnCount);
     hideInitialsModal();
     updateStats();
 
-    // Show leaderboard directly after submitting initials
     showLeaderboard();
 }
 
@@ -443,6 +512,12 @@ function hideVictory() {
  * Resets and starts a new game
  */
 function resetGame() {
+    if (familyImages.length === 0) {
+        // No family selected yet — show selector
+        showFamilySelect();
+        return;
+    }
+
     hideVictory();
     flippedCards = [];
     matchedPairs = [];
@@ -455,11 +530,16 @@ function resetGame() {
 }
 
 /**
- * Resets all high scores
+ * Resets all high scores for the selected family
  */
 function resetRecord() {
-    if (confirm('Are you sure you want to reset all high scores?')) {
-        localStorage.removeItem('familyMatchHighScores');
+    if (!selectedFamily) {
+        alert('Please select a family first.');
+        return;
+    }
+    if (confirm(`Are you sure you want to reset all high scores for ${selectedFamily}?`)) {
+        const key = `familyMatchHighScores_${selectedFamily}`;
+        localStorage.removeItem(key);
         updateStats();
     }
 }
@@ -469,7 +549,7 @@ function resetRecord() {
 // ============================================
 document.addEventListener('DOMContentLoaded', () => {
     updateStats();
-    initializeBoard();
+    loadManifest();
 
     // Add Enter key support for initials input
     initialsInput.addEventListener('keydown', (e) => {

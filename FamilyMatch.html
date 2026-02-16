@@ -8,6 +8,18 @@
     <link rel="stylesheet" href="FamilyMatchStyle.css">
 </head>
 <body>
+    <!-- Family Selection Modal -->
+    <div class="modal-overlay" id="family-select-modal" style="display: flex;">
+        <div class="modal family-select-modal">
+            <div class="trophy">👨‍👩‍👧‍👦</div>
+            <h2>Choose a Family</h2>
+            <p>Select which family you'd like to play with:</p>
+            <div class="family-buttons" id="family-buttons">
+                <!-- Populated by JS from manifest.json -->
+            </div>
+        </div>
+    </div>
+
     <!-- Header Section -->
     <header class="header">
         <h1>Family Match</h1>
@@ -16,6 +28,7 @@
         <!-- Control Buttons -->
         <div class="controls">
             <button class="btn btn-primary" onclick="resetGame()">New Game</button>
+            <button class="btn btn-accent" onclick="showFamilySelect()">Change Family</button>
             <button class="btn btn-secondary" onclick="showLeaderboard()">High Scores</button>
             <button class="btn btn-secondary" onclick="resetRecord()">Reset Scores</button>
         </div>

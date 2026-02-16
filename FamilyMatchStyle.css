@@ -526,3 +526,103 @@ body {
     font-style: italic;
     padding: 30px;
 }
+
+/* ===================================
+   Family Selection Modal
+   =================================== */
+.family-select-modal {
+    max-width: 500px;
+    padding: 40px;
+}
+
+.family-select-modal h2 {
+    color: #ffa502;
+    font-size: 1.8rem;
+    margin-bottom: 8px;
+}
+
+.family-select-modal p {
+    color: #aaa;
+    margin-bottom: 25px;
+}
+
+.family-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.family-btn {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    padding: 18px 25px;
+    background: rgba(255, 255, 255, 0.06);
+    border: 2px solid rgba(255, 255, 255, 0.12);
+    border-radius: 15px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    color: #fff;
+    font-family: inherit;
+    text-align: left;
+}
+
+.family-btn:hover {
+    background: rgba(233, 69, 96, 0.15);
+    border-color: #e94560;
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(233, 69, 96, 0.25);
+}
+
+.family-btn-icon {
+    font-size: 2rem;
+    width: 50px;
+    height: 50px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #e94560, #ff6b6b);
+    border-radius: 12px;
+    flex-shrink: 0;
+}
+
+.family-btn-info {
+    flex: 1;
+}
+
+.family-btn-name {
+    font-size: 1.2rem;
+    font-weight: 700;
+    margin-bottom: 3px;
+}
+
+.family-btn-count {
+    font-size: 0.85rem;
+    color: #888;
+}
+
+/* Accent Button (Change Family) */
+.btn-accent {
+    background: linear-gradient(135deg, #ffa502, #ff6348);
+    color: white;
+    box-shadow: 0 4px 15px rgba(255, 165, 2, 0.3);
+}
+
+.btn-accent:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(255, 165, 2, 0.45);
+}
+
+/* Current Family Label */
+.family-label {
+    display: inline-block;
+    margin-bottom: 10px;
+    padding: 6px 16px;
+    background: rgba(255, 165, 2, 0.15);
+    border: 1px solid rgba(255, 165, 2, 0.3);
+    border-radius: 20px;
+    font-size: 0.85rem;
+    color: #ffa502;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+}
