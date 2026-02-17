@@ -132,26 +132,27 @@ body {
     display: grid;
     grid-template-columns: repeat(5, 1fr);
     gap: 15px;
-    max-width: 700px;
+    flex: 1;
+    min-width: 0;
 }
 
 @media (max-width: 768px) {
     .cards {
-        grid-template-columns: repeat(4, 1fr);
+        grid-template-columns: repeat(auto-fill, minmax(90px, 1fr)) !important;
         gap: 10px;
     }
 }
 
 @media (max-width: 500px) {
     .cards {
-        grid-template-columns: repeat(3, 1fr);
+        grid-template-columns: repeat(auto-fill, minmax(75px, 1fr)) !important;
     }
 }
 
 /* Card Styling */
 .card {
-    width: 120px;
-    height: 140px;
+    aspect-ratio: 6 / 7;
+    min-width: 0;
     perspective: 1000px;
     cursor: pointer;
     position: relative;

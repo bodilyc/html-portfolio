@@ -207,23 +207,13 @@ function showFamilySelect() {
 }
 
 /**
- * Dynamically adjusts grid columns based on number of pairs
+ * Dynamically adjusts grid columns to target 3 rows on desktop.
+ * Cards will wrap to more rows on narrower screens via CSS.
  */
 function updateGridColumns(numPairs) {
     const totalCards = numPairs * 2;
-    let cols;
-
-    if (totalCards <= 8) {
-        cols = 4;
-    } else if (totalCards <= 12) {
-        cols = 4;
-    } else if (totalCards <= 20) {
-        cols = 5;
-    } else if (totalCards <= 24) {
-        cols = 6;
-    } else {
-        cols = 6;
-    }
+    // Target 3 rows: spread cards across columns
+    const cols = Math.ceil(totalCards / 3);
 
     cardContainer.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
 }
