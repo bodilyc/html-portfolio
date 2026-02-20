@@ -18,7 +18,7 @@
             align-items: center;
             min-height: 100vh;
             background: linear-gradient(135deg, #1a2a6c, #b21f1f, #1a2a6c);
-            overflow: hidden;
+            overflow: auto;
             padding: 20px;
         }
         
@@ -73,6 +73,7 @@
             margin: 0 auto;
             box-shadow: 0 0 20px rgba(0, 0, 0, 0.8);
             border: 2px solid rgba(255, 255, 255, 0.1);
+            max-width: 100%;
         }
         
         .controls {
@@ -184,23 +185,106 @@
             font-weight: bold;
         }
         
-        @media (max-width: 600px) {
-            .game-container {
+        @media (max-width: 768px) {
+            body {
                 padding: 10px;
+            }
+            
+            .game-container {
+                padding: 12px;
+                max-width: 100%;
             }
             
             h1 {
                 font-size: 2rem;
+                margin-bottom: 6px;
             }
             
             .game-info {
-                flex-direction: column;
-                gap: 10px;
+                padding: 10px;
+                font-size: 1rem;
+                margin-bottom: 10px;
+            }
+            
+            .info-value {
+                font-size: 1.2rem;
             }
             
             .btn {
                 padding: 10px 15px;
                 font-size: 1rem;
+            }
+            
+            .instructions {
+                padding: 10px;
+                margin-top: 12px;
+                font-size: 0.85rem;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            body {
+                padding: 5px;
+            }
+            
+            .game-container {
+                padding: 8px;
+                border-radius: 10px;
+            }
+            
+            h1 {
+                font-size: 1.5rem;
+                margin-bottom: 4px;
+            }
+            
+            .game-info {
+                flex-direction: column;
+                gap: 6px;
+                padding: 8px;
+                font-size: 0.85rem;
+                margin-bottom: 8px;
+            }
+            
+            .info-value {
+                font-size: 1rem;
+            }
+            
+            .controls p {
+                font-size: 0.8rem;
+            }
+            
+            .btn {
+                padding: 8px 12px;
+                font-size: 0.9rem;
+                margin: 5px 3px;
+            }
+            
+            .instructions {
+                padding: 8px;
+                margin-top: 8px;
+                font-size: 0.75rem;
+            }
+            
+            .instructions li {
+                margin: 4px 0;
+            }
+            
+            .modal {
+                padding: 15px;
+            }
+            
+            .modal h2 {
+                font-size: 1.5rem;
+                margin-bottom: 10px;
+            }
+            
+            .leaderboard-table th, .leaderboard-table td {
+                padding: 6px;
+                font-size: 0.9rem;
+            }
+            
+            .game-over h2, .game-win h2 {
+                font-size: 1.8rem;
             }
         }
         
@@ -453,8 +537,14 @@
         let leftPressed = false;
         let animationId;
         
+        // ---- Responsive sizing ----
+        // Design reference dimensions (original fixed canvas size)
+        const BASE_WIDTH = 760;
+        const BASE_HEIGHT = 450;
+        let scaleFactor = 1; // updated by resizeCanvas()
+        
         // Paddle properties
-        const defaultPaddleWidth = 100;
+        let defaultPaddleWidth = 100;
         const paddle = {
             width: defaultPaddleWidth,
             height: 15,
@@ -490,13 +580,52 @@
         let bricks = [];
         const brickRows = 5;
         const brickColumns = 10;
-        const brickPadding = 10;
-        const brickOffsetLeft = 35;
-        const brickOffsetTop = 45;
+        let brickPadding = 10;
+        let brickOffsetLeft = 35;
+        let brickOffsetTop = 45;
         // Calculate brick width based on canvas size to ensure they fit
-        // (canvas.width - (brickOffsetLeft * 2) - (brickPadding * (brickColumns - 1))) / brickColumns
-        const brickWidth = (canvas.width - (brickOffsetLeft * 2) - (brickPadding * (brickColumns - 1))) / brickColumns;
-        const brickHeight = 20;
+        let brickWidth = (canvas.width - (brickOffsetLeft * 2) - (brickPadding * (brickColumns - 1))) / brickColumns;
+        let brickHeight = 20;
+        
+        // Ball radius (scaled)
+        let ballRadius = 10;
+        
+        // Resize canvas to fit available space and scale all game elements
+        function resizeCanvas() {
+            const container = document.querySelector('.game-container');
+            const containerStyle = getComputedStyle(container);
+            const paddingLeft = parseFloat(containerStyle.paddingLeft);
+            const paddingRight = parseFloat(containerStyle.paddingRight);
+            const borderLeft = parseFloat(containerStyle.borderLeftWidth);
+            const borderRight = parseFloat(containerStyle.borderRightWidth);
+            const availableWidth = container.clientWidth - paddingLeft - paddingRight;
+            
+            // Use the smaller of available width or our base design width
+            const newWidth = Math.min(availableWidth, BASE_WIDTH);
+            scaleFactor = newWidth / BASE_WIDTH;
+            const newHeight = Math.round(BASE_HEIGHT * scaleFactor);
+            
+            canvas.width = Math.round(newWidth);
+            canvas.height = newHeight;
+            
+            // Recalculate brick layout proportionally
+            brickPadding = Math.round(10 * scaleFactor);
+            brickOffsetLeft = Math.round(35 * scaleFactor);
+            brickOffsetTop = Math.round(45 * scaleFactor);
+            brickHeight = Math.round(20 * scaleFactor);
+            brickWidth = (canvas.width - (brickOffsetLeft * 2) - (brickPadding * (brickColumns - 1))) / brickColumns;
+            
+            // Scale paddle
+            defaultPaddleWidth = Math.round(100 * scaleFactor);
+            paddle.width = defaultPaddleWidth;
+            paddle.height = Math.round(15 * scaleFactor);
+            paddle.speed = Math.max(4, Math.round(8 * scaleFactor));
+            paddle.x = canvas.width / 2 - paddle.width / 2;
+            paddle.y = canvas.height - Math.round(30 * scaleFactor);
+            
+            // Scale ball radius
+            ballRadius = Math.max(5, Math.round(10 * scaleFactor));
+        }
         
         // Generate a random color palette for each level using HSL
         function generateLevelColors() {
@@ -661,9 +790,9 @@
         // Create a new ball
         function createBall(isSticky = false) {
             const b = {
-                radius: 10,
+                radius: ballRadius,
                 x: paddle.x + paddle.width / 2,
-                y: paddle.y - 10,
+                y: paddle.y - ballRadius,
                 speed: currentBallSpeed,
                 dx: 0,
                 dy: 0,
@@ -678,7 +807,7 @@
                 // Launch immediately if not sticky start
                 b.dx = (Math.random() > 0.5 ? 1 : -1) * b.speed;
                 b.dy = -b.speed;
-                b.y = paddle.y - 30; // Start slightly higher
+                b.y = paddle.y - Math.round(30 * scaleFactor); // Start slightly higher
             }
             
             balls.push(b);
@@ -711,6 +840,7 @@
         }
 
         function init() {
+            resizeCanvas(); // Adapt to current screen size
             score = 0;
             lastLifeScore = 0;
             lives = 3;
