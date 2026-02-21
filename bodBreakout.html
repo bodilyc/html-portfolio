@@ -533,6 +533,8 @@
         let gameRunning = false;
         let gamePaused = false;
         let lastTime = 0;
+        let accumulator = 0;
+        const FIXED_TIME_STEP = 16.666; // 60 FPS target
         // ballOnPaddle is now ball-specific, but we keep this as a global "start state" flag?
         // Actually no, each ball manages its own state, but game needs to know if "waiting to launch".
         // We'll treat the FIRST ball in the array as the specific "starter" ball if we need a global concept,
@@ -1835,28 +1837,35 @@
             const now = performance.now();
             let dt = now - lastTime;
             lastTime = now;
-            if (dt > 100) dt = 16.666; // cap delta to avoid massive jumps
-            const timeScale = dt / 16.666;
             
-            if (gameResetting) {
-                moveParticles(timeScale);
-                draw(); // Draw frame with particles
-                
-                if (Date.now() > resetTimer) {
-                    resetLife();
-                }
-                
-                animationId = requestAnimationFrame(update);
-                return;
+            // Prevent spiral of death on huge lag spikes
+            if (dt > 250) {
+                dt = 250; 
             }
             
-            movePaddle(timeScale);
-            moveBalls(timeScale);
-            moveBullets(timeScale);
-            moveFallingItems(timeScale);
-            moveBricks(timeScale);
-            moveParticles(timeScale); // Process any lingering particles
-            draw();
+            accumulator += dt;
+            
+            // Fixed timestep physics update (e.g. 16.666ms per step)
+            // This runs multiple physics steps if the framerate drops, ensuring consistent physics.
+            while (accumulator >= FIXED_TIME_STEP) {
+                if (gameResetting) {
+                    moveParticles(1);
+                    if (Date.now() > resetTimer) {
+                        resetLife();
+                    }
+                } else {
+                    movePaddle(1);
+                    moveBalls(1);
+                    moveBullets(1);
+                    moveFallingItems(1);
+                    moveBricks(1);
+                    moveParticles(1); // Process any lingering particles
+                }
+                accumulator -= FIXED_TIME_STEP;
+            }
+            
+            // Render once per frame after physics steps catch up
+            draw(); 
             
             animationId = requestAnimationFrame(update);
         }
