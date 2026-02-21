@@ -397,6 +397,10 @@
                 <span id="level" class="info-value">1</span>
             </div>
             <div class="info-item">
+                <span>SPEED</span>
+                <span id="speed" class="info-value">4.0</span>
+            </div>
+            <div class="info-item">
                 <span>HIGH SCORE</span>
                 <span id="high-score" class="info-value">0</span>
             </div>
@@ -480,6 +484,7 @@
         const scoreElement = document.getElementById('score');
         const livesElement = document.getElementById('lives');
         const levelElement = document.getElementById('level');
+        const speedElement = document.getElementById('speed');
         const highScoreElement = document.getElementById('high-score');
         const startBtn = document.getElementById('startBtn');
         const pauseBtn = document.getElementById('pauseBtn');
@@ -822,6 +827,7 @@
         function updateUI() {
             scoreElement.textContent = score;
             livesElement.textContent = lives;
+            speedElement.textContent = currentBallSpeed.toFixed(1);
             
             // Extra Life check (Now every 2000 points)
             if (score - lastLifeScore >= 2000) {
@@ -892,11 +898,8 @@
             // Don't draw paddle if exploding
             if (gameResetting) return;
             
-            const px = Math.round(paddle.x);
-            const py = Math.round(paddle.y);
-
             ctx.beginPath();
-            ctx.rect(px, py, paddle.width, paddle.height);
+            ctx.rect(paddle.x, paddle.y, paddle.width, paddle.height);
             ctx.fillStyle = paddle.color;
             ctx.fill();
             ctx.closePath();
@@ -905,14 +908,14 @@
             if (canShoot) {
                 ctx.fillStyle = '#C0C0C0';
                 // Left gun
-                ctx.fillRect(px - 2, py - 5, 6, 10);
+                ctx.fillRect(paddle.x - 2, paddle.y - 5, 6, 10);
                 // Right gun
-                ctx.fillRect(px + paddle.width - 4, py - 5, 6, 10);
+                ctx.fillRect(paddle.x + paddle.width - 4, paddle.y - 5, 6, 10);
             }
             
                 // Add shine effect
                 ctx.beginPath();
-                ctx.rect(px, py, paddle.width, 5);
+                ctx.rect(paddle.x, paddle.y, paddle.width, 5);
                 ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
                 ctx.fill();
                 ctx.closePath();
@@ -920,7 +923,7 @@
                 // Sticky Glue Visual
                 if (activePowerUp === 'sticky') {
                     ctx.beginPath();
-                    ctx.rect(px, py, paddle.width, 5);
+                    ctx.rect(paddle.x, paddle.y, paddle.width, 5);
                     ctx.fillStyle = '#32CD32'; // Lime Green Glue
                     ctx.fill();
                     ctx.closePath();
@@ -1044,11 +1047,8 @@
         // Draw balls
         function drawBalls() {
             balls.forEach(ball => {
-                const bx = Math.round(ball.x);
-                const by = Math.round(ball.y);
-
                 ctx.beginPath();
-                ctx.arc(bx, by, ball.radius, 0, Math.PI * 2);
+                ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI * 2);
                 ctx.fillStyle = ball.color;
                 ctx.fill();
                 
@@ -1063,7 +1063,7 @@
                 
                 // Add shine effect
                 ctx.beginPath();
-                ctx.arc(bx - ball.radius/3, by - ball.radius/3, ball.radius/3, 0, Math.PI * 2);
+                ctx.arc(ball.x - ball.radius/3, ball.y - ball.radius/3, ball.radius/3, 0, Math.PI * 2);
                 ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
                 ctx.fill();
                 ctx.closePath();
