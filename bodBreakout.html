@@ -1181,11 +1181,29 @@
         
         // Move paddle
         function movePaddle(timeScale = 1) {
-            if (rightPressed && paddle.x < canvas.width - paddle.width) {
-                 paddle.x += paddle.speed * timeScale;
-            } else if (leftPressed && paddle.x > 0) {
-                 paddle.x -= paddle.speed * timeScale;
+            const maxSpeed = paddle.speed * 2.2; // Top speed is much higher than base
+            const acceleration = 1.2;
+            const friction = 0.85;
+
+            // Apply acceleration
+            if (rightPressed) {
+                paddle.dx += acceleration;
+                if (paddle.dx > maxSpeed) paddle.dx = maxSpeed;
+            } else if (leftPressed) {
+                paddle.dx -= acceleration;
+                if (paddle.dx < -maxSpeed) paddle.dx = -maxSpeed;
+            } else {
+                // Apply friction when keys are released
+                paddle.dx *= friction;
+                
+                // Stop completely if moving very slowly
+                if (Math.abs(paddle.dx) < 0.5) {
+                    paddle.dx = 0;
+                }
             }
+
+            // Apply velocity to position
+            paddle.x += paddle.dx * timeScale;
             // Note: Mouse movement sets paddle.x directly, which works with this hybrid approach
             
             // Wall collision enforcement
