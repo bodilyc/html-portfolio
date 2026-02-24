@@ -576,6 +576,7 @@
         let activePowerUp = null;
         let bullets = [];
         let fallingItems = [];
+        let spaceship = { active: false, x: 0, y: 15, width: 40, height: 15, speed: 2 };
         let canShoot = false;
         let lastShotTime = 0;
         
@@ -1260,6 +1261,17 @@
                 ball.x += ball.dx * timeScale;
                 ball.y += ball.dy * timeScale;
 
+                // Spaceship collision
+                if (spaceship.active) {
+                    if (ball.x + ball.radius > spaceship.x && ball.x - ball.radius < spaceship.x + spaceship.width &&
+                        ball.y + ball.radius > spaceship.y && ball.y - ball.radius < spaceship.y + spaceship.height) {
+                        spaceship.active = false;
+                        score += 500;
+                        createExplosion(spaceship.x + spaceship.width / 2, spaceship.y + spaceship.height / 2, '#00ffcc');
+                        updateUI();
+                    }
+                }
+
                 // **ROBUST FIX: Wall Collision with Position Clamping**
                 // Left Wall
                 if (ball.x - ball.radius < 0) {
@@ -1474,6 +1486,22 @@
         }
         
         // Move falling items
+        function moveSpaceship(timeScale = 1) {
+            if (!spaceship.active) {
+                // Low random chance to spawn each frame
+                if (Math.random() < 0.001) { 
+                    spaceship.active = true;
+                    spaceship.speed = (Math.random() > 0.5) ? 2 : -2;
+                    spaceship.x = (spaceship.speed > 0) ? -spaceship.width : canvas.width;
+                }
+                return;
+            }
+            spaceship.x += spaceship.speed * timeScale;
+            if (spaceship.x > canvas.width + 50 || spaceship.x < -spaceship.width - 50) {
+                spaceship.active = false;
+            }
+        }
+
         function moveFallingItems(timeScale = 1) {
             for (let i = fallingItems.length - 1; i >= 0; i--) {
                 const item = fallingItems[i];
@@ -1736,6 +1764,7 @@
             
             // Draw game elements
             drawBricks();
+            if (spaceship.active) drawSpaceship();
             drawPaddle();
             drawBalls();
             drawBullets();
@@ -1744,6 +1773,17 @@
             
             // Draw background grid
             drawGrid();
+        }
+
+        function drawSpaceship() {
+            ctx.beginPath();
+            ctx.ellipse(spaceship.x + spaceship.width / 2, spaceship.y + spaceship.height / 2, spaceship.width / 2, spaceship.height / 2, 0, 0, Math.PI * 2);
+            ctx.fillStyle = '#00ffcc';
+            ctx.fill();
+            ctx.beginPath();
+            ctx.arc(spaceship.x + spaceship.width / 2, spaceship.y, spaceship.height / 2, 0, Math.PI * 2);
+            ctx.fillStyle = 'white';
+            ctx.fill();
         }
         
         function drawBullets() {
@@ -1771,6 +1811,19 @@
                 }
                 
                 b.y += b.dy * timeScale;
+                
+                // Spaceship collision
+                if (spaceship.active) {
+                    if (b.x < spaceship.x + spaceship.width && b.x + b.width > spaceship.x &&
+                        b.y < spaceship.y + spaceship.height && b.y + b.height > spaceship.y) {
+                        spaceship.active = false;
+                        score += 500;
+                        createExplosion(spaceship.x + spaceship.width / 2, spaceship.y + spaceship.height / 2, '#00ffcc');
+                        updateUI();
+                        bullets.splice(i, 1);
+                        continue;
+                    }
+                }
                 
                 // Off screen
                 if (b.y < 0) {
@@ -1889,6 +1942,7 @@
                     }
                 } else {
                     movePaddle(1);
+                    moveSpaceship(1);
                     moveBalls(1);
                     moveBullets(1);
                     moveFallingItems(1);
