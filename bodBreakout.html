@@ -633,6 +633,38 @@
             
             // Scale ball radius
             ballRadius = Math.max(5, Math.round(10 * scaleFactor));
+            
+            // Re-render the offscreen grid when canvas size changes
+            renderOffscreenGrid();
+        }
+        
+        // --- Offscreen Canvas for Grid ---
+        const gridCanvas = document.createElement('canvas');
+        const gridCtx = gridCanvas.getContext('2d');
+        
+        function renderOffscreenGrid() {
+            gridCanvas.width = canvas.width;
+            gridCanvas.height = canvas.height;
+            gridCtx.clearRect(0, 0, gridCanvas.width, gridCanvas.height);
+            
+            gridCtx.strokeStyle = 'rgba(200, 200, 200, 0.1)';
+            gridCtx.lineWidth = 1;
+            
+            // Vertical lines
+            for (let x = 0; x < gridCanvas.width; x += 40) {
+                gridCtx.beginPath();
+                gridCtx.moveTo(x, 0);
+                gridCtx.lineTo(x, gridCanvas.height);
+                gridCtx.stroke();
+            }
+            
+            // Horizontal lines
+            for (let y = 0; y < gridCanvas.height; y += 40) {
+                gridCtx.beginPath();
+                gridCtx.moveTo(0, y);
+                gridCtx.lineTo(gridCanvas.width, y);
+                gridCtx.stroke();
+            }
         }
         
         // Generate a random color palette for each level using HSL
@@ -1725,24 +1757,8 @@
         
         // Draw background grid
         function drawGrid() {
-            ctx.strokeStyle = 'rgba(200, 200, 200, 0.1)';
-            ctx.lineWidth = 1;
-            
-            // Vertical lines
-            for (let x = 0; x < canvas.width; x += 40) {
-                ctx.beginPath();
-                ctx.moveTo(x, 0);
-                ctx.lineTo(x, canvas.height);
-                ctx.stroke();
-            }
-            
-            // Horizontal lines
-            for (let y = 0; y < canvas.height; y += 40) {
-                ctx.beginPath();
-                ctx.moveTo(0, y);
-                ctx.lineTo(canvas.width, y);
-                ctx.stroke();
-            }
+            // Stamp the pre-rendered grid (huge performance save)
+            ctx.drawImage(gridCanvas, 0, 0);
         }
         
         function moveBullets(timeScale = 1) {
