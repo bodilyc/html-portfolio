@@ -841,7 +841,8 @@
                 through: activePowerUp === 'through',
                 sticky: activePowerUp === 'sticky',
                 onPaddle: isSticky,
-                paddleOffset: paddle.width / 2
+                paddleOffset: paddle.width / 2,
+                stickTimer: -1 // -1 means infinite (e.g. start of level/life)
             };
             
             if (!isSticky) {
@@ -1255,7 +1256,26 @@
                 if (ball.onPaddle) {
                     ball.x = paddle.x + ball.paddleOffset;
                     ball.y = paddle.y - ball.radius;
-                    continue; // Skip physics for this ball
+                    
+                    if (ball.stickTimer > 0) {
+                        ball.stickTimer -= 16.666 * timeScale;
+                        // Time's up! Auto-launch this ball
+                        if (ball.stickTimer <= 0) {
+                            ball.onPaddle = false;
+                            ball.stickTimer = -1; // reset
+                            
+                            if (ball.storedDx !== undefined && ball.storedDy !== undefined) {
+                                ball.dx = ball.storedDx;
+                                ball.dy = ball.storedDy;
+                                delete ball.storedDx;
+                                delete ball.storedDy;
+                            } else {
+                                ball.dx = (Math.random() > 0.5 ? 1 : -1) * ball.speed;
+                                ball.dy = -ball.speed;
+                            }
+                        }
+                    }
+                    continue; // Skip physics for this ball while on paddle
                 }
 
                 ball.x += ball.dx * timeScale;
@@ -1317,6 +1337,9 @@
                     // Handle Sticky Ball
                     if (ball.sticky) {
                         ball.onPaddle = true;
+                        
+                        // Set 3 second timer for catching a ball during play
+                        ball.stickTimer = 3000;
                         
                         // Store calculated velocity for launch
                         ball.storedDx = newDx;
