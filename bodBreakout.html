@@ -585,6 +585,8 @@
         let gameResetting = false;
         let resetTimer = 0;
         
+        let activeGravityRocks = [];
+        
         // Brick properties
         let bricks = [];
         const brickRows = 5;
@@ -736,6 +738,23 @@
             
             // Reset active bricks count
             activeBricksCount = 0;
+            
+            // Gravity Rocks (Level 5+)
+            activeGravityRocks = [];
+            if (level >= 5 && Math.random() < 0.7) {
+                const numRocks = Math.random() > 0.5 ? 2 : 1;
+                for (let i = 0; i < numRocks; i++) {
+                    activeGravityRocks.push({
+                        x: Math.random() * (canvas.width - 200) + 100,
+                        y: Math.random() * (canvas.height - brickOffsetTop - 250) + brickOffsetTop + 150,
+                        radius: 80, // Effect radius
+                        coreRadius: 15, // Visual rocky core
+                        type: Math.random() > 0.5 ? 'blackhole' : 'repulsor',
+                        strength: 0.15, // Force multiplier
+                        pulse: 0
+                    });
+                }
+            }
 
             for (let r = 0; r < brickRows; r++) {
                 bricks[r] = [];
@@ -1280,6 +1299,35 @@
 
                 ball.x += ball.dx * timeScale;
                 ball.y += ball.dy * timeScale;
+                
+                // Gravity Rock Physics
+                activeGravityRocks.forEach(rock => {
+                    const dx = rock.x - ball.x;
+                    const dy = rock.y - ball.y;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+                    
+                    if (dist < rock.radius && dist > rock.coreRadius) {
+                        // Calculate pull vector
+                        const force = (rock.radius - dist) / rock.radius; // Stronger near center
+                        let pullX = (dx / dist) * force * rock.strength * timeScale;
+                        let pullY = (dy / dist) * force * rock.strength * timeScale;
+                        
+                        if (rock.type === 'repulsor') {
+                            pullX = -pullX;
+                            pullY = -pullY;
+                        }
+                        
+                        ball.dx += pullX;
+                        ball.dy += pullY;
+                        
+                        // Enforce max speed so it doesn't slingshot out of control
+                        const speed = Math.sqrt(ball.dx * ball.dx + ball.dy * ball.dy);
+                        if (speed > 12) {
+                            ball.dx = (ball.dx / speed) * 12;
+                            ball.dy = (ball.dy / speed) * 12;
+                        }
+                    }
+                });
 
                 // Spaceship collision
                 if (spaceship.active) {
@@ -1787,6 +1835,7 @@
             
             // Draw game elements
             drawBricks();
+            drawGravityRocks();
             if (spaceship.active) drawSpaceship();
             drawPaddle();
             drawBalls();
@@ -1807,6 +1856,37 @@
             ctx.arc(spaceship.x + spaceship.width / 2, spaceship.y, spaceship.height / 2, 0, Math.PI * 2);
             ctx.fillStyle = 'white';
             ctx.fill();
+        }
+        
+        function drawGravityRocks() {
+            activeGravityRocks.forEach(rock => {
+                rock.pulse = (rock.pulse + 0.05) % (Math.PI * 2);
+                const pulseScale = 1 + Math.sin(rock.pulse) * 0.1;
+                
+                // Draw Effect Radius
+                ctx.beginPath();
+                ctx.arc(rock.x, rock.y, rock.radius * pulseScale, 0, Math.PI * 2);
+                ctx.fillStyle = rock.type === 'blackhole' ? 'rgba(150, 0, 255, 0.1)' : 'rgba(0, 255, 150, 0.1)';
+                ctx.fill();
+                ctx.strokeStyle = rock.type === 'blackhole' ? 'rgba(150, 0, 255, 0.3)' : 'rgba(0, 255, 150, 0.3)';
+                ctx.lineWidth = 1;
+                ctx.stroke();
+                
+                // Draw Core
+                ctx.beginPath();
+                ctx.arc(rock.x, rock.y, rock.coreRadius, 0, Math.PI * 2);
+                ctx.fillStyle = rock.type === 'blackhole' ? '#330066' : '#006633';
+                ctx.fill();
+                
+                // Texture marks
+                ctx.fillStyle = 'rgba(0,0,0,0.5)';
+                ctx.beginPath();
+                ctx.arc(rock.x - 3, rock.y - 4, 3, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.beginPath();
+                ctx.arc(rock.x + 4, rock.y + 2, 4, 0, Math.PI * 2);
+                ctx.fill();
+            });
         }
         
         function drawBullets() {
