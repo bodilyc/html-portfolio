@@ -578,6 +578,7 @@
         let bullets = [];
         let fallingItems = [];
         let spaceship = { active: false, x: 0, y: 15, width: 40, height: 15, speed: 2 };
+        let spaceshipHitCount = 0;
         let canShoot = false;
         let lastShotTime = 0;
         
@@ -718,6 +719,7 @@
         // Create bricks for current level
         function createBricks() {
             bricks = [];
+            spaceshipHitCount = 0; // Reset spaceship hits each level
             // Generate fresh random colors each level
             const colors = generateLevelColors();
             
@@ -1335,7 +1337,13 @@
                     if (ball.x + ball.radius > spaceship.x && ball.x - ball.radius < spaceship.x + spaceship.width &&
                         ball.y + ball.radius > spaceship.y && ball.y - ball.radius < spaceship.y + spaceship.height) {
                         spaceship.active = false;
-                        score += 500;
+                        let points = 25;
+                        if (spaceshipHitCount === 0) points = 250;
+                        else if (spaceshipHitCount === 1) points = 150;
+                        else if (spaceshipHitCount === 2) points = 50;
+                        
+                        score += points;
+                        spaceshipHitCount++;
                         createExplosion(spaceship.x + spaceship.width / 2, spaceship.y + spaceship.height / 2, '#00ffcc');
                         updateUI();
                     }
@@ -1660,8 +1668,11 @@
                         createExplosion(paddle.x + paddle.width/2, paddle.y, 'white');
                     }
                     
+                    score += 25;
+                    updateUI();
                     item.active = false;
-                    return; 
+                    // continue Instead of return so we can hit multiple items in one frame
+                    continue; 
                 }
             }
         }
@@ -1922,7 +1933,13 @@
                     if (b.x < spaceship.x + spaceship.width && b.x + b.width > spaceship.x &&
                         b.y < spaceship.y + spaceship.height && b.y + b.height > spaceship.y) {
                         spaceship.active = false;
-                        score += 500;
+                        let points = 25;
+                        if (spaceshipHitCount === 0) points = 250;
+                        else if (spaceshipHitCount === 1) points = 150;
+                        else if (spaceshipHitCount === 2) points = 50;
+                        
+                        score += points;
+                        spaceshipHitCount++;
                         createExplosion(spaceship.x + spaceship.width / 2, spaceship.y + spaceship.height / 2, '#00ffcc');
                         updateUI();
                         bullets.splice(i, 1);
