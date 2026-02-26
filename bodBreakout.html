@@ -454,6 +454,7 @@
                         <th>RANK</th>
                         <th>NAME</th>
                         <th>SCORE</th>
+                        <th>LEVEL</th>
                     </tr>
                 </thead>
                 <tbody id="leaderboardBody">
@@ -1750,7 +1751,7 @@
 
         function submitHighScore() {
             const initials = initialsInput.value.toUpperCase() || 'UNK';
-            const newEntry = { name: initials, score: score };
+            const newEntry = { name: initials, score: score, level: level };
             
             if (myScores.length < 10 || score > myScores[myScores.length - 1].score) {
                 myScores.push(newEntry);
@@ -1780,7 +1781,7 @@
             
             if (myScores.length === 0) {
                  const row = document.createElement('tr');
-                 row.innerHTML = `<td colspan="3">No Records Yet</td>`;
+                 row.innerHTML = `<td colspan="4">No Records Yet</td>`;
                  leaderboardBody.appendChild(row);
             } else {
                 myScores.forEach((entry, index) => {
@@ -1790,6 +1791,7 @@
                         <td>${index + 1}</td>
                         <td>${entry.name}</td>
                         <td>${entry.score}</td>
+                        <td>${entry.level || 1}</td>
                     `;
                     leaderboardBody.appendChild(row);
                 });
@@ -2005,11 +2007,13 @@
                             brick.x = 0;
                             brick.dx = -brick.dx;
                             brick.speed *= 1.1; // Increase speed slightly
+                            brick.speed = Math.min(brick.speed, 25); // Cap horizontal speed
                             brick.dx = (brick.dx > 0) ? brick.speed : -brick.speed;
                         } else if (brick.x + brick.width >= canvas.width) {
                             brick.x = canvas.width - brick.width;
                             brick.dx = -brick.dx;
                             brick.speed *= 1.1; // Increase speed slightly
+                            brick.speed = Math.min(brick.speed, 25); // Cap horizontal speed
                             brick.dx = (brick.dx > 0) ? brick.speed : -brick.speed;
                         }
                     }
