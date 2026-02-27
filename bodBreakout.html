@@ -358,6 +358,7 @@
         .rank-1 { color: #FFD700; font-weight: bold; }
         .rank-2 { color: #C0C0C0; font-weight: bold; }
         .rank-3 { color: #CD7F32; font-weight: bold; }
+        .current-score { background: rgba(255, 204, 0, 0.25); outline: 2px solid #FFCC00; }
 
         /* Reset */
         .reset-container {
@@ -1760,7 +1761,9 @@
 
         function submitHighScore() {
             const initials = initialsInput.value.toUpperCase() || 'UNK';
-            const newEntry = { name: initials, score: score, level: level };
+            // Clear any previous current flags
+            myScores.forEach(e => e.current = false);
+            const newEntry = { name: initials, score: score, level: level, current: true };
             
             if (myScores.length < 10 || score > myScores[myScores.length - 1].score) {
                 myScores.push(newEntry);
@@ -1796,6 +1799,7 @@
                 myScores.forEach((entry, index) => {
                     const row = document.createElement('tr');
                     if (index < 3) row.classList.add(`rank-${index + 1}`);
+                    if (entry.current) row.classList.add('current-score');
                     row.innerHTML = `
                         <td>${index + 1}</td>
                         <td>${entry.name}</td>
