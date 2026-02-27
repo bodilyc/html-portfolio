@@ -355,9 +355,6 @@
             color: #ffcc00;
         }
         
-        .rank-1 { color: #FFD700; font-weight: bold; }
-        .rank-2 { color: #C0C0C0; font-weight: bold; }
-        .rank-3 { color: #CD7F32; font-weight: bold; }
         .current-score { background: rgba(255, 204, 0, 0.25); outline: 2px solid #FFCC00; }
 
         /* Reset */
@@ -1751,6 +1748,8 @@
                 highScoreModal.style.display = 'block';
                 initialsInput.focus();
             } else {
+                // Not a high score — clear any previous current flags
+                myScores.forEach(e => e.current = false);
                 showLeaderboard();
             }
         }
@@ -1798,7 +1797,6 @@
             } else {
                 myScores.forEach((entry, index) => {
                     const row = document.createElement('tr');
-                    if (index < 3) row.classList.add(`rank-${index + 1}`);
                     if (entry.current) row.classList.add('current-score');
                     row.innerHTML = `
                         <td>${index + 1}</td>
