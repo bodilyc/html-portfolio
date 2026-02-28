@@ -744,7 +744,10 @@
             // Gravity Rocks (Level 5+)
             activeGravityRocks = [];
             if (level >= 5 && Math.random() < 0.7) {
-                const numRocks = Math.random() > 0.5 ? 2 : 1;
+                let maxRocks = 1;
+                if (level >= 15) maxRocks = 3;
+                else if (level >= 10) maxRocks = 2;
+                const numRocks = Math.floor(Math.random() * maxRocks) + 1;
                 for (let i = 0; i < numRocks; i++) {
                     activeGravityRocks.push({
                         x: Math.random() * (canvas.width - 200) + 100,
