@@ -572,7 +572,8 @@
         
         // Power-ups
         const powerUpTypes = ['through', 'wide', 'sticky', 'narrow', 'multiball', 'shooter', 'bomb', 'rain', 'slow', 'fast', 'blast'];
-        let activePowerUp = null;
+        let activeBallPowerUp = null;   // 'through' or null
+        let activePaddlePowerUp = null; // 'sticky', 'shooter', or null
         let bullets = [];
         let fallingItems = [];
         let spaceship = { active: false, x: 0, y: 15, width: 40, height: 15, speed: 2 };
@@ -857,9 +858,9 @@
                 speed: currentBallSpeed,
                 dx: 0,
                 dy: 0,
-                color: activePowerUp === 'through' ? 'black' : '#FFFF00',
-                through: activePowerUp === 'through',
-                sticky: activePowerUp === 'sticky',
+                color: activeBallPowerUp === 'through' ? 'black' : '#FFFF00',
+                through: activeBallPowerUp === 'through',
+                sticky: activePaddlePowerUp === 'sticky',
                 onPaddle: isSticky,
                 paddleOffset: paddle.width / 2,
                 stickTimer: -1 // -1 means infinite (e.g. start of level/life)
@@ -977,7 +978,7 @@
                 ctx.closePath();
 
                 // Sticky Glue Visual
-                if (activePowerUp === 'sticky') {
+                if (activePaddlePowerUp === 'sticky') {
                     ctx.beginPath();
                     ctx.rect(paddle.x, paddle.y, paddle.width, 5);
                     ctx.fillStyle = '#32CD32'; // Lime Green Glue
@@ -1466,24 +1467,33 @@
             }
         }
         
-        // Reset effects
-        function resetPowerUps() {
-            activePowerUp = null;
-            paddle.width = defaultPaddleWidth;
-            paddle.color = '#FFCC00';
-            // Reset existing balls properties to default unless they override?
-            // "reset effects on new powerup".
-            // So we loop balls and reset them.
+        // Reset ball effects only (does NOT touch paddle state)
+        function resetBallPowerUps() {
+            activeBallPowerUp = null;
             balls.forEach(b => {
                 b.color = '#FFFF00';
                 b.through = false;
+                b.speed = currentBallSpeed;
+            });
+        }
+
+        // Reset paddle effects only (does NOT touch ball state or paddle width)
+        function resetPaddlePowerUps() {
+            activePaddlePowerUp = null;
+            paddle.color = '#FFCC00';
+            balls.forEach(b => {
                 b.sticky = false;
-                b.speed = currentBallSpeed; // Ensure speed is consistent
             });
             canShoot = false;
             bullets.forEach(b => b.active = false);
-            bullets.forEach(b => b.active = false);
-            fallingItems = []; // Clear falling items
+        }
+
+        // Full reset (used on life loss / level transition)
+        function resetPowerUps() {
+            resetBallPowerUps();
+            resetPaddlePowerUps();
+            paddle.width = defaultPaddleWidth;
+            fallingItems = [];
         }
         
         // Paddle Explosion Logic
@@ -1675,46 +1685,50 @@
 
         // Activate Power-Up
         function activatePowerUp(type) {
-             // Stackable / Instant Powerups
+             // Stackable / Instant Powerups (no category reset)
              if (type === 'wide') {
                  paddle.width *= 2;
                  if (paddle.width > canvas.width * 0.8) paddle.width = canvas.width * 0.8;
-                 // Only change color if not in a special mode
-                 if (!activePowerUp) paddle.color = 'green';
+                 if (!activePaddlePowerUp) paddle.color = 'green';
                  return;
              } 
              if (type === 'narrow') {
                  paddle.width /= 2;
                  if (paddle.width < 25) paddle.width = 25;
-                 if (!activePowerUp) paddle.color = 'red';
+                 if (!activePaddlePowerUp) paddle.color = 'red';
                  return;
              }
 
-             // Mode-Switching Powerups
-             resetPowerUps();
-             activePowerUp = type;
+             // --- Ball Power-Ups (only reset ball state) ---
+             if (type === 'through' || type === 'multiball' || type === 'blast') {
+                 resetBallPowerUps();
+                 activeBallPowerUp = type;
 
-             switch(type) {
-                 case 'through':
+                 if (type === 'through') {
                      balls.forEach(b => { b.through = true; b.color = 'black'; });
-                     break;
-                 case 'sticky':
-                     balls.forEach(b => { b.sticky = true; /* color stays yellow */ });
-                     break;
-                 case 'multiball':
-                     // balls.forEach(b => b.color = 'blue'); // Remove blue
+                 } else if (type === 'multiball') {
                      spawnExtraBall();
-                     spawnExtraBall(); // Spawn 2 extra (total 3 balls)
-                     break;
-                 case 'blast':
+                     spawnExtraBall();
+                 } else if (type === 'blast') {
                      for (let i = 0; i < 9; i++) {
                          spawnExtraBall();
                      }
-                     break;
-                 case 'shooter':
+                 }
+                 return;
+             }
+
+             // --- Paddle Power-Ups (only reset paddle state) ---
+             if (type === 'sticky' || type === 'shooter') {
+                 resetPaddlePowerUps();
+                 activePaddlePowerUp = type;
+
+                 if (type === 'sticky') {
+                     balls.forEach(b => { b.sticky = true; });
+                 } else if (type === 'shooter') {
                      paddle.color = 'purple';
                      canShoot = true;
-                     break;
+                 }
+                 return;
              }
         }
         
