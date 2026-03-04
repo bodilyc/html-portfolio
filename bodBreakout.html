@@ -571,7 +571,7 @@
         let activeBricksCount = 0;
         
         // Power-ups
-        const powerUpTypes = ['through', 'wide', 'sticky', 'narrow', 'multiball', 'shooter', 'bomb', 'rain', 'slow', 'fast', 'blast'];
+        const powerUpTypes = ['through', 'wide', 'sticky', 'narrow', 'multiball', 'shooter', 'bomb', 'rain', 'slow', 'fast', 'blast', 'shield', 'magnet'];
         let activeBallPowerUp = null;   // 'through' or null
         let activePaddlePowerUp = null; // 'sticky', 'shooter', or null
         let bullets = [];
@@ -587,6 +587,31 @@
         let resetTimer = 0;
         
         let activeGravityRocks = [];
+
+        // Screen Shake
+        let shakeTimer = 0;
+        let shakeIntensity = 5;
+
+        // Combo Scoring
+        let comboCount = 0;
+        let comboTimer = 0;
+        let comboTexts = [];
+
+        // Shield
+        let shieldActive = false;
+
+        // Boss
+        let isBossLevel = false;
+        let boss = null;
+
+        // Portal Bricks
+        let portalBricks = [];
+
+        // Brick Shoot Timer
+        let brickShootTimer = 0;
+
+        // Audio
+        let audioCtx = null;
         
         // Brick properties
         let bricks = [];
@@ -740,6 +765,9 @@
             
             // Reset active bricks count
             activeBricksCount = 0;
+            portalBricks = [];
+            brickShootTimer = 3000;
+            boss = null;
             
             // Gravity Rocks (Level 5+)
             activeGravityRocks = [];
@@ -758,6 +786,13 @@
                         pulse: 0
                     });
                 }
+            }
+
+            // Boss Level (every 5th level starting at 5)
+            isBossLevel = (level % 5 === 0 && level >= 5);
+            if (isBossLevel) {
+                createBoss();
+                return;
             }
 
             for (let r = 0; r < brickRows; r++) {
@@ -801,6 +836,21 @@
                             visible = true;
                     }
                     
+                    // Multi-hit bricks (Level 5+)
+                    let hits = 1;
+                    if (level >= 5 && visible) {
+                        const rand = Math.random();
+                        if (level >= 15) {
+                            if (rand < 0.2) hits = 3;
+                            else if (rand < 0.5) hits = 2;
+                        } else if (level >= 10) {
+                            if (rand < 0.1) hits = 3;
+                            else if (rand < 0.4) hits = 2;
+                        } else {
+                            if (rand < 0.2) hits = 2;
+                        }
+                    }
+
                     bricks[r][c] = {
                         x: c * (brickWidth + brickPadding) + brickOffsetLeft,
                         y: r * (brickHeight + brickPadding) + brickOffsetTop,
@@ -811,7 +861,10 @@
                         visible: visible,
                         powerUp: null,
                         dx: 0,
-                        speed: 0
+                        speed: 0,
+                        hits: hits,
+                        maxHits: hits,
+                        shooter: false
                     };
                     
                     if (visible) {
@@ -842,6 +895,55 @@
                 const coord = allCoordinates.splice(index, 1)[0];
                 const type = powerUpTypes[Math.floor(Math.random() * powerUpTypes.length)];
                 bricks[coord.r][coord.c].powerUp = type;
+            }
+
+            // Moving/Drifting Bricks (Level 3+)
+            if (level >= 3) {
+                for (let r = 0; r < brickRows; r++) {
+                    for (let c = 0; c < brickColumns; c++) {
+                        if (bricks[r][c].visible && Math.random() < 0.25) {
+                            const driftSpeed = 0.3 + Math.random() * 0.5;
+                            bricks[r][c].speed = driftSpeed;
+                            bricks[r][c].dx = (Math.random() > 0.5 ? 1 : -1) * driftSpeed;
+                        }
+                    }
+                }
+            }
+
+            // Shooter Bricks (Level 7+)
+            if (level >= 7) {
+                for (let r = 0; r < brickRows; r++) {
+                    for (let c = 0; c < brickColumns; c++) {
+                        if (bricks[r][c].visible && !bricks[r][c].powerUp && Math.random() < 0.1) {
+                            bricks[r][c].shooter = true;
+                        }
+                    }
+                }
+            }
+
+            // Portal Bricks (Level 8+)
+            if (level >= 8) {
+                let available = [];
+                for (let r = 0; r < brickRows; r++) {
+                    for (let c = 0; c < brickColumns; c++) {
+                        if (bricks[r][c].visible && !bricks[r][c].powerUp && !bricks[r][c].shooter) {
+                            available.push({r, c});
+                        }
+                    }
+                }
+                if (available.length >= 4) {
+                    const idx1 = Math.floor(Math.random() * available.length);
+                    const pos1 = available.splice(idx1, 1)[0];
+                    const idx2 = Math.floor(Math.random() * available.length);
+                    const pos2 = available.splice(idx2, 1)[0];
+                    bricks[pos1.r][pos1.c].visible = false;
+                    bricks[pos2.r][pos2.c].visible = false;
+                    activeBricksCount -= 2;
+                    portalBricks = [
+                        { x: bricks[pos1.r][pos1.c].x, y: bricks[pos1.r][pos1.c].y, width: brickWidth, height: brickHeight, linkedIndex: 1, pulse: 0 },
+                        { x: bricks[pos2.r][pos2.c].x, y: bricks[pos2.r][pos2.c].y, width: brickWidth, height: brickHeight, linkedIndex: 0, pulse: Math.PI }
+                    ];
+                }
             }
         }
         
@@ -925,6 +1027,15 @@
             levelIndicator.style.display = 'none';
             leaderboard.style.display = 'none';
             highScoreModal.style.display = 'none';
+            comboCount = 0;
+            comboTimer = 0;
+            comboTexts = [];
+            shieldActive = false;
+            isBossLevel = false;
+            boss = null;
+            portalBricks = [];
+            shakeTimer = 0;
+            canvas.style.transform = '';
             draw(); // Draw initial state
         }
         
@@ -995,7 +1106,16 @@
                     ctx.save();
                     ctx.translate(item.x, item.y);
                     
-                    if (item.type === 'bomb') {
+                    if (item.type === 'brickBullet') {
+                        // Small red projectile from shooter bricks
+                        ctx.beginPath();
+                        ctx.arc(0, 0, item.radius, 0, Math.PI * 2);
+                        ctx.fillStyle = '#ff3333';
+                        ctx.fill();
+                        ctx.strokeStyle = '#ff0000';
+                        ctx.lineWidth = 1;
+                        ctx.stroke();
+                    } else if (item.type === 'bomb') {
                          // Bomb body
                         ctx.beginPath();
                         ctx.arc(0, 0, item.radius, 0, Math.PI * 2);
@@ -1075,7 +1195,9 @@
                             case 'through': color = 'black'; letter = 'T'; break;
                             case 'sticky': color = 'yellow'; letter = 'C'; break; // 'C' for Catch
                             case 'shooter': color = 'purple'; letter = 'G'; break; // 'G' for Gun
-                            case 'blast': color = '#00FFFF'; letter = '10'; break; // '10' for 10 balls total
+                            case 'blast': color = '#00FFFF'; letter = '10'; break;
+                            case 'shield': color = '#00FFFF'; letter = 'S'; break;
+                            case 'magnet': color = '#4488FF'; letter = 'M'; break;
                         }
                         
                          ctx.rotate(item.rotation);
@@ -1231,6 +1353,33 @@
                            ctx.lineWidth = 2;
                            ctx.stroke();
                         }
+
+                        // Multi-hit brick overlay
+                        if (brick.maxHits > 1) {
+                            if (brick.hits < brick.maxHits) {
+                                ctx.beginPath();
+                                if (brick.shape === 'rounded-rect') roundedRectPath(ctx, bx, by, bw, bh, 6);
+                                else ctx.rect(bx, by, bw, bh);
+                                ctx.fillStyle = `rgba(0, 0, 0, ${0.3 * (1 - brick.hits / brick.maxHits)})`;
+                                ctx.fill();
+                            }
+                            ctx.fillStyle = 'white';
+                            ctx.font = `bold ${10 * scaleFactor}px Arial`;
+                            ctx.textAlign = 'center';
+                            ctx.textBaseline = 'middle';
+                            ctx.fillText(brick.hits.toString(), brick.x + brick.width / 2, brick.y + brick.height / 2);
+                        }
+
+                        // Shooter brick glow
+                        if (brick.shooter) {
+                            ctx.beginPath();
+                            if (brick.shape === 'rounded-rect') roundedRectPath(ctx, bx, by, bw, bh, 6);
+                            else ctx.rect(bx, by, bw, bh);
+                            const sAlpha = 0.3 + 0.3 * Math.sin(Date.now() / 200);
+                            ctx.strokeStyle = `rgba(255, 0, 0, ${sAlpha})`;
+                            ctx.lineWidth = 3;
+                            ctx.stroke();
+                        }
                     }
                 }
             }
@@ -1333,6 +1482,15 @@
                     }
                 });
 
+                // Magnet Paddle
+                if (activePaddlePowerUp === 'magnet' && ball.y > canvas.height * 0.6) {
+                    const paddleCenterX = paddle.x + paddle.width / 2;
+                    ball.dx += (paddleCenterX - ball.x) * 0.02 * timeScale;
+                }
+
+                // Teleport cooldown
+                if (ball.teleportCooldown > 0) ball.teleportCooldown -= timeScale;
+
                 // Spaceship collision
                 if (spaceship.active) {
                     if (ball.x + ball.radius > spaceship.x && ball.x - ball.radius < spaceship.x + spaceship.width &&
@@ -1365,8 +1523,18 @@
                 // Wall collision (top)
                 if (ball.y - ball.radius < 0) {
                     ball.dy = -ball.dy;
+                    playSound('wallBounce');
                 }
                 
+                // Shield collision
+                if (shieldActive && ball.y + ball.radius > canvas.height - 10) {
+                    ball.dy = -Math.abs(ball.dy);
+                    ball.y = canvas.height - 10 - ball.radius;
+                    shieldActive = false;
+                    createExplosion(ball.x, canvas.height - 10, '#00ffff');
+                    playSound('shield');
+                }
+
                 // Bottom wall - remove ball
                 if (ball.y + ball.radius > canvas.height) {
                     balls.splice(i, 1);
@@ -1413,6 +1581,7 @@
                     // Apply calculated velocity directly for normal bounce
                     ball.dx = newDx;
                     ball.dy = newDy;
+                    playSound('paddleHit');
                 }
                 
                 // Brick collision
@@ -1432,30 +1601,83 @@
                                     ball.dy = -ball.dy;
                                 }
                                 
-                                brick.visible = false;
-                                activeBricksCount--;
-                                score += 10;
+                                // Multi-hit logic
+                                if (ball.through) brick.hits = 0;
+                                brick.hits--;
                                 
-                                // Activate Power-up or Spawn Bomb
-                                // Activate Power-up or Spawn Bomb
-                                if (brick.powerUp) {
-                                    // ALL power-ups are now falling items
-                                    spawnFallingItem(brick.x + brick.width / 2, brick.y + brick.height / 2, brick.powerUp);
-                                }
-                                
-                                updateUI();
-                                
-                                // Check if last brick needs to move
-                                if (activeBricksCount === 1) {
-                                    activateLastBlockMovement();
-                                }
-                                
-                                // Check if all bricks are broken
-                                if (activeBricksCount === 0) {
-                                    levelComplete();
-                                    return; // Stop update to prevent processing collision on new level
+                                if (brick.hits <= 0) {
+                                    brick.visible = false;
+                                    activeBricksCount--;
+                                    registerBrickHit(brick.x + brick.width / 2, brick.y);
+                                    
+                                    if (brick.powerUp) {
+                                        spawnFallingItem(brick.x + brick.width / 2, brick.y + brick.height / 2, brick.powerUp);
+                                    }
+                                    
+                                    updateUI();
+                                    
+                                    if (activeBricksCount === 1) {
+                                        activateLastBlockMovement();
+                                    }
+                                    
+                                    if (activeBricksCount === 0) {
+                                        levelComplete();
+                                        return;
+                                    }
+                                } else {
+                                    // Brick damaged but not destroyed
+                                    playSound('wallBounce');
                                 }
                             }
+                        }
+                    }
+                }
+
+                // Boss collision
+                if (isBossLevel && boss && boss.hp > 0) {
+                    if (ball.x + ball.radius > boss.x &&
+                        ball.x - ball.radius < boss.x + boss.width &&
+                        ball.y + ball.radius > boss.y &&
+                        ball.y - ball.radius < boss.y + boss.height) {
+                        if (!ball.through) ball.dy = -ball.dy;
+                        boss.hp--;
+                        score += 20;
+                        createExplosion(ball.x, ball.y, '#ff0044');
+                        playSound('bossHit');
+                        triggerScreenShake(3);
+                        updateUI();
+                        if (boss.hp <= 0) {
+                            score += 500;
+                            createExplosion(boss.x + boss.width / 2, boss.y + boss.height / 2, '#ff0044');
+                            playSound('explosion');
+                            triggerScreenShake(8);
+                            updateUI();
+                            levelComplete();
+                            return;
+                        }
+                    }
+                }
+
+                // Portal collision
+                if (portalBricks.length === 2 && (!ball.teleportCooldown || ball.teleportCooldown <= 0)) {
+                    for (let p = 0; p < portalBricks.length; p++) {
+                        const portal = portalBricks[p];
+                        if (ball.x + ball.radius > portal.x &&
+                            ball.x - ball.radius < portal.x + portal.width &&
+                            ball.y + ball.radius > portal.y &&
+                            ball.y - ball.radius < portal.y + portal.height) {
+                            const linked = portalBricks[portal.linkedIndex];
+                            ball.x = linked.x + linked.width / 2;
+                            ball.y = linked.y + linked.height + ball.radius + 2;
+                            const speed = Math.sqrt(ball.dx * ball.dx + ball.dy * ball.dy);
+                            const angle = Math.atan2(ball.dy, ball.dx) + (Math.random() - 0.5) * 0.5;
+                            ball.dx = speed * Math.cos(angle);
+                            ball.dy = Math.abs(speed * Math.sin(angle));
+                            ball.teleportCooldown = 12;
+                            createExplosion(portal.x + portal.width / 2, portal.y + portal.height / 2, '#ff00ff');
+                            createExplosion(linked.x + linked.width / 2, linked.y + linked.height / 2, '#00ffff');
+                            playSound('portal');
+                            break;
                         }
                     }
                 }
@@ -1496,6 +1718,7 @@
             resetPaddlePowerUps();
             paddle.width = defaultPaddleWidth;
             fallingItems = [];
+            shieldActive = false;
         }
         
         // Paddle Explosion Logic
@@ -1503,6 +1726,8 @@
             gameResetting = true;
             resetTimer = Date.now() + 1500; // 1.5 seconds delay
             createExplosion(paddle.x + paddle.width/2, paddle.y + paddle.height/2, paddle.color);
+            triggerScreenShake(6);
+            playSound('lifeLoss');
             
             // "Hide" paddle visually but keep object
             // We'll handle drawing effectively by checking gameResetting in drawPaddle
@@ -1637,7 +1862,7 @@
                 
                 if (distance <= item.radius) {
                     // Hit paddle!
-                    if (item.type === 'bomb') {
+                    if (item.type === 'bomb' || item.type === 'brickBullet') {
                         if (!gameResetting) {
                             explodePaddle();
                         }
@@ -1674,8 +1899,8 @@
                         // Regular Power-ups (Wide, Narrow, etc)
                         activatePowerUp(item.type);
                         
-                        // Optional visual feedback
                         createExplosion(paddle.x + paddle.width/2, paddle.y, 'white');
+                        playSound('powerUp');
                     }
                     score += 25;
                     updateUI();
@@ -1720,7 +1945,7 @@
              }
 
              // --- Paddle Power-Ups (only reset paddle state) ---
-             if (type === 'sticky' || type === 'shooter') {
+             if (type === 'sticky' || type === 'shooter' || type === 'magnet') {
                  resetPaddlePowerUps();
                  activePaddlePowerUp = type;
 
@@ -1729,7 +1954,15 @@
                  } else if (type === 'shooter') {
                      paddle.color = 'purple';
                      canShoot = true;
+                 } else if (type === 'magnet') {
+                     paddle.color = '#4488ff';
                  }
+                 return;
+             }
+
+             // --- Shield ---
+             if (type === 'shield') {
+                 shieldActive = true;
                  return;
              }
         }
@@ -1864,13 +2097,17 @@
             
             // Draw game elements
             drawBricks();
+            drawPortalBricks();
             drawGravityRocks();
+            if (isBossLevel) drawBoss();
             if (spaceship.active) drawSpaceship();
+            drawShield();
             drawPaddle();
             drawBalls();
             drawBullets();
-            drawFallingItems(); // Replaces drawBombs
-            drawParticles(); // New
+            drawFallingItems();
+            drawParticles();
+            drawComboTexts();
             
             // Draw background grid
             drawGrid();
@@ -1932,7 +2169,284 @@
             // Stamp the pre-rendered grid (huge performance save)
             ctx.drawImage(gridCanvas, 0, 0);
         }
-        
+
+        // ===== SOUND SYSTEM =====
+        function playSound(type) {
+            if (!audioCtx) {
+                try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); }
+                catch(e) { return; }
+            }
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            const now = audioCtx.currentTime;
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            switch(type) {
+                case 'paddleHit':
+                    osc.frequency.setValueAtTime(300, now);
+                    osc.frequency.exponentialRampToValueAtTime(200, now + 0.1);
+                    gain.gain.setValueAtTime(0.15, now);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
+                    osc.start(now); osc.stop(now + 0.1); break;
+                case 'brickBreak':
+                    osc.frequency.setValueAtTime(600, now);
+                    osc.frequency.exponentialRampToValueAtTime(800, now + 0.08);
+                    gain.gain.setValueAtTime(0.12, now);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.08);
+                    osc.start(now); osc.stop(now + 0.08); break;
+                case 'wallBounce':
+                    osc.type = 'square';
+                    osc.frequency.setValueAtTime(150, now);
+                    gain.gain.setValueAtTime(0.08, now);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.05);
+                    osc.start(now); osc.stop(now + 0.05); break;
+                case 'powerUp':
+                    osc.frequency.setValueAtTime(400, now);
+                    osc.frequency.exponentialRampToValueAtTime(800, now + 0.15);
+                    osc.frequency.exponentialRampToValueAtTime(1200, now + 0.25);
+                    gain.gain.setValueAtTime(0.15, now);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.25);
+                    osc.start(now); osc.stop(now + 0.25); break;
+                case 'explosion':
+                    osc.type = 'sawtooth';
+                    osc.frequency.setValueAtTime(200, now);
+                    osc.frequency.exponentialRampToValueAtTime(50, now + 0.3);
+                    gain.gain.setValueAtTime(0.2, now);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
+                    osc.start(now); osc.stop(now + 0.3); break;
+                case 'lifeLoss':
+                    osc.frequency.setValueAtTime(400, now);
+                    osc.frequency.exponentialRampToValueAtTime(100, now + 0.5);
+                    gain.gain.setValueAtTime(0.2, now);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.5);
+                    osc.start(now); osc.stop(now + 0.5); break;
+                case 'combo':
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(800, now);
+                    osc.frequency.setValueAtTime(1000, now + 0.08);
+                    osc.frequency.setValueAtTime(1200, now + 0.16);
+                    gain.gain.setValueAtTime(0.15, now);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.24);
+                    osc.start(now); osc.stop(now + 0.24); break;
+                case 'portal':
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(300, now);
+                    osc.frequency.exponentialRampToValueAtTime(1500, now + 0.2);
+                    osc.frequency.exponentialRampToValueAtTime(300, now + 0.4);
+                    gain.gain.setValueAtTime(0.12, now);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.4);
+                    osc.start(now); osc.stop(now + 0.4); break;
+                case 'shield':
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(500, now);
+                    osc.frequency.exponentialRampToValueAtTime(300, now + 0.2);
+                    gain.gain.setValueAtTime(0.15, now);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.2);
+                    osc.start(now); osc.stop(now + 0.2); break;
+                case 'bossHit':
+                    osc.type = 'square';
+                    osc.frequency.setValueAtTime(100, now);
+                    osc.frequency.exponentialRampToValueAtTime(200, now + 0.15);
+                    gain.gain.setValueAtTime(0.18, now);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.15);
+                    osc.start(now); osc.stop(now + 0.15); break;
+            }
+        }
+
+        // ===== SCREEN SHAKE =====
+        function triggerScreenShake(intensity = 5) {
+            shakeTimer = 300;
+            shakeIntensity = intensity;
+        }
+
+        function applyScreenShake() {
+            if (shakeTimer > 0) {
+                const dx = (Math.random() - 0.5) * shakeIntensity * 2;
+                const dy = (Math.random() - 0.5) * shakeIntensity * 2;
+                canvas.style.transform = `translate(${dx}px, ${dy}px)`;
+                shakeTimer -= FIXED_TIME_STEP;
+                if (shakeTimer <= 0) {
+                    canvas.style.transform = '';
+                }
+            }
+        }
+
+        // ===== COMBO SCORING =====
+        function updateCombo(timeScale) {
+            if (comboTimer > 0) {
+                comboTimer -= FIXED_TIME_STEP * timeScale;
+                if (comboTimer <= 0) comboCount = 0;
+            }
+            for (let i = comboTexts.length - 1; i >= 0; i--) {
+                const t = comboTexts[i];
+                t.y -= 1 * timeScale;
+                t.alpha -= 0.02 * timeScale;
+                if (t.alpha <= 0) comboTexts.splice(i, 1);
+            }
+        }
+
+        function drawComboTexts() {
+            comboTexts.forEach(t => {
+                ctx.save();
+                ctx.globalAlpha = t.alpha;
+                ctx.fillStyle = '#FFD700';
+                ctx.font = `bold ${18 * scaleFactor}px Arial`;
+                ctx.textAlign = 'center';
+                ctx.fillText(t.text, t.x, t.y);
+                ctx.restore();
+            });
+            if (comboCount >= 2) {
+                ctx.save();
+                ctx.fillStyle = '#FFD700';
+                ctx.font = `bold ${20 * scaleFactor}px Arial`;
+                ctx.textAlign = 'center';
+                const pulse = 1 + Math.sin(Date.now() / 100) * 0.1;
+                ctx.setTransform(pulse, 0, 0, pulse, canvas.width / 2, 25 * scaleFactor);
+                ctx.fillText(`COMBO x${comboCount}!`, 0, 0);
+                ctx.restore();
+            }
+        }
+
+        function registerBrickHit(brickX, brickY) {
+            comboCount++;
+            comboTimer = 1500;
+            const points = 10 * Math.max(1, comboCount);
+            score += points;
+            if (comboCount >= 2) {
+                comboTexts.push({ x: brickX, y: brickY, text: `x${comboCount}!`, alpha: 1 });
+            }
+            if (comboCount === 5 || comboCount === 10) playSound('combo');
+            playSound('brickBreak');
+        }
+
+        // ===== BOSS =====
+        function createBoss() {
+            const bossWidth = brickWidth * 4 + brickPadding * 3;
+            const bossHeight = brickHeight * 2 + brickPadding;
+            boss = {
+                x: canvas.width / 2 - bossWidth / 2,
+                y: brickOffsetTop,
+                width: bossWidth,
+                height: bossHeight,
+                hp: 20 + level * 2,
+                maxHp: 20 + level * 2,
+                speed: 1 + level * 0.1,
+                dx: 1 + level * 0.1,
+                shootTimer: 3000,
+                color: '#ff0044'
+            };
+            activeBricksCount = 0;
+        }
+
+        function moveBoss(timeScale) {
+            if (!isBossLevel || !boss) return;
+            boss.x += boss.dx * timeScale;
+            if (boss.x <= 0) { boss.x = 0; boss.dx = Math.abs(boss.dx); }
+            else if (boss.x + boss.width >= canvas.width) { boss.x = canvas.width - boss.width; boss.dx = -Math.abs(boss.dx); }
+            boss.shootTimer -= FIXED_TIME_STEP * timeScale;
+            if (boss.shootTimer <= 0) {
+                boss.shootTimer = Math.max(1000, 2500 - level * 50);
+                spawnFallingItem(boss.x + boss.width / 2, boss.y + boss.height, 'bomb');
+            }
+        }
+
+        function drawBoss() {
+            if (!isBossLevel || !boss) return;
+            ctx.fillStyle = boss.color;
+            ctx.fillRect(boss.x, boss.y, boss.width, boss.height);
+            ctx.strokeStyle = '#fff';
+            ctx.lineWidth = 3;
+            ctx.strokeRect(boss.x, boss.y, boss.width, boss.height);
+            const pulse = 0.5 + 0.5 * Math.sin(Date.now() / 300);
+            ctx.fillStyle = `rgba(255, 255, 255, ${pulse * 0.2})`;
+            ctx.fillRect(boss.x, boss.y, boss.width, boss.height);
+            // HP Bar
+            const barWidth = boss.width;
+            const barHeight = 8;
+            const barX = boss.x;
+            const barY = boss.y - 15;
+            ctx.fillStyle = 'rgba(0,0,0,0.5)';
+            ctx.fillRect(barX, barY, barWidth, barHeight);
+            const hpRatio = boss.hp / boss.maxHp;
+            ctx.fillStyle = hpRatio > 0.5 ? '#00ff00' : hpRatio > 0.25 ? '#ffcc00' : '#ff0000';
+            ctx.fillRect(barX, barY, barWidth * hpRatio, barHeight);
+            ctx.strokeStyle = '#fff';
+            ctx.lineWidth = 1;
+            ctx.strokeRect(barX, barY, barWidth, barHeight);
+            ctx.fillStyle = 'white';
+            ctx.font = `bold ${14 * scaleFactor}px Arial`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('BOSS', boss.x + boss.width / 2, boss.y + boss.height / 2);
+        }
+
+        // ===== SHIELD =====
+        function drawShield() {
+            if (!shieldActive) return;
+            const shieldY = canvas.height - 10;
+            const pulse = 0.5 + 0.5 * Math.sin(Date.now() / 200);
+            ctx.strokeStyle = `rgba(0, 255, 255, ${0.5 + pulse * 0.5})`;
+            ctx.lineWidth = 4;
+            ctx.shadowColor = '#00ffff';
+            ctx.shadowBlur = 10;
+            ctx.beginPath();
+            ctx.moveTo(0, shieldY);
+            ctx.lineTo(canvas.width, shieldY);
+            ctx.stroke();
+            ctx.shadowBlur = 0;
+        }
+
+        // ===== PORTAL BRICKS =====
+        function drawPortalBricks() {
+            portalBricks.forEach((portal, index) => {
+                portal.pulse = (portal.pulse + 0.08) % (Math.PI * 2);
+                ctx.save();
+                ctx.translate(portal.x + portal.width / 2, portal.y + portal.height / 2);
+                const hue = index === 0 ? 280 : 180;
+                const gradient = ctx.createRadialGradient(0, 0, 0, 0, 0, portal.width / 2);
+                gradient.addColorStop(0, `hsla(${hue}, 100%, 70%, 0.9)`);
+                gradient.addColorStop(0.5, `hsla(${hue + 30}, 100%, 50%, 0.6)`);
+                gradient.addColorStop(1, `hsla(${hue}, 100%, 30%, 0.3)`);
+                ctx.fillStyle = gradient;
+                ctx.fillRect(-portal.width / 2, -portal.height / 2, portal.width, portal.height);
+                ctx.strokeStyle = `hsla(${hue}, 100%, 70%, ${0.5 + 0.5 * Math.sin(portal.pulse)})`;
+                ctx.lineWidth = 3;
+                ctx.strokeRect(-portal.width / 2, -portal.height / 2, portal.width, portal.height);
+                ctx.fillStyle = 'white';
+                ctx.font = `bold ${12 * scaleFactor}px Arial`;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(index === 0 ? 'A' : 'B', 0, 0);
+                ctx.restore();
+            });
+        }
+
+        // ===== SHOOTER BRICKS =====
+        function updateShooterBricks(timeScale) {
+            if (level < 7 || isBossLevel) return;
+            brickShootTimer -= FIXED_TIME_STEP * timeScale;
+            if (brickShootTimer <= 0) {
+                brickShootTimer = 3000;
+                for (let r = 0; r < brickRows; r++) {
+                    for (let c = 0; c < brickColumns; c++) {
+                        const brick = bricks[r][c];
+                        if (brick.visible && brick.shooter) {
+                            fallingItems.push({
+                                x: brick.x + brick.width / 2,
+                                y: brick.y + brick.height,
+                                radius: 5,
+                                speed: 3.5,
+                                type: 'brickBullet',
+                                active: true,
+                                rotation: 0
+                            });
+                        }
+                    }
+                }
+            }
+        }
+
         function moveBullets(timeScale = 1) {
             
             for (let i = bullets.length - 1; i >= 0; i--) {                
@@ -1980,31 +2494,54 @@
                                 b.y < brick.y + brick.height &&
                                 b.y + b.height > brick.y
                             ) {
-                                brick.visible = false;
-                                activeBricksCount--;
-                                score += 10;
-                                
-                                score += 10;
-                                
-                                // Activate Power-up or Spawn Bomb (even if shot!)
-                                if (brick.powerUp) {
-                                    // ALL power-ups are now falling items
-                                    spawnFallingItem(brick.x + brick.width / 2, brick.y + brick.height / 2, brick.powerUp);
-                                }
-                                
-                                updateUI();
-                                b.active = false; // Bullet destroyed
-                                
-                                // Check if last brick needs to move
-                                if (activeBricksCount === 1) {
-                                    activateLastBlockMovement();
-                                }
-                                
-                                if (activeBricksCount === 0) {
-                                    levelComplete();
-                                    return;
+                                brick.hits--;
+                                if (brick.hits <= 0) {
+                                    brick.visible = false;
+                                    activeBricksCount--;
+                                    registerBrickHit(brick.x + brick.width / 2, brick.y);
+                                    
+                                    if (brick.powerUp) {
+                                        spawnFallingItem(brick.x + brick.width / 2, brick.y + brick.height / 2, brick.powerUp);
+                                    }
+                                    
+                                    updateUI();
+                                    b.active = false;
+                                    
+                                    if (activeBricksCount === 1) {
+                                        activateLastBlockMovement();
+                                    }
+                                    
+                                    if (activeBricksCount === 0) {
+                                        levelComplete();
+                                        return;
+                                    }
+                                } else {
+                                    b.active = false;
+                                    playSound('wallBounce');
                                 }
                             }
+                        }
+                    }
+                }
+
+                // Boss collision (bullets)
+                if (isBossLevel && boss && boss.hp > 0) {
+                    if (b.x < boss.x + boss.width && b.x + b.width > boss.x &&
+                        b.y < boss.y + boss.height && b.y + b.height > boss.y) {
+                        boss.hp--;
+                        score += 20;
+                        createExplosion(b.x, b.y, '#ff0044');
+                        playSound('bossHit');
+                        updateUI();
+                        b.active = false;
+                        if (boss.hp <= 0) {
+                            score += 500;
+                            createExplosion(boss.x + boss.width / 2, boss.y + boss.height / 2, '#ff0044');
+                            playSound('explosion');
+                            triggerScreenShake(8);
+                            updateUI();
+                            levelComplete();
+                            return;
                         }
                     }
                 }
@@ -2025,10 +2562,8 @@
             }
         }
 
-        // Move bricks (Last Block Logic)
+        // Move bricks (drifting + last block acceleration)
         function moveBricks(timeScale = 1) {
-            if (activeBricksCount !== 1) return;
-
             for (let r = 0; r < brickRows; r++) {
                 for (let c = 0; c < brickColumns; c++) {
                     let brick = bricks[r][c];
@@ -2038,16 +2573,20 @@
                         // Wall collision
                         if (brick.x <= 0) {
                             brick.x = 0;
-                            brick.dx = -brick.dx;
-                            brick.speed *= 1.1; // Increase speed slightly
-                            brick.speed = Math.min(brick.speed, 25); // Cap horizontal speed
-                            brick.dx = (brick.dx > 0) ? brick.speed : -brick.speed;
+                            brick.dx = Math.abs(brick.dx);
+                            if (activeBricksCount === 1) {
+                                brick.speed *= 1.1;
+                                brick.speed = Math.min(brick.speed, 25);
+                                brick.dx = brick.speed;
+                            }
                         } else if (brick.x + brick.width >= canvas.width) {
                             brick.x = canvas.width - brick.width;
-                            brick.dx = -brick.dx;
-                            brick.speed *= 1.1; // Increase speed slightly
-                            brick.speed = Math.min(brick.speed, 25); // Cap horizontal speed
-                            brick.dx = (brick.dx > 0) ? brick.speed : -brick.speed;
+                            brick.dx = -Math.abs(brick.dx);
+                            if (activeBricksCount === 1) {
+                                brick.speed *= 1.1;
+                                brick.speed = Math.min(brick.speed, 25);
+                                brick.dx = -brick.speed;
+                            }
                         }
                     }
                 }
@@ -2087,7 +2626,11 @@
                     moveBullets(1);
                     moveFallingItems(1);
                     moveBricks(1);
-                    moveParticles(1); // Process any lingering particles
+                    moveBoss(1);
+                    updateShooterBricks(1);
+                    updateCombo(1);
+                    applyScreenShake();
+                    moveParticles(1);
                 }
                 accumulator -= FIXED_TIME_STEP;
             }
