@@ -901,11 +901,21 @@
             
             // Randomly assign power-ups (5 to 10)
             const numPowerUps = 5 + Math.floor(Math.random() * 6);
+            // Determine max bomb blocks based on level
+            const maxBombs = level < 5 ? 0 : (level < 10 ? 1 : (level < 15 ? 2 : 99));
+            let bombsPlaced = 0;
             for (let i = 0; i < numPowerUps; i++) {
                 if (allCoordinates.length === 0) break;
                 const index = Math.floor(Math.random() * allCoordinates.length);
                 const coord = allCoordinates.splice(index, 1)[0];
-                const type = powerUpTypes[Math.floor(Math.random() * powerUpTypes.length)];
+                let type = powerUpTypes[Math.floor(Math.random() * powerUpTypes.length)];
+                // If we've hit the bomb limit, re-roll until we get a non-bomb type
+                let rerolls = 0;
+                while (type === 'bomb' && bombsPlaced >= maxBombs && rerolls < 10) {
+                    type = powerUpTypes[Math.floor(Math.random() * powerUpTypes.length)];
+                    rerolls++;
+                }
+                if (type === 'bomb') bombsPlaced++;
                 bricks[coord.r][coord.c].powerUp = type;
             }
 
@@ -1503,6 +1513,23 @@
                 // Teleport cooldown
                 if (ball.teleportCooldown > 0) ball.teleportCooldown -= timeScale;
 
+                // Portal speed ramp-up (gradually restore speed after teleporting)
+                if (ball.portalSpeedRamp > 0 && ball.portalSpeedTarget) {
+                    ball.portalSpeedRamp -= timeScale;
+                    const rampProgress = 1 - Math.max(0, ball.portalSpeedRamp) / 60;
+                    const currentSpeed = Math.sqrt(ball.dx * ball.dx + ball.dy * ball.dy);
+                    const targetSpeed = ball.portalSpeedTarget * 0.4 + ball.portalSpeedTarget * 0.6 * rampProgress;
+                    if (currentSpeed > 0) {
+                        const scale = targetSpeed / currentSpeed;
+                        ball.dx *= scale;
+                        ball.dy *= scale;
+                    }
+                    if (ball.portalSpeedRamp <= 0) {
+                        delete ball.portalSpeedRamp;
+                        delete ball.portalSpeedTarget;
+                    }
+                }
+
                 // Spaceship collision
                 if (spaceship.active) {
                     if (ball.x + ball.radius > spaceship.x && ball.x - ball.radius < spaceship.x + spaceship.width &&
@@ -1651,21 +1678,52 @@
                         ball.x - ball.radius < boss.x + boss.width &&
                         ball.y + ball.radius > boss.y &&
                         ball.y - ball.radius < boss.y + boss.height) {
-                        if (!ball.through) ball.dy = -ball.dy;
-                        boss.hp--;
-                        score += 20;
-                        createExplosion(ball.x, ball.y, '#ff0044');
-                        playSound('bossHit');
-                        triggerScreenShake(3);
-                        updateUI();
-                        if (boss.hp <= 0) {
-                            score += 500;
-                            createExplosion(boss.x + boss.width / 2, boss.y + boss.height / 2, '#ff0044');
-                            playSound('explosion');
-                            triggerScreenShake(8);
+
+                        // Determine if this is a side hit or top/bottom hit
+                        const overlapLeft  = (ball.x + ball.radius) - boss.x;
+                        const overlapRight = (boss.x + boss.width) - (ball.x - ball.radius);
+                        const overlapTop   = (ball.y + ball.radius) - boss.y;
+                        const overlapBot   = (boss.y + boss.height) - (ball.y - ball.radius);
+                        const minOverlapH  = Math.min(overlapLeft, overlapRight);
+                        const minOverlapV  = Math.min(overlapTop, overlapBot);
+                        const isSideHit    = minOverlapH < minOverlapV;
+
+                        if (!ball.through) {
+                            if (isSideHit) ball.dx = -ball.dx;
+                            else ball.dy = -ball.dy;
+                        }
+
+                        // Side hits require 2 hits to deal 1 damage
+                        let dealDamage = true;
+                        if (isSideHit) {
+                            boss.sideHitPending = (boss.sideHitPending || 0) + 1;
+                            if (boss.sideHitPending < 2) {
+                                dealDamage = false;
+                            } else {
+                                boss.sideHitPending = 0;
+                            }
+                        }
+
+                        if (dealDamage) {
+                            boss.hp--;
+                            score += 20;
+                            createExplosion(ball.x, ball.y, '#ff0044');
+                            playSound('bossHit');
+                            triggerScreenShake(3);
                             updateUI();
-                            levelComplete();
-                            return;
+                            if (boss.hp <= 0) {
+                                score += 500;
+                                createExplosion(boss.x + boss.width / 2, boss.y + boss.height / 2, '#ff0044');
+                                playSound('explosion');
+                                triggerScreenShake(8);
+                                updateUI();
+                                levelComplete();
+                                return;
+                            }
+                        } else {
+                            // Visual feedback for partial side hit
+                            createExplosion(ball.x, ball.y, '#ff8800');
+                            playSound('wallBounce');
                         }
                     }
                 }
@@ -1681,10 +1739,14 @@
                             const linked = portalBricks[portal.linkedIndex];
                             ball.x = linked.x + linked.width / 2;
                             ball.y = linked.y + linked.height + ball.radius + 2;
-                            const speed = Math.sqrt(ball.dx * ball.dx + ball.dy * ball.dy);
+                            const fullSpeed = Math.sqrt(ball.dx * ball.dx + ball.dy * ball.dy);
                             const angle = Math.atan2(ball.dy, ball.dx) + (Math.random() - 0.5) * 0.5;
-                            ball.dx = speed * Math.cos(angle);
-                            ball.dy = Math.abs(speed * Math.sin(angle));
+                            // Start at 40% speed and ramp up to full speed over ~60 frames
+                            const exitSpeed = fullSpeed * 0.4;
+                            ball.dx = exitSpeed * Math.cos(angle);
+                            ball.dy = Math.abs(exitSpeed * Math.sin(angle));
+                            ball.portalSpeedTarget = fullSpeed; // store target speed
+                            ball.portalSpeedRamp = 60;          // frames to ramp up
                             ball.teleportCooldown = 12;
                             createExplosion(portal.x + portal.width / 2, portal.y + portal.height / 2, '#ff00ff');
                             createExplosion(linked.x + linked.width / 2, linked.y + linked.height / 2, '#00ffff');
