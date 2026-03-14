@@ -1,0 +1,820 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Scripture Sleuth</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=EB+Garamond:ital,wght@0,400;0,500;1,400&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --gold: #c9a84c;
+    --gold-light: #f0d080;
+    --bg-dark: #0d0a05;
+    --bg-mid: #1a1408;
+    --bg-card: #211b0e;
+    --border: #3d3020;
+    --text: #e8d9b5;
+    --text-dim: #907a50;
+    --green: #4caf7d;
+    --red: #e05555;
+    --blue: #5b9bd5;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'EB Garamond', Georgia, serif;
+    background: var(--bg-dark);
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 20px;
+    background-image:
+      radial-gradient(ellipse at 20% 20%, rgba(201,168,76,0.06) 0%, transparent 60%),
+      radial-gradient(ellipse at 80% 80%, rgba(91,90,50,0.06) 0%, transparent 60%);
+  }
+  header {
+    text-align: center;
+    margin-bottom: 24px;
+    padding-top: 10px;
+  }
+  header h1 {
+    font-family: 'Cinzel', serif;
+    font-size: 2.8rem;
+    letter-spacing: 4px;
+    color: var(--gold-light);
+    text-shadow: 0 0 30px rgba(201,168,76,0.4);
+  }
+  header p { color: var(--text-dim); font-style: italic; font-size: 1.05rem; margin-top: 4px; }
+
+  .game-wrapper { width: 100%; max-width: 780px; }
+
+  /* Stats bar */
+  .stats-bar {
+    display: flex; justify-content: space-between; align-items: center;
+    background: var(--bg-card); border: 1px solid var(--border);
+    border-radius: 10px; padding: 12px 20px; margin-bottom: 18px;
+    flex-wrap: wrap; gap: 10px;
+  }
+  .stat { text-align: center; }
+  .stat-label { font-size: 0.7rem; letter-spacing: 2px; color: var(--text-dim); font-family: 'Cinzel', serif; text-transform: uppercase; }
+  .stat-value { font-size: 1.8rem; font-weight: 600; color: var(--gold-light); line-height: 1; }
+  .stat-value.score { color: var(--gold-light); }
+  .miss-pips { display: flex; gap: 6px; margin-top: 4px; justify-content: center; }
+  .pip { width: 14px; height: 14px; border-radius: 50%; background: var(--border); border: 1px solid #5a4a2a; transition: all 0.3s; }
+  .pip.used { background: var(--red); border-color: #ff3333; box-shadow: 0 0 8px rgba(224,85,85,0.6); }
+
+  /* Verse card */
+  .verse-card {
+    background: linear-gradient(135deg, #1e1608, #2a1f0c);
+    border: 1px solid var(--gold);
+    border-radius: 12px;
+    padding: 32px 36px;
+    margin-bottom: 22px;
+    position: relative;
+    box-shadow: 0 4px 30px rgba(201,168,76,0.1), inset 0 1px 0 rgba(201,168,76,0.15);
+    min-height: 130px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .verse-card::before {
+    content: '\201C'; position: absolute; top: 8px; left: 18px;
+    font-size: 5rem; color: rgba(201,168,76,0.15); line-height: 1; font-family: Georgia;
+  }
+  .verse-card::after {
+    content: '\201D'; position: absolute; bottom: -10px; right: 18px;
+    font-size: 5rem; color: rgba(201,168,76,0.15); line-height: 1; font-family: Georgia;
+  }
+  #verseText {
+    font-size: 1.45rem; line-height: 1.8; text-align: center;
+    color: var(--text); font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    font-weight: 400; font-style: normal;
+  }
+  .verse-card.loading #verseText { color: var(--text-dim); animation: pulse 1.5s ease-in-out infinite; font-family: 'EB Garamond', Georgia, serif; font-style: italic; }
+  @keyframes pulse { 0%,100% { opacity:0.4; } 50% { opacity:1; } }
+  .round-label {
+    font-family: 'Cinzel', serif; font-size: 0.72rem; letter-spacing: 3px;
+    color: var(--text-dim); text-align: center; margin-bottom: 8px;
+    text-transform: uppercase;
+  }
+  
+  /* Next round countdown overlay */
+  .countdown-wrapper {
+    display: flex; justify-content: center; margin-top: 12px; margin-bottom: 6px;
+  }
+  .countdown {
+    width: 44px; height: 44px; border-radius: 50%; border: 2px solid var(--gold);
+    color: var(--gold-light); display: flex; align-items: center; justify-content: center;
+    font-size: 1.5rem; font-family: 'Cinzel', serif; font-weight: bold;
+    opacity: 0; transition: opacity 0.3s; transform: scale(0.9);
+  }
+  .countdown.show { opacity: 1; transform: scale(1); }
+
+  /* Dropdowns section */
+  .dropdowns { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 18px; }
+  .dropdown-group { display: flex; flex-direction: column; gap: 6px; }
+  .dropdown-group label {
+    font-family: 'Cinzel', serif; font-size: 0.72rem; letter-spacing: 2px;
+    color: var(--text-dim); text-transform: uppercase;
+  }
+  select {
+    background: var(--bg-card); color: var(--text);
+    border: 1px solid var(--border); border-radius: 8px;
+    padding: 10px 14px; font-size: 1rem; font-family: 'EB Garamond', serif;
+    cursor: pointer; appearance: none; width: 100%;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1,1 L6,7 L11,1' stroke='%23907a50' stroke-width='1.5' fill='none'/%3E%3C/svg%3E");
+    background-repeat: no-repeat; background-position: right 12px center;
+    padding-right: 32px;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+  select:focus { outline: none; border-color: var(--gold); box-shadow: 0 0 0 2px rgba(201,168,76,0.2); }
+  select:disabled { opacity: 0.4; cursor: not-allowed; }
+  select.correct { border-color: var(--green) !important; background-color: rgba(76,175,125,0.1); }
+  select.wrong { border-color: var(--red) !important; background-color: rgba(224,85,85,0.1); }
+
+  /* Buttons */
+  .btn-row { display: flex; gap: 12px; justify-content: center; margin-bottom: 18px; }
+  .btn {
+    font-family: 'Cinzel', serif; font-weight: 600; letter-spacing: 1.5px;
+    border: none; border-radius: 8px; padding: 13px 32px; cursor: pointer;
+    font-size: 0.9rem; transition: all 0.2s; text-transform: uppercase;
+  }
+  .btn-primary {
+    background: linear-gradient(135deg, #b8922a, #ddb84a);
+    color: #1a1000; box-shadow: 0 4px 15px rgba(201,168,76,0.3);
+  }
+  .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(201,168,76,0.5); }
+  .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+  .btn-secondary {
+    background: transparent; color: var(--text-dim);
+    border: 1px solid var(--border);
+  }
+  .btn-secondary:hover { border-color: var(--gold); color: var(--gold); }
+
+  /* Feedback bar */
+  .feedback-bar {
+    text-align: center; font-size: 1.1rem; min-height: 28px;
+    padding: 6px; transition: opacity 0.3s;
+    border-radius: 6px; margin-bottom: 12px;
+  }
+  .feedback-bar.right { color: var(--green); }
+  .feedback-bar.wrong { color: var(--red); }
+  .feedback-bar.partial { color: var(--blue); }
+
+  /* Answer reveal */
+  #answerReveal {
+    font-family: 'Cinzel', serif;
+    color: var(--gold); text-align: center;
+    font-size: 1rem; letter-spacing: 1px;
+    min-height: 24px; margin-bottom: 14px;
+    opacity: 0; transition: opacity 0.5s;
+  }
+  #answerReveal.show { opacity: 1; }
+
+  /* Overlay screens */
+  .overlay {
+    display: none; position: fixed; inset: 0;
+    background: rgba(0,0,0,0.85); backdrop-filter: blur(6px);
+    z-index: 100; align-items: center; justify-content: center;
+  }
+  .overlay.active { display: flex; }
+  .overlay-card {
+    background: var(--bg-card); border: 2px solid var(--gold);
+    border-radius: 16px; padding: 48px 56px; text-align: center;
+    max-width: 480px; width: 90%;
+    box-shadow: 0 0 60px rgba(201,168,76,0.2);
+    animation: fadeIn 0.4s ease;
+  }
+  @keyframes fadeIn { from { opacity:0; transform: scale(0.92); } to { opacity:1; transform: scale(1); } }
+  .overlay-card h2 { font-family: 'Cinzel', serif; font-size: 2rem; color: var(--gold-light); margin-bottom: 10px; }
+  .overlay-card p { color: var(--text-dim); font-size: 1.1rem; margin-bottom: 8px; line-height: 1.7; font-style: italic; }
+  .overlay-card .big-score { font-size: 3.5rem; color: var(--gold-light); margin: 16px 0; line-height: 1; }
+  .overlay-card .label { font-family: 'Cinzel', serif; font-size: 0.7rem; letter-spacing: 3px; color: var(--text-dim); text-transform: uppercase; }
+  .divider { border: none; border-top: 1px solid var(--border); margin: 20px 0; }
+
+  @media (max-width: 560px) {
+    header h1 { font-size: 2rem; }
+    .dropdowns { grid-template-columns: 1fr; }
+    .overlay-card { padding: 32px 24px; }
+    .verse-card { padding: 24px 20px; }
+    #verseText { font-size: 1.1rem; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>&#x2721; Scripture Sleuth</h1>
+  <p>Identify where the verse comes from &mdash; one dropdown at a time</p>
+</header>
+
+<div class="game-wrapper">
+
+  <div class="stats-bar">
+    <div class="stat">
+      <div class="stat-label">Score</div>
+      <div class="stat-value score" id="scoreDisplay">0</div>
+    </div>
+    <div class="stat">
+      <div class="stat-label">Round</div>
+      <div class="stat-value" id="roundDisplay">1</div>
+    </div>
+    <div class="stat">
+      <div class="stat-label">Avg</div>
+      <div class="stat-value" id="avgDisplay">0.00</div>
+    </div>
+    <div class="stat">
+      <div class="stat-label">Best</div>
+      <div class="stat-value" id="bestDisplay">0</div>
+    </div>
+    <div class="stat" style="text-align:right">
+      <div class="stat-label">Misses Left</div>
+      <div class="miss-pips">
+        <div class="pip" id="pip0"></div>
+        <div class="pip" id="pip1"></div>
+        <div class="pip" id="pip2"></div>
+        <div class="pip" id="pip3"></div>
+        <div class="pip" id="pip4"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="round-label" id="roundLabel">Round 1 &mdash; Find this verse:</div>
+
+  <div class="verse-card" id="verseCard">
+    <div id="verseText">Loading scripture&hellip;</div>
+  </div>
+
+  <div id="answerReveal"></div>
+  <div class="feedback-bar" id="feedbackBar"></div>
+  <div class="countdown-wrapper"><div class="countdown" id="countdownLabel">10</div></div>
+
+  <div class="dropdowns">
+    <div class="dropdown-group">
+      <label for="volSelect">Volume</label>
+      <select id="volSelect">
+        <option value="">— Select Volume —</option>
+        <option value="ot">Old Testament</option>
+        <option value="nt">New Testament</option>
+        <option value="bofm">Book of Mormon</option>
+        <option value="dc">Doctrine &amp; Covenants</option>
+        <option value="pgp">Pearl of Great Price</option>
+      </select>
+    </div>
+    <div class="dropdown-group">
+      <label for="bookSelect">Book</label>
+      <select id="bookSelect" disabled>
+        <option value="">— Select Book —</option>
+      </select>
+    </div>
+    <div class="dropdown-group">
+      <label for="chapSelect" id="chapLabel">Chapter</label>
+      <select id="chapSelect" disabled>
+        <option value="">— Select Chapter —</option>
+      </select>
+    </div>
+    <div class="dropdown-group">
+      <label for="verseSelect">Verse</label>
+      <select id="verseSelect" disabled>
+        <option value="">— Select Verse —</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="btn-row">
+    <button class="btn btn-primary" id="submitBtn" disabled>Submit Guess</button>
+    <button class="btn btn-secondary" id="skipBtn">Skip This Verse</button>
+  </div>
+
+</div>
+
+<!-- Game Over overlay -->
+<div class="overlay" id="gameOverOverlay">
+  <div class="overlay-card">
+    <h2>Game Over</h2>
+    <p>You have exhausted your 5 misses.</p>
+    <div class="big-score" id="finalScore">0</div>
+    <div class="label">Points Earned</div>
+    <hr class="divider">
+    <p id="highScoreMsg" style="color:var(--gold);font-style:normal;font-family:'Cinzel',serif;font-size:0.9rem;letter-spacing:1px;"></p>
+    <br>
+    <button class="btn btn-primary" onclick="startGame()">Play Again</button>
+  </div>
+</div>
+
+<script>
+// =====================================================================
+// SCRIPTURE DATA
+// Format: { bookName: { vol: 'volumeId', api: 'API name', verses: [v_ch1, v_ch2, ...] } }
+// verses array: verses[i] = verse count for chapter (i+1)
+// =====================================================================
+const SCRIPTURE_DB = {
+  // ---- OLD TESTAMENT ----
+  'Genesis':        { vol:'ot', api:'Genesis',        verses:[31,25,24,26,32,22,24,22,29,32,32,20,18,24,21,16,27,33,38,18,34,24,20,67,34,35,46,22,35,43,55,32,20,31,29,43,36,30,23,43,54,38,34,34,28,34,31,22,33,26] },
+  'Exodus':         { vol:'ot', api:'Exodus',         verses:[22,25,22,31,23,30,25,32,35,29,10,51,22,31,27,36,16,27,25,26,36,31,33,18,40,37,21,43,46,38,18,35,23,35,35,38,29,31,43,38] },
+  'Leviticus':      { vol:'ot', api:'Leviticus',      verses:[17,16,17,35,19,30,38,36,24,20,47,8,59,57,33,34,16,30,24,16,15,11,33,25,3,12,22] },
+  'Numbers':        { vol:'ot', api:'Numbers',        verses:[54,34,51,49,31,27,89,26,23,36,35,16,33,45,41,50,13,32,22,29,35,41,30,25,18,65,23,31,40,16,54,42,56,29,34,13] },
+  'Deuteronomy':    { vol:'ot', api:'Deuteronomy',    verses:[46,37,29,49,33,25,26,20,29,22,32,32,18,29,23,22,20,22,21,20,23,30,25,22,19,19,26,68,29,20,30,52,29,12] },
+  'Joshua':         { vol:'ot', api:'Joshua',         verses:[18,24,17,24,15,27,26,35,27,43,23,24,33,15,63,10,18,28,51,9,45,34,16,33] },
+  'Judges':         { vol:'ot', api:'Judges',         verses:[36,23,31,24,31,40,25,35,57,18,40,15,25,20,20,31,13,31,30,48,25] },
+  'Ruth':           { vol:'ot', api:'Ruth',           verses:[22,23,18,22] },
+  '1 Samuel':       { vol:'ot', api:'1 Samuel',       verses:[28,36,21,22,12,21,17,22,27,27,15,25,23,52,35,23,58,30,24,42,15,23,29,22,44,25,12,25,11,31,13] },
+  '2 Samuel':       { vol:'ot', api:'2 Samuel',       verses:[27,32,39,12,25,23,29,18,13,19,27,31,39,33,37,23,29,33,43,26,22,51,39,25] },
+  '1 Kings':        { vol:'ot', api:'1 Kings',        verses:[53,46,28,34,18,38,51,66,28,29,43,33,34,31,34,34,24,46,21,43,29,53] },
+  '2 Kings':        { vol:'ot', api:'2 Kings',        verses:[18,25,27,44,27,33,20,29,37,36,21,21,25,29,38,20,41,37,37,21,26,20,37,20,30] },
+  '1 Chronicles':   { vol:'ot', api:'1 Chronicles',   verses:[54,55,24,43,26,81,40,40,44,14,47,40,14,17,29,43,27,17,19,8,30,19,32,31,31,32,34,21,30] },
+  '2 Chronicles':   { vol:'ot', api:'2 Chronicles',   verses:[17,18,17,22,14,42,22,18,31,19,23,16,22,15,19,14,19,34,11,37,20,12,21,27,28,23,9,27,36,27,21,33,25,33,27,23] },
+  'Ezra':           { vol:'ot', api:'Ezra',           verses:[11,70,13,24,17,22,28,36,15,44] },
+  'Nehemiah':       { vol:'ot', api:'Nehemiah',       verses:[11,20,32,23,19,19,73,18,38,39,36,47,31] },
+  'Esther':         { vol:'ot', api:'Esther',         verses:[22,23,15,17,14,14,10,17,32,3] },
+  'Job':            { vol:'ot', api:'Job',            verses:[22,13,26,21,27,30,21,22,35,22,20,25,28,22,35,22,16,21,29,29,34,30,17,25,6,14,23,28,25,31,40,22,33,37,16,33,24,41,30,24,34,17] },
+  'Psalms':         { vol:'ot', api:'Psalms',         verses:[6,12,8,8,12,10,17,9,20,18,7,8,6,7,5,11,15,50,14,9,13,31,6,10,22,12,14,9,11,12,24,11,22,22,28,12,40,22,13,17,13,11,5,26,17,11,9,14,20,23,19,9,6,7,23,13,11,11,17,12,8,12,11,10,13,20,7,35,36,5,24,20,28,23,10,12,20,72,13,19,16,8,18,12,13,17,7,18,52,17,16,15,5,23,11,13,12,9,9,5,8,28,22,35,45,48,43,13,31,7,10,10,9,8,18,19,2,29,176,7,8,9,4,8,5,6,5,6,8,8,3,18,3,3,21,26,9,8,24,13,10,7,12,15,21,10,20,14,9,6] },
+  'Proverbs':       { vol:'ot', api:'Proverbs',       verses:[33,22,35,27,23,35,27,36,18,32,31,28,25,35,33,33,28,24,29,30,31,29,35,34,28,28,27,28,62,44,33] },
+  'Ecclesiastes':   { vol:'ot', api:'Ecclesiastes',   verses:[18,26,22,17,19,11,30,21,11,20,12,23] },
+  'Solomon\'s Song':{ vol:'ot', api:'Solomon\'s Song',verses:[17,17,11,16,16,13,13,14] },
+  'Isaiah':         { vol:'ot', api:'Isaiah',         verses:[31,22,26,6,30,13,25,22,21,34,16,6,22,32,9,14,14,7,25,6,17,25,18,23,12,21,13,29,24,33,9,20,24,17,10,22,38,22,8,31,29,25,28,28,25,13,15,22,26,11,23,15,12,17,13,12,21,14,21,22,11,12,19,12,25,24] },
+  'Jeremiah':       { vol:'ot', api:'Jeremiah',       verses:[19,37,25,31,31,30,34,22,26,25,23,17,27,22,21,21,27,23,15,18,14,30,40,10,38,24,22,17,32,24,40,44,26,22,19,32,21,28,18,16,18,22,13,30,5,28,7,47,39,46,64,34] },
+  'Lamentations':   { vol:'ot', api:'Lamentations',   verses:[22,22,66,22,22] },
+  'Ezekiel':        { vol:'ot', api:'Ezekiel',        verses:[28,10,27,17,17,14,27,18,11,22,25,28,23,23,8,63,24,32,14,49,32,31,49,27,17,21,36,26,21,26,18,32,33,31,15,38,28,23,29,49,26,20,27,31,25,24,23,35] },
+  'Daniel':         { vol:'ot', api:'Daniel',         verses:[21,49,30,37,31,28,28,27,27,21,45,13] },
+  'Hosea':          { vol:'ot', api:'Hosea',          verses:[11,23,5,19,15,11,16,14,17,15,12,14,16,9] },
+  'Joel':           { vol:'ot', api:'Joel',           verses:[20,32,21] },
+  'Amos':           { vol:'ot', api:'Amos',           verses:[15,16,15,13,27,14,17,14,15] },
+  'Obadiah':        { vol:'ot', api:'Obadiah',        verses:[21] },
+  'Jonah':          { vol:'ot', api:'Jonah',          verses:[17,10,10,11] },
+  'Micah':          { vol:'ot', api:'Micah',          verses:[16,13,12,13,15,16,20] },
+  'Nahum':          { vol:'ot', api:'Nahum',          verses:[15,13,19] },
+  'Habakkuk':       { vol:'ot', api:'Habakkuk',       verses:[17,20,19] },
+  'Zephaniah':      { vol:'ot', api:'Zephaniah',      verses:[18,15,20] },
+  'Haggai':         { vol:'ot', api:'Haggai',         verses:[15,23] },
+  'Zechariah':      { vol:'ot', api:'Zechariah',      verses:[21,13,10,14,11,15,14,23,17,12,17,14,9,21] },
+  'Malachi':        { vol:'ot', api:'Malachi',        verses:[14,17,18,6] },
+  // ---- NEW TESTAMENT ----
+  'Matthew':        { vol:'nt', api:'Matthew',        verses:[25,23,17,25,48,34,29,34,38,42,30,50,58,36,39,28,27,35,30,34,46,46,39,51,46,75,66,20] },
+  'Mark':           { vol:'nt', api:'Mark',           verses:[45,28,35,41,43,56,37,38,50,52,33,44,37,72,47,20] },
+  'Luke':           { vol:'nt', api:'Luke',           verses:[80,52,38,44,39,49,50,56,62,42,54,59,35,35,32,31,37,43,48,47,38,71,56,53] },
+  'John':           { vol:'nt', api:'John',           verses:[51,25,36,54,47,71,53,59,41,42,57,50,38,31,27,33,26,40,42,31,25] },
+  'Acts':           { vol:'nt', api:'Acts',           verses:[26,47,26,37,42,15,60,40,43,48,30,25,52,28,41,40,34,28,40,38,40,30,35,27,27,32,44,31] },
+  'Romans':         { vol:'nt', api:'Romans',         verses:[32,29,31,25,21,23,25,39,33,21,36,21,14,26,33,24] },
+  '1 Corinthians':  { vol:'nt', api:'1 Corinthians',  verses:[31,16,23,21,13,20,40,13,27,33,34,31,13,40,58,24] },
+  '2 Corinthians':  { vol:'nt', api:'2 Corinthians',  verses:[24,17,18,18,21,18,16,24,15,18,33,21,14] },
+  'Galatians':      { vol:'nt', api:'Galatians',      verses:[24,21,29,31,26,18] },
+  'Ephesians':      { vol:'nt', api:'Ephesians',      verses:[23,22,21,32,33,24] },
+  'Philippians':    { vol:'nt', api:'Philippians',    verses:[30,30,21,23] },
+  'Colossians':     { vol:'nt', api:'Colossians',     verses:[29,23,25,18] },
+  '1 Thessalonians':{ vol:'nt', api:'1 Thessalonians',verses:[10,20,13,18,28] },
+  '2 Thessalonians':{ vol:'nt', api:'2 Thessalonians',verses:[12,17,18] },
+  '1 Timothy':      { vol:'nt', api:'1 Timothy',      verses:[20,15,16,16,25,21] },
+  '2 Timothy':      { vol:'nt', api:'2 Timothy',      verses:[18,26,17,22] },
+  'Titus':          { vol:'nt', api:'Titus',          verses:[16,15,15] },
+  'Philemon':       { vol:'nt', api:'Philemon',       verses:[25] },
+  'Hebrews':        { vol:'nt', api:'Hebrews',        verses:[14,18,19,16,14,20,28,13,28,39,40,29,25] },
+  'James':          { vol:'nt', api:'James',          verses:[27,26,18,17,20] },
+  '1 Peter':        { vol:'nt', api:'1 Peter',        verses:[25,25,22,19,14] },
+  '2 Peter':        { vol:'nt', api:'2 Peter',        verses:[21,22,18] },
+  '1 John':         { vol:'nt', api:'1 John',         verses:[10,29,24,21,21] },
+  '2 John':         { vol:'nt', api:'2 John',         verses:[13] },
+  '3 John':         { vol:'nt', api:'3 John',         verses:[14] },
+  'Jude':           { vol:'nt', api:'Jude',           verses:[25] },
+  'Revelation':     { vol:'nt', api:'Revelation',     verses:[20,29,22,11,14,17,17,13,21,11,19,17,18,20,8,21,18,24,21,15,27,21] },
+  // ---- BOOK OF MORMON ----
+  '1 Nephi':        { vol:'bofm', api:'1 Nephi',      verses:[20,16,25,24,17,35,30,18,23,22,26,15,14,27,20,17,19,21,25,21,18,25] },
+  '2 Nephi':        { vol:'bofm', api:'2 Nephi',      verses:[26,31,15,15,28,33,35,25,26,14,27,32,14,33,26,21,17,23,13,44,14,36,19,19,15,25,12,14,17,30,22,28,23] },
+  'Jacob':          { vol:'bofm', api:'Jacob',         verses:[19,25,11,18,21,33,27] },
+  'Enos':           { vol:'bofm', api:'Enos',          verses:[27] },
+  'Jarom':          { vol:'bofm', api:'Jarom',         verses:[15] },
+  'Omni':           { vol:'bofm', api:'Omni',          verses:[30] },
+  'Words of Mormon':{ vol:'bofm', api:'Words of Mormon',verses:[18] },
+  'Mosiah':         { vol:'bofm', api:'Mosiah',        verses:[18,29,30,32,34,38,22,17,28,22,21,9,38,25,37,23,28,23,33,17,28,21,13,25,15,25,33,25,31] },
+  'Alma':           { vol:'bofm', api:'Alma',          verses:[33,38,39,39,48,31,25,23,30,27,21,31,29,24,24,28,23,35,51,35,29,37,26,13,29,33,40,32,39,33,35,37,38,37,22,25,24,32,29,23,27,30,24,29,24,22,29,43,25,26,28,26,36,28,30,28,30,22,27,21,20,32,27] },
+  'Helaman':        { vol:'bofm', api:'Helaman',       verses:[33,23,30,27,32,20,25,18,25,26,26,40,36,37,37,27] },
+  '3 Nephi':        { vol:'bofm', api:'3 Nephi',       verses:[42,19,22,14,24,21,22,42,25,18,36,47,57,32,33,17,20,38,31,24,36,23,43,40,28,32,29,26,30,24] },
+  '4 Nephi':        { vol:'bofm', api:'4 Nephi',       verses:[49] },
+  'Mormon':         { vol:'bofm', api:'Mormon',         verses:[22,15,15,38,14,15,15,8,37] },
+  'Ether':          { vol:'bofm', api:'Ether',          verses:[43,23,31,27,28,26,28,21,30,22,24,34,32,25,34] },
+  'Moroni':         { vol:'bofm', api:'Moroni',         verses:[23,24,8,23,6,9,12,26,26,34] },
+  // ---- DOCTRINE & COVENANTS ----
+  'Doctrine and Covenants': { vol:'dc', api:'Doctrine and Covenants',
+    verses:[39,3,20,7,35,37,8,12,14,70,30,9,1,11,6,6,9,47,41,84,12,4,7,19,16,2,18,16,50,11,13,5,17,12,27,8,4,42,24,3,12,93,35,6,75,33,4,6,28,46,20,44,7,10,6,20,16,65,24,17,39,9,66,43,6,13,14,35,8,18,11,26,6,7,36,119,15,22,4,5,7,24,6,120,12,11,8,141,21,37,6,2,53,17,17,9,28,48,8,17,101,34,40,86,41,8,100,8,80,16,11,34,10,2,19,1,16,6,7,1,46,9,17,145,4,3,12,25,9,23,8,66,74,12,7,42,10,60] },
+  // ---- PEARL OF GREAT PRICE ----
+  'Moses':                { vol:'pgp', api:'Moses',                 verses:[42,31,25,32,59,68,69,30] },
+  'Abraham':              { vol:'pgp', api:'Abraham',               verses:[31,29,28,31,21] },
+  'Joseph Smith--Matthew':{ vol:'pgp', api:'Js-M',                  verses:[55] },
+  'Joseph Smith--History':{ vol:'pgp', api:'Js-H',                  verses:[75] },
+  'Articles of Faith':    { vol:'pgp', api:'articles of faith',     verses:[13] },
+};
+
+// Volume metadata
+const VOLUMES = {
+  ot:   { name: 'Old Testament',           chapLabel: 'Chapter' },
+  nt:   { name: 'New Testament',           chapLabel: 'Chapter' },
+  bofm: { name: 'Book of Mormon',          chapLabel: 'Chapter' },
+  dc:   { name: 'Doctrine & Covenants',    chapLabel: 'Section' },
+  pgp:  { name: 'Pearl of Great Price',    chapLabel: 'Chapter' },
+};
+
+// Precompute flat list of books per volume
+const BOOKS_BY_VOL = {};
+for (const [name, data] of Object.entries(SCRIPTURE_DB)) {
+  if (!BOOKS_BY_VOL[data.vol]) BOOKS_BY_VOL[data.vol] = [];
+  BOOKS_BY_VOL[data.vol].push(name);
+}
+
+// =====================================================================
+// GAME STATE
+// =====================================================================
+let state = {
+  score: 0,
+  round: 1,
+  misses: 0,
+  best: parseInt(localStorage.getItem('scriptureSleuthBest') || '0'),
+  currentRef: null,   // { bookName, chapter (1-based), verse (1-based) }
+  submitted: false,
+  loading: false,
+};
+
+// =====================================================================
+// DOM REFS
+// =====================================================================
+const volSel   = document.getElementById('volSelect');
+const bookSel  = document.getElementById('bookSelect');
+const chapSel  = document.getElementById('chapSelect');
+const verseSel = document.getElementById('verseSelect');
+const chapLabel= document.getElementById('chapLabel');
+const submitBtn= document.getElementById('submitBtn');
+const skipBtn  = document.getElementById('skipBtn');
+const verseText= document.getElementById('verseText');
+const verseCard= document.getElementById('verseCard');
+const feedbackBar   = document.getElementById('feedbackBar');
+const answerReveal  = document.getElementById('answerReveal');
+const scoreDisplay  = document.getElementById('scoreDisplay');
+const roundDisplay  = document.getElementById('roundDisplay');
+const avgDisplay    = document.getElementById('avgDisplay');
+const bestDisplay   = document.getElementById('bestDisplay');
+const roundLabel    = document.getElementById('roundLabel');
+const gameOverOverlay = document.getElementById('gameOverOverlay');
+const finalScoreEl  = document.getElementById('finalScore');
+const highScoreMsg  = document.getElementById('highScoreMsg');
+const countdownLabel= document.getElementById('countdownLabel');
+
+let countdownInterval = null;
+
+// =====================================================================
+// RANDOM REFERENCE PICKER (weighted by chapter size)
+// =====================================================================
+function pickRandomRef() {
+  const books = Object.keys(SCRIPTURE_DB);
+  const book = books[Math.floor(Math.random() * books.length)];
+  const data = SCRIPTURE_DB[book];
+  const chapterIdx = Math.floor(Math.random() * data.verses.length);
+  const verseCount = data.verses[chapterIdx];
+  const verse = 1 + Math.floor(Math.random() * verseCount);
+  return { bookName: book, chapter: chapterIdx + 1, verse };
+}
+
+// =====================================================================
+// API FETCH
+// =====================================================================
+async function fetchVerse(ref) {
+  const apiBook = SCRIPTURE_DB[ref.bookName].api;
+  const q = encodeURIComponent(`${apiBook} ${ref.chapter}:${ref.verse}`);
+  
+  // Use allOrigins CORS proxy (more reliable than corsproxy.io)
+  const targetUrl = encodeURIComponent(`https://api.nephi.org/scriptures/?q=${q}&format=json`);
+  const url = `https://api.allorigins.win/raw?url=${targetUrl}`;
+  
+  const res = await fetch(url);
+  const data = await res.json();
+  if (data.scriptures && data.scriptures.length > 0) {
+    return data.scriptures[0].text;
+  }
+  return null;
+}
+
+// =====================================================================
+// PREFETCH QUEUE
+// =====================================================================
+const PREFETCH_LIMIT = 3;
+let verseQueue = [];
+let isFetchingQueue = false;
+
+async function maintainQueue() {
+  if (isFetchingQueue) return;
+  isFetchingQueue = true;
+  
+  while (verseQueue.length < PREFETCH_LIMIT) {
+    let fetched = false;
+    let attempts = 0;
+    while (!fetched && attempts < 8) {
+      const ref = pickRandomRef();
+      try { 
+        const text = await fetchVerse(ref); 
+        if (text) {
+          verseQueue.push({ ref, text });
+          fetched = true;
+        }
+      } catch(e) {}
+      attempts++;
+    }
+    if (!fetched) break; // Break if we heavily fail so we don't infinite loop
+  }
+  
+  isFetchingQueue = false;
+}
+
+// =====================================================================
+// LOAD ROUND
+// =====================================================================
+async function loadRound() {
+  state.submitted = false;
+  state.loading = true;
+  clearFeedback();
+  resetDropdowns();
+  submitBtn.disabled = true;
+  skipBtn.disabled = true;
+  verseCard.classList.add('loading');
+  verseText.textContent = 'Preparing next scripture\u2026';
+  roundLabel.textContent = `Round ${state.round} \u2014 Find this verse:`;
+
+  // Start prefetching if we haven't already
+  maintainQueue();
+
+  // Wait for the queue to have at least one verse
+  while (verseQueue.length === 0) {
+    await new Promise(r => setTimeout(r, 500));
+  }
+
+  // Dequeue the next verse
+  const nextItem = verseQueue.shift();
+  state.currentRef = nextItem.ref;
+  const text = nextItem.text;
+
+  // Replenish the queue in the background
+  maintainQueue();
+
+  verseCard.classList.remove('loading');
+  state.loading = false;
+  skipBtn.disabled = false;
+
+  skipBtn.textContent = 'Skip This Verse';
+  verseText.textContent = text;
+}
+
+// =====================================================================
+// DROPDOWNS — CASCADE LOGIC
+// =====================================================================
+volSel.addEventListener('change', () => {
+  // Reset downstream
+  bookSel.innerHTML = '<option value="">\u2014 Select Book \u2014</option>';
+  chapSel.innerHTML = '<option value="">\u2014 Select Chapter \u2014</option>';
+  verseSel.innerHTML = '<option value="">\u2014 Select Verse \u2014</option>';
+  chapSel.disabled = true; verseSel.disabled = true;
+  bookSel.disabled = true;
+  bookSel.className = ''; chapSel.className = ''; verseSel.className = '';
+  checkSubmit();
+
+  const vol = volSel.value;
+  if (!vol) return;
+  const books = BOOKS_BY_VOL[vol] || [];
+  books.forEach(name => {
+    const opt = document.createElement('option');
+    opt.value = name; opt.textContent = name;
+    bookSel.appendChild(opt);
+  });
+  bookSel.disabled = false;
+  chapLabel.textContent = VOLUMES[vol].chapLabel;
+});
+
+bookSel.addEventListener('change', () => {
+  chapSel.innerHTML = '<option value="">\u2014 Select \u2014</option>';
+  verseSel.innerHTML = '<option value="">\u2014 Select Verse \u2014</option>';
+  chapSel.disabled = true; verseSel.disabled = true;
+  chapSel.className = ''; verseSel.className = '';
+  checkSubmit();
+
+  const bookName = bookSel.value;
+  if (!bookName) return;
+  const data = SCRIPTURE_DB[bookName];
+  if (!data) return;
+  const numChaps = data.verses.length;
+  for (let c = 1; c <= numChaps; c++) {
+    const opt = document.createElement('option');
+    opt.value = c; opt.textContent = c;
+    chapSel.appendChild(opt);
+  }
+  chapSel.disabled = false;
+});
+
+chapSel.addEventListener('change', () => {
+  verseSel.innerHTML = '<option value="">\u2014 Select Verse \u2014</option>';
+  verseSel.disabled = true;
+  verseSel.className = '';
+  checkSubmit();
+
+  const bookName = bookSel.value;
+  const chapNum  = parseInt(chapSel.value);
+  if (!bookName || !chapNum) return;
+  const data = SCRIPTURE_DB[bookName];
+  if (!data) return;
+  const numVerses = data.verses[chapNum - 1] || 30;
+  for (let v = 1; v <= numVerses; v++) {
+    const opt = document.createElement('option');
+    opt.value = v; opt.textContent = v;
+    verseSel.appendChild(opt);
+  }
+  verseSel.disabled = false;
+});
+
+verseSel.addEventListener('change', () => { checkSubmit(); });
+
+function checkSubmit() {
+  submitBtn.disabled = !(!state.submitted && volSel.value && bookSel.value && chapSel.value && verseSel.value);
+}
+
+// =====================================================================
+// SUBMIT
+// =====================================================================
+submitBtn.addEventListener('click', () => {
+  if (state.submitted || state.loading) return;
+  state.submitted = true;
+  submitBtn.disabled = true;
+  skipBtn.disabled = true;
+
+  const ref = state.currentRef;
+  const correctVol  = SCRIPTURE_DB[ref.bookName].vol;
+  const correctBook = ref.bookName;
+  const correctChap = ref.chapter;
+  const correctVerse= ref.verse;
+
+  const guessVol  = volSel.value;
+  const guessBook = bookSel.value;
+  const guessChap = parseInt(chapSel.value);
+  const guessVerse= parseInt(verseSel.value);
+
+  const rightVol   = guessVol  === correctVol;
+  const rightBook  = guessBook === correctBook;
+  const rightChap  = guessChap === correctChap;
+  const rightVerse = guessVerse=== correctVerse;
+
+  // Highlight dropdowns
+  markSel(volSel,   rightVol);
+  markSel(bookSel,  rightBook);
+  markSel(chapSel,  rightChap);
+  markSel(verseSel, rightVerse);
+
+  const pts = [rightVol, rightBook, rightChap, rightVerse].filter(Boolean).length;
+  const allWrong = pts === 0 || (pts === 1 && rightVol === true); // Consider just getting volume correct as partially wrong if nothing else contextually is there. Actually, let's keep all wrong as 0.
+
+  state.score += pts;
+  if (pts === 0) {
+    state.misses++;
+    updatePips();
+  }
+
+  scoreDisplay.textContent = state.score;
+  const avg = (state.score / state.round).toFixed(2);
+  avgDisplay.textContent = avg;
+
+  if (state.score > state.best) {
+    state.best = state.score;
+    localStorage.setItem('scriptureSleuthBest', state.best);
+    bestDisplay.textContent = state.best;
+  }
+
+  // Feedback
+  const chapWord = VOLUMES[correctVol]?.chapLabel || 'Chapter';
+  const volName  = VOLUMES[correctVol]?.name || correctVol;
+  answerReveal.textContent = `${correctBook} ${correctChap}:${correctVerse}  (${volName})`;
+  answerReveal.classList.add('show');
+
+  if (pts === 4) {
+    showFeedback('\u2726 Perfect! All 4 correct! +4 points', 'right');
+  } else if (pts === 0) {
+    showFeedback(`\u2715 Complete miss \u2014 0 points. Miss ${state.misses}/5.`, 'wrong');
+  } else {
+    showFeedback(`${pts}/4 correct \u2014 +${pts} point${pts>1?'s':''}`, 'partial');
+  }
+
+  // Check game over
+  if (state.misses >= 5) {
+    setTimeout(() => showGameOver(), 1400);
+    return;
+  }
+
+  // Next round countdown
+  startCountdown();
+});
+
+// =====================================================================
+// SKIP
+// =====================================================================
+skipBtn.addEventListener('click', () => {
+  if (state.loading) return;
+  state.misses++;
+  updatePips();
+  const ref = state.currentRef;
+  const volName = VOLUMES[SCRIPTURE_DB[ref.bookName]?.vol]?.name || '';
+  answerReveal.textContent = `${ref.bookName} ${ref.chapter}:${ref.verse}  (${volName})`;
+  answerReveal.classList.add('show');
+  
+  showFeedback(`Skipped \u2014 Miss ${state.misses}/5`, 'wrong');
+  submitBtn.disabled = true;
+  skipBtn.disabled = true;
+
+  if (state.misses >= 5) {
+    setTimeout(() => showGameOver(), 1400);
+    return;
+  }
+  startCountdown();
+});
+
+function startCountdown() {
+  countdownLabel.classList.add('show');
+  let timeLeft = 10;
+  countdownLabel.textContent = timeLeft;
+  
+  if (countdownInterval) clearInterval(countdownInterval);
+  countdownInterval = setInterval(() => {
+    timeLeft--;
+    if (timeLeft <= 0) {
+      clearInterval(countdownInterval);
+      nextRound();
+    } else {
+      countdownLabel.textContent = timeLeft;
+    }
+  }, 1000);
+}
+
+// =====================================================================
+// HELPERS
+// =====================================================================
+function markSel(sel, correct) {
+  sel.className = correct ? 'correct' : 'wrong';
+}
+function showFeedback(msg, cls) {
+  feedbackBar.textContent = msg;
+  feedbackBar.className = 'feedback-bar ' + cls;
+}
+function clearFeedback() {
+  feedbackBar.textContent = '';
+  feedbackBar.className = 'feedback-bar';
+  answerReveal.textContent = '';
+  answerReveal.classList.remove('show');
+  countdownLabel.classList.remove('show');
+  if (countdownInterval) clearInterval(countdownInterval);
+}
+function resetDropdowns() {
+  volSel.value = '';
+  bookSel.innerHTML = '<option value="">\u2014 Select Book \u2014</option>';
+  chapSel.innerHTML  = '<option value="">\u2014 Select Chapter \u2014</option>';
+  verseSel.innerHTML = '<option value="">\u2014 Select Verse \u2014</option>';
+  bookSel.disabled = chapSel.disabled = verseSel.disabled = true;
+  volSel.className = bookSel.className = chapSel.className = verseSel.className = '';
+  chapLabel.textContent = 'Chapter';
+}
+function updatePips() {
+  for (let i = 0; i < 5; i++) {
+    document.getElementById('pip' + i).classList.toggle('used', i < state.misses);
+  }
+}
+function nextRound() {
+  state.round++;
+  roundDisplay.textContent = state.round;
+  loadRound();
+}
+function showGameOver() {
+  finalScoreEl.textContent = state.score;
+  const prevBest = parseInt(localStorage.getItem('scriptureSleuthHighScore') || '0');
+  if (state.score > prevBest) {
+    localStorage.setItem('scriptureSleuthHighScore', state.score);
+    highScoreMsg.textContent = '\ud83c\udfc6 New personal best!';
+  } else {
+    highScoreMsg.textContent = `Best: ${prevBest} points`;
+  }
+  gameOverOverlay.classList.add('active');
+}
+
+// =====================================================================
+// START/RESTART
+// =====================================================================
+function startGame() {
+  gameOverOverlay.classList.remove('active');
+  state.score  = 0;
+  state.round  = 1;
+  state.misses = 0;
+  scoreDisplay.textContent = '0';
+  roundDisplay.textContent = '1';
+  avgDisplay.textContent   = '0.00';
+  bestDisplay.textContent  = state.best;
+  updatePips();
+  loadRound();
+}
+
+// =====================================================================
+// INIT
+// =====================================================================
+bestDisplay.textContent = state.best;
+loadRound();
+</script>
+</body>
+</html>
