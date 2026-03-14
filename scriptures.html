@@ -46,7 +46,10 @@
     color: var(--gold-light);
     text-shadow: 0 0 30px rgba(201,168,76,0.4);
   }
-  header p { color: var(--text-dim); font-style: italic; font-size: 1.05rem; margin-top: 4px; }
+  header p { 
+    color: var(--text-dim); font-size: 1.05rem; margin-top: 4px; 
+    font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  }
 
   .game-wrapper { width: 100%; max-width: 780px; }
 
@@ -628,7 +631,7 @@ chapSel.addEventListener('change', () => {
 verseSel.addEventListener('change', () => { checkSubmit(); });
 
 function checkSubmit() {
-  submitBtn.disabled = !(!state.submitted && volSel.value && bookSel.value && chapSel.value && verseSel.value);
+  submitBtn.disabled = !(!state.submitted && volSel.value);
 }
 
 // =====================================================================
@@ -815,6 +818,13 @@ function startGame() {
 // =====================================================================
 bestDisplay.textContent = state.best;
 loadRound();
+
+// Enter key support
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && !submitBtn.disabled && !state.submitted && !state.loading) {
+    submitBtn.click();
+  }
+});
 </script>
 </body>
 </html>
