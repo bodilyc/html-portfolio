@@ -103,15 +103,27 @@
   
   /* Next round countdown overlay */
   .countdown-wrapper {
-    display: flex; justify-content: center; margin-top: 12px; margin-bottom: 6px;
+    display: flex; justify-content: center; align-items: center; gap: 16px;
+    margin-top: 12px; margin-bottom: 6px;
+    opacity: 0; pointer-events: none; transition: opacity 0.3s;
+  }
+  .countdown-wrapper.show {
+    opacity: 1; pointer-events: auto;
   }
   .countdown {
     width: 44px; height: 44px; border-radius: 50%; border: 2px solid var(--gold);
     color: var(--gold-light); display: flex; align-items: center; justify-content: center;
     font-size: 1.5rem; font-family: 'Cinzel', serif; font-weight: bold;
-    opacity: 0; transition: opacity 0.3s; transform: scale(0.9);
   }
-  .countdown.show { opacity: 1; transform: scale(1); }
+  .btn-next {
+    padding: 10px 20px; font-size: 0.9rem; text-transform: uppercase;
+    font-family: 'Cinzel', serif; font-weight: 600; letter-spacing: 1px;
+    background: transparent; border: 1px solid var(--gold); color: var(--gold);
+    border-radius: 8px; cursor: pointer; transition: all 0.2s;
+  }
+  .btn-next:hover {
+    background: rgba(201,168,76,0.1); transform: translateY(-1px);
+  }
 
   /* Dropdowns section */
   .dropdowns { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 18px; }
@@ -251,7 +263,10 @@
 
   <div id="answerReveal"></div>
   <div class="feedback-bar" id="feedbackBar"></div>
-  <div class="countdown-wrapper"><div class="countdown" id="countdownLabel">10</div></div>
+  <div class="countdown-wrapper" id="countdownWrapper">
+    <div class="countdown" id="countdownLabel">10</div>
+    <button class="btn-next" id="nextBtn" title="Skip wait">Next &#10140;</button>
+  </div>
 
   <div class="dropdowns">
     <div class="dropdown-group">
@@ -459,7 +474,9 @@ const roundLabel    = document.getElementById('roundLabel');
 const gameOverOverlay = document.getElementById('gameOverOverlay');
 const finalScoreEl  = document.getElementById('finalScore');
 const highScoreMsg  = document.getElementById('highScoreMsg');
+const countdownWrapper = document.getElementById('countdownWrapper');
 const countdownLabel= document.getElementById('countdownLabel');
+const nextBtn       = document.getElementById('nextBtn');
 
 let countdownInterval = null;
 
@@ -733,7 +750,7 @@ skipBtn.addEventListener('click', () => {
 });
 
 function startCountdown() {
-  countdownLabel.classList.add('show');
+  countdownWrapper.classList.add('show');
   let timeLeft = 10;
   countdownLabel.textContent = timeLeft;
   
@@ -748,6 +765,14 @@ function startCountdown() {
     }
   }, 1000);
 }
+
+nextBtn.addEventListener('click', () => {
+  if (countdownInterval) {
+    clearInterval(countdownInterval);
+    countdownInterval = null;
+  }
+  nextRound();
+});
 
 // =====================================================================
 // HELPERS
@@ -764,7 +789,7 @@ function clearFeedback() {
   feedbackBar.className = 'feedback-bar';
   answerReveal.textContent = '';
   answerReveal.classList.remove('show');
-  countdownLabel.classList.remove('show');
+  countdownWrapper.classList.remove('show');
   if (countdownInterval) clearInterval(countdownInterval);
 }
 function resetDropdowns() {
