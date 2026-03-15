@@ -779,6 +779,7 @@
                     activeGravityRocks.push({
                         x: Math.random() * (canvas.width - 200) + 100,
                         y: Math.random() * (canvas.height - brickOffsetTop - 250) + brickOffsetTop + 150,
+                        dx: (Math.random() > 0.5 ? 1 : -1) * (0.3 + Math.random() * 0.4), // Slow horizontal drift
                         radius: 120, // Effect radius
                         coreRadius: 15, // Visual rocky core
                         type: Math.random() > 0.5 ? 'blackhole' : 'repulsor',
@@ -1459,6 +1460,18 @@
 
         // Move balls
         function moveBalls(timeScale = 1) {
+            // Update Gravity Rock Positions (once per frame)
+            activeGravityRocks.forEach(rock => {
+                rock.x += rock.dx * timeScale;
+                if (rock.x - rock.coreRadius < 0) {
+                    rock.dx = Math.abs(rock.dx);
+                    rock.x = rock.coreRadius;
+                } else if (rock.x + rock.coreRadius > canvas.width) {
+                    rock.dx = -Math.abs(rock.dx);
+                    rock.x = canvas.width - rock.coreRadius;
+                }
+            });
+
             for (let i = balls.length - 1; i >= 0; i--) {
                 const ball = balls[i];
                 
