@@ -481,16 +481,38 @@ const nextBtn       = document.getElementById('nextBtn');
 let countdownInterval = null;
 
 // =====================================================================
-// RANDOM REFERENCE PICKER (weighted by chapter size)
+// RANDOM REFERENCE PICKER (Uniformly distributed across all verses)
 // =====================================================================
+const SCRIPTURE_WEIGHTS = [];
+let totalStandardWorksVerses = 0;
+
+for (const [book, data] of Object.entries(SCRIPTURE_DB)) {
+  let bookVerses = 0;
+  for (const count of data.verses) {
+    bookVerses += count;
+  }
+  SCRIPTURE_WEIGHTS.push({
+    book: book,
+    start: totalStandardWorksVerses,
+    end: totalStandardWorksVerses + bookVerses
+  });
+  totalStandardWorksVerses += bookVerses;
+}
+
 function pickRandomRef() {
-  const books = Object.keys(SCRIPTURE_DB);
-  const book = books[Math.floor(Math.random() * books.length)];
-  const data = SCRIPTURE_DB[book];
-  const chapterIdx = Math.floor(Math.random() * data.verses.length);
-  const verseCount = data.verses[chapterIdx];
-  const verse = 1 + Math.floor(Math.random() * verseCount);
-  return { bookName: book, chapter: chapterIdx + 1, verse };
+  const rand = Math.floor(Math.random() * totalStandardWorksVerses);
+  const targetBookData = SCRIPTURE_WEIGHTS.find(w => rand >= w.start && rand < w.end);
+  const bookName = targetBookData.book;
+  const data = SCRIPTURE_DB[bookName];
+  
+  let verseOffset = rand - targetBookData.start;
+  let chapterIdx = 0;
+  while (verseOffset >= data.verses[chapterIdx]) {
+    verseOffset -= data.verses[chapterIdx];
+    chapterIdx++;
+  }
+  
+  return { bookName, chapter: chapterIdx + 1, verse: verseOffset + 1 };
 }
 
 // =====================================================================
