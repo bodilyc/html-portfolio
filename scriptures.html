@@ -125,6 +125,20 @@
     background: rgba(201,168,76,0.1); transform: translateY(-1px);
   }
 
+  /* Volume Filters */
+  .volume-filters {
+    display: flex; flex-wrap: wrap; justify-content: center; gap: 8px;
+    margin-bottom: 20px; font-family: 'Cinzel', serif; font-size: 0.75rem;
+    color: var(--text-dim); text-transform: uppercase; letter-spacing: 1px;
+  }
+  .volume-filters label {
+    display: flex; align-items: center; gap: 6px; cursor: pointer;
+    background: var(--bg-card); border: 1px solid var(--border);
+    padding: 6px 12px; border-radius: 6px; transition: all 0.2s;
+  }
+  .volume-filters label:hover { border-color: var(--gold); color: var(--gold-light); }
+  .volume-filters input { accent-color: var(--gold); cursor: pointer; }
+
   /* Dropdowns section */
   .dropdowns { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 18px; }
   .dropdown-group { display: flex; flex-direction: column; gap: 6px; }
@@ -225,6 +239,14 @@
 </header>
 
 <div class="game-wrapper">
+
+  <div class="volume-filters" id="volFilters">
+    <label><input type="checkbox" value="ot" checked> Old Testament</label>
+    <label><input type="checkbox" value="nt" checked> New Testament</label>
+    <label><input type="checkbox" value="bofm" checked> Book of Mormon</label>
+    <label><input type="checkbox" value="dc" checked> D&amp;C</label>
+    <label><input type="checkbox" value="pgp" checked> Pearl of Great Price</label>
+  </div>
 
   <div class="stats-bar">
     <div class="stat">
@@ -483,21 +505,43 @@ let countdownInterval = null;
 // =====================================================================
 // RANDOM REFERENCE PICKER (Uniformly distributed across all verses)
 // =====================================================================
-const SCRIPTURE_WEIGHTS = [];
+let activeVols = ['ot', 'nt', 'bofm', 'dc', 'pgp'];
+let SCRIPTURE_WEIGHTS = [];
 let totalStandardWorksVerses = 0;
 
-for (const [book, data] of Object.entries(SCRIPTURE_DB)) {
-  let bookVerses = 0;
-  for (const count of data.verses) {
-    bookVerses += count;
+function rebuildWeights() {
+  SCRIPTURE_WEIGHTS = [];
+  totalStandardWorksVerses = 0;
+  for (const [book, data] of Object.entries(SCRIPTURE_DB)) {
+    if (!activeVols.includes(data.vol)) continue;
+    
+    let bookVerses = 0;
+    for (const count of data.verses) bookVerses += count;
+    
+    SCRIPTURE_WEIGHTS.push({
+      book: book,
+      start: totalStandardWorksVerses,
+      end: totalStandardWorksVerses + bookVerses
+    });
+    totalStandardWorksVerses += bookVerses;
   }
-  SCRIPTURE_WEIGHTS.push({
-    book: book,
-    start: totalStandardWorksVerses,
-    end: totalStandardWorksVerses + bookVerses
-  });
-  totalStandardWorksVerses += bookVerses;
 }
+rebuildWeights();
+
+// Handle checkbox changes
+document.querySelectorAll('#volFilters input').forEach(cb => {
+  cb.addEventListener('change', () => {
+    const checked = document.querySelectorAll('#volFilters input:checked');
+    if (checked.length === 0) {
+      // Prevent user from unchecking everything
+      cb.checked = true;
+      return;
+    }
+    activeVols = Array.from(checked).map(i => i.value);
+    rebuildWeights();
+    startGame(); // reset the game to reflect the new subset of scriptures
+  });
+});
 
 function pickRandomRef() {
   const rand = Math.floor(Math.random() * totalStandardWorksVerses);
@@ -573,7 +617,17 @@ async function loadRound() {
   state.loading = true;
   clearFeedback();
   resetDropdowns();
-  submitBtn.disabled = true;
+  
+  // Auto-fill and lock Volume if only 1 is selected
+  if (activeVols.length === 1) {
+    volSel.value = activeVols[0];
+    volSel.disabled = true;
+    volSel.dispatchEvent(new Event('change'));
+  } else {
+    volSel.disabled = false;
+  }
+  
+  submitBtn.disabled = true; // explicitly keep disabled until choices made
   skipBtn.disabled = true;
   verseCard.classList.add('loading');
   verseText.textContent = 'Preparing next scripture\u2026';
@@ -705,8 +759,14 @@ submitBtn.addEventListener('click', () => {
   markSel(chapSel,  rightChap);
   markSel(verseSel, rightVerse);
 
-  const pts = [rightVol, rightBook, rightChap, rightVerse].filter(Boolean).length;
-  const allWrong = pts === 0 || (pts === 1 && rightVol === true); // Consider just getting volume correct as partially wrong if nothing else contextually is there. Actually, let's keep all wrong as 0.
+  let pts = 0;
+  let maxPts = 4;
+  if (activeVols.length === 1) {
+    maxPts = 3;
+    pts = [rightBook, rightChap, rightVerse].filter(Boolean).length;
+  } else {
+    pts = [rightVol, rightBook, rightChap, rightVerse].filter(Boolean).length;
+  }
 
   state.score += pts;
   if (pts === 0) {
@@ -730,12 +790,12 @@ submitBtn.addEventListener('click', () => {
   answerReveal.textContent = `${correctBook} ${correctChap}:${correctVerse}  (${volName})`;
   answerReveal.classList.add('show');
 
-  if (pts === 4) {
-    showFeedback('\u2726 Perfect! All 4 correct! +4 points', 'right');
+  if (pts === maxPts) {
+    showFeedback(`\u2726 Perfect! All ${maxPts} correct! +${maxPts} points`, 'right');
   } else if (pts === 0) {
     showFeedback(`\u2715 Complete miss \u2014 0 points. Miss ${state.misses}/5.`, 'wrong');
   } else {
-    showFeedback(`${pts}/4 correct \u2014 +${pts} point${pts>1?'s':''}`, 'partial');
+    showFeedback(`${pts}/${maxPts} correct \u2014 +${pts} point${pts>1?'s':''}`, 'partial');
   }
 
   // Check game over
@@ -858,6 +918,10 @@ function startGame() {
   avgDisplay.textContent   = '0.00';
   bestDisplay.textContent  = state.best;
   updatePips();
+  
+  // Flush prefetch queue since source volumes may have changed
+  verseQueue = []; 
+  
   loadRound();
 }
 
