@@ -1949,6 +1949,29 @@
 
                 // Homing Logic for BOMBS
                 if (item.type === 'bomb') {
+                    // Check collision with balls
+                    let hitBall = false;
+                    for (let j = 0; j < balls.length; j++) {
+                        const b = balls[j];
+                        const dx = item.x - b.x;
+                        const dy = item.y - b.y;
+                        const dist = Math.sqrt(dx * dx + dy * dy);
+                        if (dist < item.radius + b.radius) {
+                            hitBall = true;
+                            // Deflect the ball slightly
+                            b.dy = -b.dy;
+                            // Add some score for destroying a bomb
+                            score += 50;
+                            updateUI();
+                            createExplosion(item.x, item.y, '#FF4500'); // Orange/Red explosion
+                            break;
+                        }
+                    }
+                    if (hitBall) {
+                        fallingItems.splice(i, 1);
+                        continue;
+                    }
+
                     const paddleCenter = paddle.x + paddle.width / 2;
                     // Move towards paddle center horizontally
                     if (item.x < paddleCenter) {
