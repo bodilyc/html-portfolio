@@ -286,8 +286,7 @@
   <div id="answerReveal"></div>
   <div class="feedback-bar" id="feedbackBar"></div>
   <div class="countdown-wrapper" id="countdownWrapper">
-    <div class="countdown" id="countdownLabel">10</div>
-    <button class="btn-next" id="nextBtn" title="Skip wait">Next &#10140;</button>
+    <button class="btn-next" id="nextBtn">Next &#10140;</button>
   </div>
 
   <div class="dropdowns">
@@ -468,6 +467,7 @@ let state = {
   score: 0,
   round: 1,
   misses: 0,
+  guesses: 0,
   best: parseInt(localStorage.getItem('scriptureSleuthBest') || '0'),
   currentRef: null,   // { bookName, chapter (1-based), verse (1-based) }
   submitted: false,
@@ -497,10 +497,7 @@ const gameOverOverlay = document.getElementById('gameOverOverlay');
 const finalScoreEl  = document.getElementById('finalScore');
 const highScoreMsg  = document.getElementById('highScoreMsg');
 const countdownWrapper = document.getElementById('countdownWrapper');
-const countdownLabel= document.getElementById('countdownLabel');
 const nextBtn       = document.getElementById('nextBtn');
-
-let countdownInterval = null;
 
 // =====================================================================
 // RANDOM REFERENCE PICKER (Uniformly distributed across all verses)
@@ -527,6 +524,31 @@ function rebuildWeights() {
   }
 }
 rebuildWeights();
+
+// Compute global indices for distance calculating
+let globalTotalVerses = 0;
+const GLOBAL_SCRIPTURE_WEIGHTS = {};
+for (const [book, data] of Object.entries(SCRIPTURE_DB)) {
+  let bookVerses = 0;
+  for (const count of data.verses) bookVerses += count;
+  GLOBAL_SCRIPTURE_WEIGHTS[book] = {
+    start: globalTotalVerses,
+    end: globalTotalVerses + bookVerses,
+    chapters: data.verses
+  };
+  globalTotalVerses += bookVerses;
+}
+
+function getGlobalVerseIndex(book, chapter, verse) {
+  const bData = GLOBAL_SCRIPTURE_WEIGHTS[book];
+  if (!bData) return -1;
+  let idx = bData.start;
+  for (let c = 0; c < chapter - 1; c++) {
+    idx += bData.chapters[c] || 0;
+  }
+  idx += verse - 1;
+  return idx;
+}
 
 // Handle checkbox changes
 document.querySelectorAll('#volFilters input').forEach(cb => {
@@ -615,6 +637,7 @@ async function maintainQueue() {
 async function loadRound() {
   state.submitted = false;
   state.loading = true;
+  state.guesses = 0;
   clearFeedback();
   resetDropdowns();
   
@@ -733,9 +756,7 @@ function checkSubmit() {
 // =====================================================================
 submitBtn.addEventListener('click', () => {
   if (state.submitted || state.loading) return;
-  state.submitted = true;
-  submitBtn.disabled = true;
-  skipBtn.disabled = true;
+  state.guesses++;
 
   const ref = state.currentRef;
   const correctVol  = SCRIPTURE_DB[ref.bookName].vol;
@@ -768,51 +789,81 @@ submitBtn.addEventListener('click', () => {
     pts = [rightVol, rightBook, rightChap, rightVerse].filter(Boolean).length;
   }
 
-  state.score += pts;
-  if (pts === 0) {
-    state.misses++;
-    updatePips();
-  }
+  const isPerfect = (pts === maxPts);
+  const isLastGuess = (state.guesses >= 3);
 
-  scoreDisplay.textContent = state.score;
-  const avg = (state.score / state.round).toFixed(2);
-  avgDisplay.textContent = avg;
+  if (isPerfect || isLastGuess) {
+    state.submitted = true;
+    submitBtn.disabled = true;
+    skipBtn.disabled = true;
 
-  if (state.score > state.best) {
-    state.best = state.score;
-    localStorage.setItem('scriptureSleuthBest', state.best);
-    bestDisplay.textContent = state.best;
-  }
+    // Check requirement
+    let failedRequirement = false;
+    if (correctVol === 'dc') {
+      if (!rightVol || !rightBook || !rightChap) failedRequirement = true;
+    } else {
+      if (!rightVol || !rightBook) failedRequirement = true;
+    }
 
-  // Feedback
-  const chapWord = VOLUMES[correctVol]?.chapLabel || 'Chapter';
-  const volName  = VOLUMES[correctVol]?.name || correctVol;
-  answerReveal.textContent = `${correctBook} ${correctChap}:${correctVerse}  (${volName})`;
-  answerReveal.classList.add('show');
+    if (failedRequirement) {
+      state.misses++;
+      updatePips();
+    }
 
-  if (pts === maxPts) {
-    showFeedback(`\u2726 Perfect! All ${maxPts} correct! +${maxPts} points`, 'right');
-  } else if (pts === 0) {
-    showFeedback(`\u2715 Complete miss \u2014 0 points. Miss ${state.misses}/5.`, 'wrong');
+    state.score += pts;
+    scoreDisplay.textContent = state.score;
+    const avg = (state.score / state.round).toFixed(2);
+    avgDisplay.textContent = avg;
+
+    if (state.score > state.best) {
+      state.best = state.score;
+      localStorage.setItem('scriptureSleuthBest', state.best);
+      bestDisplay.textContent = state.best;
+    }
+
+    const chapWord = VOLUMES[correctVol]?.chapLabel || 'Chapter';
+    const volName  = VOLUMES[correctVol]?.name || correctVol;
+    answerReveal.textContent = `${correctBook} ${correctChap}:${correctVerse}  (${volName})`;
+    answerReveal.classList.add('show');
+
+    if (isPerfect) {
+      showFeedback(`\u2726 Perfect! All correct! +${pts} points`, 'right');
+    } else if (failedRequirement) {
+      const needed = correctVol === 'dc' ? 'Vol, Book & Sec' : 'Vol & Book';
+      showFeedback(`\u2715 Miss! You needed ${needed}. +${pts} pts. Miss ${state.misses}/5.`, 'wrong');
+    } else {
+      showFeedback(`${pts}/${maxPts} correct \u2014 +${pts} point${pts>1?'s':''}`, 'partial');
+    }
+
+    if (state.misses >= 5) {
+      setTimeout(() => showGameOver(), 1400);
+      return;
+    }
+
+    showNextButton();
   } else {
-    showFeedback(`${pts}/${maxPts} correct \u2014 +${pts} point${pts>1?'s':''}`, 'partial');
+    // Guesses remain
+    let distMsg = "";
+    if (guessBook && !isNaN(guessChap) && !isNaN(guessVerse)) {
+      const guessIdx = getGlobalVerseIndex(guessBook, guessChap, guessVerse);
+      const actIdx = getGlobalVerseIndex(correctBook, correctChap, correctVerse);
+      if (guessIdx !== -1 && actIdx !== -1) {
+        const diff = Math.abs(guessIdx - actIdx);
+        distMsg = `\u2014 You are ${diff} verse${diff !== 1 ? 's' : ''} away.`;
+      }
+    } else {
+      distMsg = "\u2014 Select Book, Chap & Verse for distance.";
+    }
+    showFeedback(`Guess ${state.guesses}/3 ${distMsg}`, 'wrong');
   }
-
-  // Check game over
-  if (state.misses >= 5) {
-    setTimeout(() => showGameOver(), 1400);
-    return;
-  }
-
-  // Next round countdown
-  startCountdown();
 });
 
 // =====================================================================
 // SKIP
 // =====================================================================
 skipBtn.addEventListener('click', () => {
-  if (state.loading) return;
+  if (state.loading || state.submitted) return;
+  state.submitted = true;
   state.misses++;
   updatePips();
   const ref = state.currentRef;
@@ -828,31 +879,14 @@ skipBtn.addEventListener('click', () => {
     setTimeout(() => showGameOver(), 1400);
     return;
   }
-  startCountdown();
+  showNextButton();
 });
 
-function startCountdown() {
+function showNextButton() {
   countdownWrapper.classList.add('show');
-  let timeLeft = 10;
-  countdownLabel.textContent = timeLeft;
-  
-  if (countdownInterval) clearInterval(countdownInterval);
-  countdownInterval = setInterval(() => {
-    timeLeft--;
-    if (timeLeft <= 0) {
-      clearInterval(countdownInterval);
-      nextRound();
-    } else {
-      countdownLabel.textContent = timeLeft;
-    }
-  }, 1000);
 }
 
 nextBtn.addEventListener('click', () => {
-  if (countdownInterval) {
-    clearInterval(countdownInterval);
-    countdownInterval = null;
-  }
   nextRound();
 });
 
@@ -872,7 +906,6 @@ function clearFeedback() {
   answerReveal.textContent = '';
   answerReveal.classList.remove('show');
   countdownWrapper.classList.remove('show');
-  if (countdownInterval) clearInterval(countdownInterval);
 }
 function resetDropdowns() {
   volSel.value = '';
@@ -913,6 +946,7 @@ function startGame() {
   state.score  = 0;
   state.round  = 1;
   state.misses = 0;
+  state.guesses= 0;
   scoreDisplay.textContent = '0';
   roundDisplay.textContent = '1';
   avgDisplay.textContent   = '0.00';
@@ -934,7 +968,7 @@ loadRound();
 // Enter key support
 document.addEventListener('keydown', (e) => {
   if (e.key === 'Enter') {
-    // If waiting for next round, skip countdown
+    // If waiting for next round
     if (countdownWrapper.classList.contains('show')) {
       nextBtn.click();
     } 
