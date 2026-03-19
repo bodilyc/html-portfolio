@@ -328,20 +328,6 @@
 
 </div>
 
-<!-- Game Over overlay -->
-<div class="overlay" id="gameOverOverlay">
-  <div class="overlay-card">
-    <h2>Game Over</h2>
-    <p>You have exhausted your 5 misses.</p>
-    <div class="big-score" id="finalScore">0</div>
-    <div class="label">Points Earned</div>
-    <hr class="divider">
-    <p id="highScoreMsg" style="color:var(--gold);font-style:normal;font-family:'Cinzel',serif;font-size:0.9rem;letter-spacing:1px;"></p>
-    <br>
-    <button class="btn btn-primary" onclick="startGame()">Play Again</button>
-  </div>
-</div>
-
 <script>
 // =====================================================================
 // SCRIPTURE DATA
@@ -493,9 +479,6 @@ const roundDisplay  = document.getElementById('roundDisplay');
 const avgDisplay    = document.getElementById('avgDisplay');
 const bestDisplay   = document.getElementById('bestDisplay');
 const roundLabel    = document.getElementById('roundLabel');
-const gameOverOverlay = document.getElementById('gameOverOverlay');
-const finalScoreEl  = document.getElementById('finalScore');
-const highScoreMsg  = document.getElementById('highScoreMsg');
 const countdownWrapper = document.getElementById('countdownWrapper');
 const nextBtn       = document.getElementById('nextBtn');
 
@@ -780,16 +763,20 @@ submitBtn.addEventListener('click', () => {
   markSel(chapSel,  rightChap);
   markSel(verseSel, rightVerse);
 
-  let pts = 0;
-  let maxPts = 4;
-  if (activeVols.length === 1) {
-    maxPts = 3;
-    pts = [rightBook, rightChap, rightVerse].filter(Boolean).length;
+  let diff = -1;
+  let distMsg = "";
+  if (guessBook && !isNaN(guessChap) && !isNaN(guessVerse)) {
+    const guessIdx = getGlobalVerseIndex(guessBook, guessChap, guessVerse);
+    const actIdx = getGlobalVerseIndex(correctBook, correctChap, correctVerse);
+    if (guessIdx !== -1 && actIdx !== -1) {
+      diff = Math.abs(guessIdx - actIdx);
+      distMsg = `\u2014 You are ${diff} verse${diff !== 1 ? 's' : ''} away.`;
+    }
   } else {
-    pts = [rightVol, rightBook, rightChap, rightVerse].filter(Boolean).length;
+    distMsg = "\u2014 Select Book, Chap & Verse for distance.";
   }
 
-  const isPerfect = (pts === maxPts);
+  const isPerfect = (diff === 0);
   const isLastGuess = (state.guesses >= 3);
 
   if (isPerfect || isLastGuess) {
@@ -810,6 +797,13 @@ submitBtn.addEventListener('click', () => {
       updatePips();
     }
 
+    let pts = 0;
+    if (diff === 0) {
+      pts = 2000; // Exact match bonus
+    } else if (diff !== -1) {
+      pts = Math.round(10000 / (diff + 10)); // Distance-based score
+    }
+
     state.score += pts;
     scoreDisplay.textContent = state.score;
     const avg = (state.score / state.round).toFixed(2);
@@ -826,34 +820,25 @@ submitBtn.addEventListener('click', () => {
     answerReveal.textContent = `${correctBook} ${correctChap}:${correctVerse}  (${volName})`;
     answerReveal.classList.add('show');
 
+    let finalDistMsg = diff !== -1 && diff !== 0 ? `You were ${diff} verse${diff !== 1 ? 's' : ''} away. ` : '';
+    
     if (isPerfect) {
       showFeedback(`\u2726 Perfect! All correct! +${pts} points`, 'right');
     } else if (failedRequirement) {
       const needed = correctVol === 'dc' ? 'Vol, Book & Sec' : 'Vol & Book';
-      showFeedback(`\u2715 Miss! You needed ${needed}. +${pts} pts. Miss ${state.misses}/5.`, 'wrong');
+      showFeedback(`${finalDistMsg}\u2715 Miss! You needed ${needed}. +${pts} pts. Miss ${state.misses}/5.`, 'wrong');
     } else {
-      showFeedback(`${pts}/${maxPts} correct \u2014 +${pts} point${pts>1?'s':''}`, 'partial');
+      showFeedback(`${finalDistMsg}Good guess! +${pts} points`, 'partial');
     }
 
     if (state.misses >= 5) {
-      setTimeout(() => showGameOver(), 1400);
+      showNextButton(true);
       return;
     }
 
-    showNextButton();
+    showNextButton(false);
   } else {
     // Guesses remain
-    let distMsg = "";
-    if (guessBook && !isNaN(guessChap) && !isNaN(guessVerse)) {
-      const guessIdx = getGlobalVerseIndex(guessBook, guessChap, guessVerse);
-      const actIdx = getGlobalVerseIndex(correctBook, correctChap, correctVerse);
-      if (guessIdx !== -1 && actIdx !== -1) {
-        const diff = Math.abs(guessIdx - actIdx);
-        distMsg = `\u2014 You are ${diff} verse${diff !== 1 ? 's' : ''} away.`;
-      }
-    } else {
-      distMsg = "\u2014 Select Book, Chap & Verse for distance.";
-    }
     showFeedback(`Guess ${state.guesses}/3 ${distMsg}`, 'wrong');
   }
 });
@@ -876,19 +861,23 @@ skipBtn.addEventListener('click', () => {
   skipBtn.disabled = true;
 
   if (state.misses >= 5) {
-    setTimeout(() => showGameOver(), 1400);
+    showNextButton(true);
     return;
   }
-  showNextButton();
+  showNextButton(false);
 });
 
-function showNextButton() {
+function showNextButton(isGameOver) {
   countdownWrapper.classList.add('show');
+  if (isGameOver) {
+    nextBtn.innerHTML = 'Play Again &#8635;';
+    nextBtn.onclick = () => { startGame(); };
+    feedbackBar.textContent = "Game Over! " + feedbackBar.textContent;
+  } else {
+    nextBtn.innerHTML = 'Next &#10140;';
+    nextBtn.onclick = () => { nextRound(); };
+  }
 }
-
-nextBtn.addEventListener('click', () => {
-  nextRound();
-});
 
 // =====================================================================
 // HELPERS
@@ -926,23 +915,12 @@ function nextRound() {
   roundDisplay.textContent = state.round;
   loadRound();
 }
-function showGameOver() {
-  finalScoreEl.textContent = state.score;
-  const prevBest = parseInt(localStorage.getItem('scriptureSleuthHighScore') || '0');
-  if (state.score > prevBest) {
-    localStorage.setItem('scriptureSleuthHighScore', state.score);
-    highScoreMsg.textContent = '\ud83c\udfc6 New personal best!';
-  } else {
-    highScoreMsg.textContent = `Best: ${prevBest} points`;
-  }
-  gameOverOverlay.classList.add('active');
-}
+// Game Over inline logic is handled in showNextButton
 
 // =====================================================================
 // START/RESTART
 // =====================================================================
 function startGame() {
-  gameOverOverlay.classList.remove('active');
   state.score  = 0;
   state.round  = 1;
   state.misses = 0;
