@@ -262,9 +262,144 @@
     display: none;
   }
   .meter-label.show { display: block; }
+
+  /* Streak Banner */
+  .streak-banner {
+    display: none;
+    text-align: center;
+    font-family: 'Cinzel', serif;
+    font-size: 1rem;
+    letter-spacing: 2px;
+    color: var(--gold-light);
+    margin-bottom: 10px;
+    animation: streakPop 0.4s cubic-bezier(0.34,1.56,0.64,1);
+  }
+  .streak-banner.show { display: block; }
+  @keyframes streakPop { from { opacity:0; transform:scale(0.7); } to { opacity:1; transform:scale(1); } }
+
+  /* Confetti Canvas */
+  #confettiCanvas {
+    pointer-events: none;
+    position: fixed;
+    inset: 0;
+    z-index: 200;
+    width: 100%;
+    height: 100%;
+  }
+
+  /* Guess History Panel */
+  .history-section {
+    margin-top: 24px;
+  }
+  .history-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    cursor: pointer;
+    padding: 8px 14px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-family: 'Cinzel', serif;
+    font-size: 0.75rem;
+    letter-spacing: 2px;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    user-select: none;
+    transition: border-color 0.2s, color 0.2s;
+  }
+  .history-header:hover { border-color: var(--gold); color: var(--gold-light); }
+  .history-toggle-icon { transition: transform 0.25s; }
+  .history-toggle-icon.open { transform: rotate(180deg); }
+  .history-list {
+    display: none;
+    margin-top: 6px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+  }
+  .history-list.open { display: block; }
+  .history-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 9px 16px;
+    font-size: 0.95rem;
+    border-bottom: 1px solid var(--border);
+  }
+  .history-item:last-child { border-bottom: none; }
+  .history-item:nth-child(even) { background: rgba(255,255,255,0.02); }
+  .history-ref { color: var(--text); font-family: 'EB Garamond', serif; }
+  .history-pts { font-family: 'Cinzel', serif; font-size: 0.85rem; color: var(--gold-light); }
+  .history-pts.miss { color: var(--red); }
+  .history-pts.skip { color: var(--text-dim); }
+
+  /* Game Over Overlay */
+  .overlay-share-btn {
+    margin-top: 12px;
+    padding: 10px 26px;
+    font-family: 'Cinzel', serif;
+    font-size: 0.85rem;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    background: transparent;
+    border: 1px solid var(--gold);
+    color: var(--gold);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .overlay-share-btn:hover { background: rgba(201,168,76,0.1); }
+  .share-copied-msg {
+    font-family: 'Cinzel', serif;
+    font-size: 0.7rem;
+    letter-spacing: 2px;
+    color: var(--green);
+    margin-top: 8px;
+    min-height: 18px;
+    display: block;
+  }
+
+  /* Mobile sticky submit */
+  @media (max-width: 600px) {
+    body { padding-bottom: 80px; }
+    .btn-row {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      margin: 0;
+      padding: 12px 16px;
+      background: var(--bg-dark);
+      border-top: 1px solid var(--border);
+      z-index: 50;
+      backdrop-filter: blur(4px);
+      justify-content: stretch;
+    }
+    .btn-row .btn { flex: 1; }
+  }
 </style>
 </head>
 <body>
+
+<!-- Game Over Overlay -->
+<div class="overlay" id="gameOverOverlay">
+  <div class="overlay-card">
+    <h2>Game Over</h2>
+    <p id="gameOverSubtitle"></p>
+    <div class="big-score" id="gameOverScore"></div>
+    <div class="label">Final Score</div>
+    <hr class="divider">
+    <div id="shareGrid" style="font-size:1.6rem; letter-spacing:3px; margin:8px 0;"></div>
+    <button class="overlay-share-btn" id="shareBtn">&#128279; Share Result</button>
+    <span class="share-copied-msg" id="shareCopiedMsg"></span>
+    <hr class="divider">
+    <button class="btn btn-primary" id="playAgainBtn" style="margin-top:4px;">Play Again &#8635;</button>
+  </div>
+</div>
+
+<!-- Confetti Canvas -->
+<canvas id="confettiCanvas"></canvas>
 
 <header>
   <h1>&#x2721; Scripture Sleuth</h1>
@@ -323,6 +458,7 @@
     <div class="meter-fill" id="meterFill"></div>
   </div>
   <div class="feedback-bar" id="feedbackBar"></div>
+  <div class="streak-banner" id="streakBanner"></div>
   <div class="countdown-wrapper" id="countdownWrapper">
     <button class="btn-next" id="nextBtn">Next &#10140;</button>
   </div>
@@ -362,6 +498,15 @@
   <div class="btn-row">
     <button class="btn btn-primary" id="submitBtn" disabled>Submit Guess</button>
     <button class="btn btn-secondary" id="skipBtn">Skip This Verse</button>
+  </div>
+
+  <!-- Guess History Panel -->
+  <div class="history-section" id="historySection">
+    <div class="history-header" id="historyHeader" tabindex="0" role="button" aria-expanded="false">
+      <span>Round History</span>
+      <span class="history-toggle-icon" id="historyIcon">&#9660;</span>
+    </div>
+    <div class="history-list" id="historyList"></div>
   </div>
 
 </div>
@@ -496,6 +641,9 @@ let state = {
   currentRef: null,   // { bookName, chapter (1-based), verse (1-based) }
   submitted: false,
   loading: false,
+  streak: 0,          // consecutive rounds with correct vol+book
+  roundHistory: [],   // [{ ref, pts, result }]
+  shareEmojis: [],    // emoji per round for sharing
 };
 
 // =====================================================================
@@ -522,6 +670,18 @@ const nextBtn       = document.getElementById('nextBtn');
 const distMeter     = document.getElementById('distanceMeter');
 const meterFill     = document.getElementById('meterFill');
 const meterLabel    = document.getElementById('meterLabel');
+const streakBanner  = document.getElementById('streakBanner');
+const historyList   = document.getElementById('historyList');
+const historyHeader = document.getElementById('historyHeader');
+const historyIcon   = document.getElementById('historyIcon');
+const gameOverOverlay = document.getElementById('gameOverOverlay');
+const gameOverScore   = document.getElementById('gameOverScore');
+const gameOverSubtitle= document.getElementById('gameOverSubtitle');
+const shareGrid       = document.getElementById('shareGrid');
+const shareBtn        = document.getElementById('shareBtn');
+const shareCopiedMsg  = document.getElementById('shareCopiedMsg');
+const playAgainBtn    = document.getElementById('playAgainBtn');
+const confettiCanvas  = document.getElementById('confettiCanvas');
 
 // =====================================================================
 // RANDOM REFERENCE PICKER (Uniformly distributed across all verses)
@@ -573,6 +733,196 @@ function getGlobalVerseIndex(book, chapter, verse) {
   idx += verse - 1;
   return idx;
 }
+
+// =====================================================================
+// AUDIO — Hot/Cold Tones (Web Audio API)
+// =====================================================================
+let audioCtx = null;
+function getAudioCtx() {
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  return audioCtx;
+}
+function playTone(freq, type = 'sine', duration = 0.18, vol = 0.18) {
+  try {
+    const ctx = getAudioCtx();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain); gain.connect(ctx.destination);
+    osc.type = type;
+    osc.frequency.setValueAtTime(freq, ctx.currentTime);
+    gain.gain.setValueAtTime(vol, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duration);
+    osc.start(); osc.stop(ctx.currentTime + duration);
+  } catch(e) {}
+}
+function playHotColdTone(diff) {
+  if (diff === 0) {
+    // Perfect — triumphant arpeggio
+    [523, 659, 784, 1047].forEach((f, i) => setTimeout(() => playTone(f, 'sine', 0.22, 0.22), i * 80));
+  } else if (diff < 50) {
+    playTone(660, 'sine', 0.2, 0.18); // warm, high
+  } else if (diff < 200) {
+    playTone(440, 'sine', 0.2, 0.15); // medium
+  } else if (diff < 600) {
+    playTone(293, 'sine', 0.2, 0.14); // cool
+  } else {
+    playTone(196, 'triangle', 0.25, 0.14); // cold, low
+  }
+}
+function playSkipTone() {
+  playTone(220, 'triangle', 0.25, 0.12);
+}
+
+// =====================================================================
+// CONFETTI
+// =====================================================================
+const confettiCtx = confettiCanvas.getContext('2d');
+let confettiParticles = [];
+let confettiAnimId = null;
+const CONFETTI_COLORS = ['#c9a84c','#f0d080','#4caf7d','#5b9bd5','#e05555','#fff','#ff9f43'];
+
+function spawnConfetti(count = 90) {
+  confettiCanvas.width = window.innerWidth;
+  confettiCanvas.height = window.innerHeight;
+  confettiParticles = [];
+  for (let i = 0; i < count; i++) {
+    confettiParticles.push({
+      x: Math.random() * confettiCanvas.width,
+      y: Math.random() * confettiCanvas.height * 0.4 - confettiCanvas.height * 0.2,
+      w: 6 + Math.random() * 8,
+      h: 4 + Math.random() * 6,
+      color: CONFETTI_COLORS[Math.floor(Math.random() * CONFETTI_COLORS.length)],
+      vx: (Math.random() - 0.5) * 4,
+      vy: 2 + Math.random() * 4,
+      angle: Math.random() * Math.PI * 2,
+      spin: (Math.random() - 0.5) * 0.25,
+      opacity: 1,
+    });
+  }
+  if (confettiAnimId) cancelAnimationFrame(confettiAnimId);
+  animateConfetti();
+}
+
+function animateConfetti() {
+  confettiCtx.clearRect(0, 0, confettiCanvas.width, confettiCanvas.height);
+  let alive = false;
+  confettiParticles.forEach(p => {
+    p.x += p.vx; p.y += p.vy;
+    p.angle += p.spin;
+    p.vy += 0.12; // gravity
+    p.opacity -= 0.008;
+    if (p.opacity > 0 && p.y < confettiCanvas.height + 20) {
+      alive = true;
+      confettiCtx.save();
+      confettiCtx.globalAlpha = Math.max(0, p.opacity);
+      confettiCtx.translate(p.x, p.y);
+      confettiCtx.rotate(p.angle);
+      confettiCtx.fillStyle = p.color;
+      confettiCtx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h);
+      confettiCtx.restore();
+    }
+  });
+  if (alive) {
+    confettiAnimId = requestAnimationFrame(animateConfetti);
+  } else {
+    confettiCtx.clearRect(0, 0, confettiCanvas.width, confettiCanvas.height);
+    confettiAnimId = null;
+  }
+}
+
+// =====================================================================
+// GUESS HISTORY
+// =====================================================================
+function addHistoryEntry(ref, pts, result) {
+  // result: 'perfect' | 'good' | 'miss' | 'skip'
+  const volName = VOLUMES[SCRIPTURE_DB[ref.bookName]?.vol]?.name || '';
+  const refStr = `${ref.bookName} ${ref.chapter}:${ref.verse}`;
+  state.roundHistory.unshift({ refStr, volName, pts, result, round: state.round });
+  renderHistory();
+}
+
+function renderHistory() {
+  historyList.innerHTML = '';
+  if (state.roundHistory.length === 0) return;
+  state.roundHistory.slice(0, 10).forEach(entry => {
+    const item = document.createElement('div');
+    item.className = 'history-item';
+    const refEl = document.createElement('span');
+    refEl.className = 'history-ref';
+    refEl.textContent = `Rd ${entry.round}: ${entry.refStr}`;
+    const ptsEl = document.createElement('span');
+    const clsMap = { perfect: '', good: '', miss: ' miss', skip: ' skip' };
+    ptsEl.className = 'history-pts' + (clsMap[entry.result] || '');
+    if (entry.result === 'skip') ptsEl.textContent = 'Skipped';
+    else if (entry.result === 'miss') ptsEl.textContent = `+${entry.pts} pts ✗`;
+    else ptsEl.textContent = `+${entry.pts} pts`;
+    item.appendChild(refEl);
+    item.appendChild(ptsEl);
+    historyList.appendChild(item);
+  });
+}
+
+// Toggle history open/close
+function toggleHistory() {
+  const isOpen = historyList.classList.contains('open');
+  historyList.classList.toggle('open', !isOpen);
+  historyIcon.classList.toggle('open', !isOpen);
+  historyHeader.setAttribute('aria-expanded', !isOpen);
+}
+historyHeader.addEventListener('click', toggleHistory);
+historyHeader.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleHistory(); } });
+
+// =====================================================================
+// SHARE RESULT
+// =====================================================================
+function buildShareText() {
+  const rounds = state.roundHistory.slice().reverse(); // oldest first
+  const emojiRows = rounds.map(r => {
+    if (r.result === 'perfect') return '🟩';
+    if (r.result === 'good')    return '🟨';
+    if (r.result === 'skip')    return '⬜';
+    return '🟥';
+  });
+  const grid = emojiRows.join('');
+  return `Scripture Sleuth ✡\nScore: ${state.score} | Rounds: ${state.round}\n${grid}\n`;
+}
+
+function showGameOver() {
+  gameOverScore.textContent = state.score;
+  gameOverSubtitle.textContent = `${state.round} round${state.round !== 1 ? 's' : ''} • Best: ${state.best}`;
+  
+  // Build emoji grid
+  const rounds = state.roundHistory.slice().reverse();
+  const emojiRows = rounds.map(r => {
+    if (r.result === 'perfect') return '🟩';
+    if (r.result === 'good')    return '🟨';
+    if (r.result === 'skip')    return '⬜';
+    return '🟥';
+  });
+  shareGrid.textContent = emojiRows.join('');
+  shareCopiedMsg.textContent = '';
+  gameOverOverlay.classList.add('active');
+}
+
+shareBtn.addEventListener('click', async () => {
+  const text = buildShareText();
+  try {
+    await navigator.clipboard.writeText(text);
+    shareCopiedMsg.textContent = '✓ Copied to clipboard!';
+  } catch(e) {
+    // Fallback
+    const ta = document.createElement('textarea');
+    ta.value = text; document.body.appendChild(ta); ta.select();
+    document.execCommand('copy'); document.body.removeChild(ta);
+    shareCopiedMsg.textContent = '✓ Copied!';
+  }
+  setTimeout(() => { shareCopiedMsg.textContent = ''; }, 2500);
+});
+
+playAgainBtn.addEventListener('click', () => {
+  gameOverOverlay.classList.remove('active');
+  startGame();
+});
 
 // Handle checkbox changes
 document.querySelectorAll('#volFilters input').forEach(cb => {
@@ -776,6 +1126,26 @@ function checkSubmit() {
 }
 
 // =====================================================================
+// STREAK BONUS
+// =====================================================================
+const STREAK_BONUS = 150;
+function applyStreakBonus(gotIt) {
+  if (gotIt) {
+    state.streak++;
+    if (state.streak >= 2) {
+      const bonus = (state.streak - 1) * STREAK_BONUS;
+      state.score += bonus;
+      scoreDisplay.textContent = state.score;
+      streakBanner.textContent = `🔥 ${state.streak}-Round Streak! +${bonus} Bonus!`;
+      streakBanner.classList.add('show');
+    }
+  } else {
+    state.streak = 0;
+    streakBanner.classList.remove('show');
+  }
+}
+
+// =====================================================================
 // SUBMIT
 // =====================================================================
 submitBtn.addEventListener('click', () => {
@@ -863,14 +1233,25 @@ submitBtn.addEventListener('click', () => {
 
     let finalDistMsg = diff !== -1 && diff !== 0 ? `You were ${diff} verse${diff !== 1 ? 's' : ''} away. ` : '';
     
+    // Streak & share tracking
+    const wasGood = !failedRequirement;
+    applyStreakBonus(wasGood);
+    const roundResult = isPerfect ? 'perfect' : failedRequirement ? 'miss' : 'good';
+    state.shareEmojis.push(roundResult);
+    addHistoryEntry(ref, pts, roundResult);
+
     if (isPerfect) {
       showFeedback(`\u2726 Perfect! All correct! +${pts} points`, 'right');
+      spawnConfetti();
     } else if (failedRequirement) {
       const needed = correctVol === 'dc' ? 'Vol, Book & Sec' : 'Vol & Book';
       showFeedback(`${finalDistMsg}\u2715 Miss! You needed ${needed}. +${pts} pts. Miss ${state.misses}/5.`, 'wrong');
     } else {
       showFeedback(`${finalDistMsg}Good guess! +${pts} points`, 'partial');
     }
+
+    // Play tone
+    if (diff !== -1) playHotColdTone(diff);
 
     if (state.misses >= 5) {
       showNextButton(true);
@@ -879,8 +1260,9 @@ submitBtn.addEventListener('click', () => {
 
     showNextButton(false);
   } else {
-    // Guesses remain
+    // Guesses remain — play hot/cold tone
     showFeedback(`Guess ${state.guesses}/3 ${distMsg}`, 'wrong');
+    if (diff !== -1) playHotColdTone(diff);
   }
   
   if (diff !== -1) {
@@ -920,6 +1302,10 @@ skipBtn.addEventListener('click', () => {
   showFeedback(`Skipped \u2014 Miss ${state.misses}/5`, 'wrong');
   submitBtn.disabled = true;
   skipBtn.disabled = true;
+  playSkipTone();
+  applyStreakBonus(false);
+  state.shareEmojis.push('skip');
+  addHistoryEntry(ref, 0, 'skip');
 
   if (state.misses >= 5) {
     showNextButton(true);
@@ -931,8 +1317,8 @@ skipBtn.addEventListener('click', () => {
 function showNextButton(isGameOver) {
   countdownWrapper.classList.add('show');
   if (isGameOver) {
-    nextBtn.innerHTML = 'Play Again &#8635;';
-    nextBtn.onclick = () => { startGame(); };
+    nextBtn.innerHTML = 'See Results &#8635;';
+    nextBtn.onclick = () => { showGameOver(); };
     feedbackBar.textContent = "Game Over! " + feedbackBar.textContent;
   } else {
     nextBtn.innerHTML = 'Next &#10140;';
@@ -958,6 +1344,7 @@ function clearFeedback() {
   countdownWrapper.classList.remove('show');
   distMeter.classList.remove('show');
   meterLabel.classList.remove('show');
+  streakBanner.classList.remove('show');
 }
 function resetDropdowns() {
   volSel.value = '';
@@ -988,11 +1375,16 @@ function startGame() {
   state.round  = 1;
   state.misses = 0;
   state.guesses= 0;
+  state.streak = 0;
+  state.roundHistory = [];
+  state.shareEmojis = [];
   scoreDisplay.textContent = '0';
   roundDisplay.textContent = '1';
   avgDisplay.textContent   = '0.00';
   bestDisplay.textContent  = state.best;
   updatePips();
+  renderHistory();
+  gameOverOverlay.classList.remove('active');
   
   // Flush prefetch queue since source volumes may have changed
   verseQueue = []; 
@@ -1006,18 +1398,43 @@ function startGame() {
 bestDisplay.textContent = state.best;
 loadRound();
 
-// Enter key support
+// =====================================================================
+// KEYBOARD NAVIGATION
+// =====================================================================
 document.addEventListener('keydown', (e) => {
   if (e.key === 'Enter') {
+    // Dismiss game over overlay
+    if (gameOverOverlay.classList.contains('active')) {
+      gameOverOverlay.classList.remove('active');
+      startGame();
+      return;
+    }
     // If waiting for next round
     if (countdownWrapper.classList.contains('show')) {
       nextBtn.click();
+      return;
     } 
-    // Otherwise, submit guess if ready
-    else if (!submitBtn.disabled && !state.submitted && !state.loading) {
+    // Submit guess if ready
+    if (!submitBtn.disabled && !state.submitted && !state.loading) {
       submitBtn.click();
     }
   }
+  // Tab (default) already moves focus between selects
+  // Arrow keys auto-navigate within focused <select> elements natively
+});
+
+// Auto-focus first unlocked dropdown at start of round for keyboard users
+function focusFirstInput() {
+  const target = [volSel, bookSel, chapSel, verseSel].find(s => !s.disabled);
+  if (target) target.focus();
+}
+
+// When a dropdown's selection enables the next one, move focus to it
+[volSel, bookSel, chapSel].forEach((sel, i) => {
+  const next = [bookSel, chapSel, verseSel][i];
+  sel.addEventListener('change', () => {
+    if (!next.disabled) setTimeout(() => next.focus(), 0);
+  });
 });
 </script>
 </body>
