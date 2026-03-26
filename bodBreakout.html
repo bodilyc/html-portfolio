@@ -911,7 +911,7 @@
             const maxBombs = level < 5 ? 0 : (level < 10 ? 1 : (level < 15 ? 2 : 99));
             let bombsPlaced = 0;
             let starsPlaced = 0;
-            const maxStars = level >= 8 ? 1 : 0; // Star only on Level 8+, max 1 per level
+            const maxStars = 1; // Star on any level, max 1 per level
             for (let i = 0; i < numPowerUps; i++) {
                 if (allCoordinates.length === 0) break;
                 const index = Math.floor(Math.random() * allCoordinates.length);
@@ -923,7 +923,7 @@
                     type = powerUpTypes[Math.floor(Math.random() * powerUpTypes.length)];
                     rerolls++;
                 }
-                // Re-roll if star not allowed yet or already placed one
+                // Re-roll if already placed one star
                 rerolls = 0;
                 while (type === 'star' && starsPlaced >= maxStars && rerolls < 10) {
                     type = powerUpTypes[Math.floor(Math.random() * powerUpTypes.length)];
