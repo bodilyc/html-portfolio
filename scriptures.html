@@ -440,8 +440,6 @@
         <div class="pip" id="pip0"></div>
         <div class="pip" id="pip1"></div>
         <div class="pip" id="pip2"></div>
-        <div class="pip" id="pip3"></div>
-        <div class="pip" id="pip4"></div>
       </div>
     </div>
   </div>
@@ -959,17 +957,21 @@ function pickRandomRef() {
 // API FETCH
 // =====================================================================
 async function fetchVerse(ref) {
-  const apiBook = SCRIPTURE_DB[ref.bookName].api;
-  const q = encodeURIComponent(`${apiBook} ${ref.chapter}:${ref.verse}`);
+  const q = encodeURIComponent(`${ref.bookName} ${ref.chapter}:${ref.verse}`);
+  const url = `https://www.churchofjesuschrist.org/search/proxy/vertex-scripture-search?query=${q}&collectionName=*&bookTitle=*&start=1&pageSize=1`;
   
-  // Use allOrigins CORS proxy (more reliable than corsproxy.io)
-  const targetUrl = encodeURIComponent(`https://api.nephi.org/scriptures/?q=${q}&format=json`);
-  const url = `https://api.allorigins.win/raw?url=${targetUrl}`;
-  
-  const res = await fetch(url);
-  const data = await res.json();
-  if (data.scriptures && data.scriptures.length > 0) {
-    return data.scriptures[0].text;
+  try {
+    const res = await fetch(url);
+    const data = await res.json();
+    if (data.results && data.results.length > 0) {
+      const field = data.results[0].document.structData.fields;
+      return {
+        text: field.verse_text?.stringValue || field.body?.stringValue || null,
+        url: field.deep_link?.stringValue || null
+      };
+    }
+  } catch(e) {
+    console.error("API Fetch Error:", e);
   }
   return null;
 }
@@ -985,22 +987,33 @@ async function maintainQueue() {
   if (isFetchingQueue) return;
   isFetchingQueue = true;
   
-  while (verseQueue.length < PREFETCH_LIMIT) {
-    let fetched = false;
-    let attempts = 0;
-    while (!fetched && attempts < 8) {
-      const ref = pickRandomRef();
-      try { 
-        const text = await fetchVerse(ref); 
-        if (text) {
-          verseQueue.push({ ref, text });
-          fetched = true;
-        }
-      } catch(e) {}
-      attempts++;
-    }
-    if (!fetched) break; // Break if we heavily fail so we don't infinite loop
+  const needed = PREFETCH_LIMIT - verseQueue.length;
+  if (needed <= 0) {
+    isFetchingQueue = false;
+    return;
   }
+
+  // Fetch 'needed' verses in parallel to fill the queue fast
+  const fetchPromises = [];
+  for (let i = 0; i < needed; i++) {
+    fetchPromises.push((async () => {
+      let attempts = 0;
+      while (attempts < 5) { // Try a few random refs until one sticks
+        const ref = pickRandomRef();
+        try {
+          const item = await fetchVerse(ref);
+          if (item && item.text) return { ref, text: item.text, url: item.url };
+        } catch(e) {}
+        attempts++;
+      }
+      return null;
+    })());
+  }
+
+  const results = await Promise.all(fetchPromises);
+  results.forEach(res => {
+    if (res) verseQueue.push(res);
+  });
   
   isFetchingQueue = false;
 }
@@ -1034,13 +1047,15 @@ async function loadRound() {
   maintainQueue();
 
   // Wait for the queue to have at least one verse
+  // Reduced polling interval to 50ms for snappier UI
   while (verseQueue.length === 0) {
-    await new Promise(r => setTimeout(r, 500));
+    await new Promise(r => setTimeout(r, 50));
   }
 
   // Dequeue the next verse
   const nextItem = verseQueue.shift();
   state.currentRef = nextItem.ref;
+  state.currentUrl = nextItem.url; // Store for official site link
   const text = nextItem.text;
 
   // Replenish the queue in the background
@@ -1228,7 +1243,11 @@ submitBtn.addEventListener('click', () => {
 
     const chapWord = VOLUMES[correctVol]?.chapLabel || 'Chapter';
     const volName  = VOLUMES[correctVol]?.name || correctVol;
-    answerReveal.textContent = `${correctBook} ${correctChap}:${correctVerse}  (${volName})`;
+    
+    // Add "View on Church Website" link
+    const officialLink = state.currentUrl ? `<br><a href="${state.currentUrl}" target="_blank" style="color:var(--gold-light); font-size:0.8rem; text-decoration:none; border-bottom:1px solid var(--gold-light); margin-top:8px; display:inline-block;">View on Church Website \u2197</a>` : "";
+    
+    answerReveal.innerHTML = `${correctBook} ${correctChap}:${correctVerse}  (${volName})${officialLink}`;
     answerReveal.classList.add('show');
 
     let finalDistMsg = diff !== -1 && diff !== 0 ? `You were ${diff} verse${diff !== 1 ? 's' : ''} away. ` : '';
@@ -1245,7 +1264,7 @@ submitBtn.addEventListener('click', () => {
       spawnConfetti();
     } else if (failedRequirement) {
       const needed = correctVol === 'dc' ? 'Vol, Book & Sec' : 'Vol & Book';
-      showFeedback(`${finalDistMsg}\u2715 Miss! You needed ${needed}. +${pts} pts. Miss ${state.misses}/5.`, 'wrong');
+      showFeedback(`${finalDistMsg}\u2715 Miss! You needed ${needed}. +${pts} pts. Miss ${state.misses}/3.`, 'wrong');
     } else {
       showFeedback(`${finalDistMsg}Good guess! +${pts} points`, 'partial');
     }
@@ -1253,7 +1272,7 @@ submitBtn.addEventListener('click', () => {
     // Play tone
     if (diff !== -1) playHotColdTone(diff);
 
-    if (state.misses >= 5) {
+    if (state.misses >= 3) {
       showNextButton(true);
       return;
     }
@@ -1296,10 +1315,12 @@ skipBtn.addEventListener('click', () => {
   updatePips();
   const ref = state.currentRef;
   const volName = VOLUMES[SCRIPTURE_DB[ref.bookName]?.vol]?.name || '';
-  answerReveal.textContent = `${ref.bookName} ${ref.chapter}:${ref.verse}  (${volName})`;
+  const officialLink = state.currentUrl ? `<br><a href="${state.currentUrl}" target="_blank" style="color:var(--gold-light); font-size:0.8rem; text-decoration:none; border-bottom:1px solid var(--gold-light); margin-top:8px; display:inline-block;">View on Church Website \u2197</a>` : "";
+  
+  answerReveal.innerHTML = `${ref.bookName} ${ref.chapter}:${ref.verse}  (${volName})${officialLink}`;
   answerReveal.classList.add('show');
   
-  showFeedback(`Skipped \u2014 Miss ${state.misses}/5`, 'wrong');
+  showFeedback(`Skipped \u2014 Miss ${state.misses}/3`, 'wrong');
   submitBtn.disabled = true;
   skipBtn.disabled = true;
   playSkipTone();
@@ -1307,7 +1328,7 @@ skipBtn.addEventListener('click', () => {
   state.shareEmojis.push('skip');
   addHistoryEntry(ref, 0, 'skip');
 
-  if (state.misses >= 5) {
+  if (state.misses >= 3) {
     showNextButton(true);
     return;
   }
@@ -1356,7 +1377,7 @@ function resetDropdowns() {
   chapLabel.textContent = 'Chapter';
 }
 function updatePips() {
-  for (let i = 0; i < 5; i++) {
+  for (let i = 0; i < 3; i++) {
     document.getElementById('pip' + i).classList.toggle('used', i < state.misses);
   }
 }
@@ -1396,6 +1417,7 @@ function startGame() {
 // INIT
 // =====================================================================
 bestDisplay.textContent = state.best;
+maintainQueue(); // Start prefetching immediately on page load
 loadRound();
 
 // =====================================================================
