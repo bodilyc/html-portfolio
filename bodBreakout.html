@@ -644,7 +644,9 @@
             
             // Use the smaller of available width or our base design width
             const newWidth = Math.min(availableWidth, BASE_WIDTH);
+            const oldScaleFactor = scaleFactor;
             scaleFactor = newWidth / BASE_WIDTH;
+            const ratio = (oldScaleFactor > 0) ? (scaleFactor / oldScaleFactor) : 1;
             const newHeight = Math.round(BASE_HEIGHT * scaleFactor);
             
             canvas.width = Math.round(newWidth);
@@ -659,14 +661,68 @@
             
             // Scale paddle
             defaultPaddleWidth = Math.round(100 * scaleFactor);
-            paddle.width = defaultPaddleWidth;
+            paddle.width = paddle.width * ratio;
             paddle.height = Math.round(15 * scaleFactor);
             paddle.speed = Math.max(4, Math.round(8 * scaleFactor));
-            paddle.x = canvas.width / 2 - paddle.width / 2;
+            paddle.x = paddle.x * ratio;
             paddle.y = canvas.height - Math.round(30 * scaleFactor);
             
             // Scale ball radius
             ballRadius = Math.max(5, Math.round(10 * scaleFactor));
+
+            // Rescale existing objects if actively playing
+            if (typeof bricks !== 'undefined' && bricks.length > 0) {
+                for (let r = 0; r < bricks.length; r++) {
+                    for (let c = 0; c < bricks[r].length; c++) {
+                        const b = bricks[r][c];
+                        b.x = b.x * ratio;
+                        b.y = b.y * ratio;
+                        b.width = brickWidth;
+                        b.height = brickHeight;
+                    }
+                }
+            }
+            if (typeof balls !== 'undefined') {
+                balls.forEach(ball => {
+                    ball.x *= ratio;
+                    ball.y *= ratio;
+                    ball.dx *= ratio;
+                    ball.dy *= ratio;
+                    ball.speed *= ratio;
+                    ball.radius = ballRadius;
+                });
+            }
+            if (typeof activeGravityRocks !== 'undefined') {
+                activeGravityRocks.forEach(rock => {
+                    rock.x *= ratio;
+                    rock.y *= ratio;
+                    rock.dx *= ratio;
+                    rock.radius *= ratio;
+                    rock.coreRadius *= ratio;
+                });
+            }
+            if (typeof fallingItems !== 'undefined') {
+                fallingItems.forEach(item => {
+                    item.x *= ratio;
+                    item.y *= ratio;
+                    item.speed *= ratio;
+                    item.radius *= ratio;
+                });
+            }
+            if (typeof spaceship !== 'undefined') {
+                spaceship.x *= ratio;
+                spaceship.y *= ratio;
+                spaceship.width *= ratio;
+                spaceship.height *= ratio;
+                spaceship.speed *= ratio;
+            }
+            if (typeof boss !== 'undefined' && boss) {
+                boss.x *= ratio;
+                boss.y *= ratio;
+                boss.width *= ratio;
+                boss.height *= ratio;
+                boss.speed *= ratio;
+            }
             
             // Re-render the offscreen grid when canvas size changes
             renderOffscreenGrid();
@@ -1208,7 +1264,7 @@
                         
                         // "B"
                         ctx.fillStyle = 'white';
-                        ctx.font = 'bold 10px Arial';
+                        ctx.font = `bold ${Math.max(8, Math.round(item.radius * 0.8))}px Arial`;
                         ctx.textAlign = 'center';
                         ctx.textBaseline = 'middle';
                         ctx.fillText('B', 0, 0);
@@ -1245,7 +1301,7 @@
                         // "?"
                         ctx.rotate(-item.rotation);
                         ctx.fillStyle = 'white';
-                        ctx.font = 'bold 16px Verdana';
+                        ctx.font = `bold ${Math.max(10, Math.round(item.radius * 1.3))}px Verdana`;
                         ctx.textAlign = 'center';
                         ctx.textBaseline = 'middle';
                         ctx.fillText('?', 0, 1);
@@ -1318,7 +1374,7 @@
                         ctx.rotate(-item.rotation);
                         ctx.fillStyle = 'white';
                         if (color === 'yellow') ctx.fillStyle = 'black'; // contrast
-                        ctx.font = 'bold 14px Verdana';
+                        ctx.font = `bold ${Math.max(9, Math.round(item.radius * 1.15))}px Verdana`;
                         ctx.textAlign = 'center';
                         ctx.textBaseline = 'middle';
                         ctx.fillText(letter, 0, 1);
@@ -1570,7 +1626,7 @@
                     ball.y = paddle.y - ball.radius;
                     
                     if (ball.stickTimer > 0) {
-                        ball.stickTimer -= 16.666 * timeScale;
+                        ball.stickTimer -= FIXED_TIME_STEP * timeScale;
                         // Time's up! Auto-launch this ball
                         if (ball.stickTimer <= 0) {
                             ball.onPaddle = false;
@@ -1758,11 +1814,22 @@
                     // Apply calculated velocity directly for normal bounce
                     ball.dx = newDx;
                     ball.dy = newDy;
+                    
+                    // Normalize ball speed to prevent drift
+                    const currentSpeed = Math.sqrt(ball.dx * ball.dx + ball.dy * ball.dy);
+                    if (currentSpeed > 0 && Math.abs(currentSpeed - ball.speed) > 0.01) {
+                        const scale = ball.speed / currentSpeed;
+                        ball.dx *= scale;
+                        ball.dy *= scale;
+                    }
+                    
                     playSound('paddleHit');
                 }
                 
                 // Brick collision
+                let collisionHandled = false;
                 for (let r = 0; r < brickRows; r++) {
+                    if (collisionHandled && !ball.through) break;
                     for (let c = 0; c < brickColumns; c++) {
                         const brick = bricks[r][c];
                         if (brick.visible) {
@@ -1773,9 +1840,21 @@
                                 ball.y - ball.radius < brick.y + brick.height
                             ) {
                                 
-                                // Handle Through Ball
+                                // Handle Through Ball - determine which face was hit
                                 if (!ball.through) {
-                                    ball.dy = -ball.dy;
+                                    // Calculate overlap on each axis to determine hit face
+                                    const overlapLeft  = (ball.x + ball.radius) - brick.x;
+                                    const overlapRight = (brick.x + brick.width) - (ball.x - ball.radius);
+                                    const overlapTop   = (ball.y + ball.radius) - brick.y;
+                                    const overlapBot   = (brick.y + brick.height) - (ball.y - ball.radius);
+                                    const minOverlapH  = Math.min(overlapLeft, overlapRight);
+                                    const minOverlapV  = Math.min(overlapTop, overlapBot);
+
+                                    if (minOverlapH < minOverlapV) {
+                                        ball.dx = -ball.dx; // Side hit
+                                    } else {
+                                        ball.dy = -ball.dy; // Top/bottom hit
+                                    }
                                 }
                                 
                                 // Multi-hit logic
@@ -1784,7 +1863,7 @@
                                 
                                 if (brick.hits <= 0) {
                                     brick.visible = false;
-                                    activeBricksCount--;
+                                    if (activeBricksCount > 0) activeBricksCount--;
                                     registerBrickHit(brick.x + brick.width / 2, brick.y);
                                     
                                     if (brick.powerUp) {
@@ -1797,13 +1876,17 @@
                                         activateLastBlockMovement();
                                     }
                                     
-                                    if (activeBricksCount === 0) {
+                                    if (activeBricksCount <= 0) {
                                         levelComplete();
                                         return;
                                     }
                                 } else {
                                     // Brick damaged but not destroyed
                                     playSound('wallBounce');
+                                }
+                                if (!ball.through) {
+                                    collisionHandled = true;
+                                    break; // Only hit one brick per frame unless through
                                 }
                             }
                         }
@@ -1829,6 +1912,11 @@
                         if (!ball.through) {
                             if (isSideHit) ball.dx = -ball.dx;
                             else ball.dy = -ball.dy;
+                        }
+
+                        // Reset side hit counter on non-side hits
+                        if (!isSideHit) {
+                            boss.sideHitPending = 0;
                         }
 
                         // Side hits require 2 hits to deal 1 damage
@@ -1878,7 +1966,7 @@
                             ball.x = linked.x + linked.width / 2;
                             ball.y = linked.y + linked.height + ball.radius + 2;
                             const fullSpeed = Math.sqrt(ball.dx * ball.dx + ball.dy * ball.dy);
-                            const angle = Math.atan2(ball.dy, ball.dx) + (Math.random() - 0.5) * 0.5;
+                            const angle = Math.atan2(Math.abs(ball.dy), ball.dx) + (Math.random() - 0.5) * 0.5;
                             // Start at 40% speed and ramp up to full speed over ~60 frames
                             const exitSpeed = fullSpeed * 0.4;
                             ball.dx = exitSpeed * Math.cos(angle);
@@ -1955,7 +2043,7 @@
              updateUI();
              
              if (lives <= 0) {
-                 gameOver();
+                 handleGameOver();
              } else {
                  resetBalls();
                  resetPowerUps();
@@ -2008,8 +2096,8 @@
             fallingItems.push({
                 x: x,
                 y: y,
-                radius: 12,
-                speed: 2.5,
+                radius: 12 * scaleFactor,
+                speed: 2.5 * scaleFactor,
                 type: type,
                 active: true,
                 rotation: 0
@@ -2265,7 +2353,7 @@
             target.hits--;
             if (target.hits <= 0) {
                 target.visible = false;
-                activeBricksCount--;
+                if (activeBricksCount > 0) activeBricksCount--;
                 score += 15;
                 if (target.powerUp) spawnFallingItem(target.x + target.width / 2, target.y + target.height / 2, target.powerUp);
                 createExplosion(tx, ty, '#00FFFF');
@@ -2337,7 +2425,7 @@
         }
         
         // Game over
-        function gameOver() {
+        function handleGameOver() {
             gameRunning = false;
             
             // Check for high score
@@ -2421,7 +2509,6 @@
                 currentBallSpeed += 0.5;
             }
             
-            resetBalls(); 
             resetPowerUps(); 
             
             // Update UI
@@ -2522,6 +2609,7 @@
         }
 
         // ===== SOUND SYSTEM =====
+        const lastSoundTime = {};
         function playSound(type) {
             if (!audioCtx) {
                 try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); }
@@ -2529,6 +2617,13 @@
             }
             if (audioCtx.state === 'suspended') audioCtx.resume();
             const now = audioCtx.currentTime;
+
+            // Throttle rapidly repeating sounds
+            if (lastSoundTime[type] && now - lastSoundTime[type] < 0.05) {
+                return;
+            }
+            lastSoundTime[type] = now;
+
             const osc = audioCtx.createOscillator();
             const gain = audioCtx.createGain();
             osc.connect(gain);
@@ -2857,7 +2952,7 @@
                                 brick.hits--;
                                 if (brick.hits <= 0) {
                                     brick.visible = false;
-                                    activeBricksCount--;
+                                    if (activeBricksCount > 0) activeBricksCount--;
                                     registerBrickHit(brick.x + brick.width / 2, brick.y);
                                     
                                     if (brick.powerUp) {
@@ -2948,6 +3043,23 @@
                                 brick.dx = -brick.speed;
                             }
                         }
+
+                        // Prevent brick overlap with other moving bricks
+                        for (let r2 = 0; r2 < brickRows; r2++) {
+                            for (let c2 = 0; c2 < brickColumns; c2++) {
+                                if (r2 === r && c2 === c) continue;
+                                const other = bricks[r2][c2];
+                                if (!other.visible) continue;
+                                if (brick.x < other.x + other.width &&
+                                    brick.x + brick.width > other.x &&
+                                    brick.y < other.y + other.height &&
+                                    brick.y + brick.height > other.y) {
+                                    // Reverse direction on collision
+                                    brick.dx = -brick.dx;
+                                    brick.x += brick.dx * timeScale * 2; // Push out of overlap
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -3015,6 +3127,9 @@
             const relativeX = e.clientX - canvas.getBoundingClientRect().left;
             if (relativeX > 0 && relativeX < canvas.width) {
                 paddle.x = relativeX - paddle.width / 2;
+                // Clamp paddle to canvas bounds
+                if (paddle.x < 0) paddle.x = 0;
+                else if (paddle.x + paddle.width > canvas.width) paddle.x = canvas.width - paddle.width;
             }
         });
         
@@ -3023,6 +3138,9 @@
             const relativeX = e.touches[0].clientX - canvas.getBoundingClientRect().left;
             if (relativeX > 0 && relativeX < canvas.width) {
                  paddle.x = relativeX - paddle.width / 2;
+                 // Clamp paddle to canvas bounds
+                 if (paddle.x < 0) paddle.x = 0;
+                 else if (paddle.x + paddle.width > canvas.width) paddle.x = canvas.width - paddle.width;
             }
         });
 
