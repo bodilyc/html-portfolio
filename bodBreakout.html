@@ -559,7 +559,9 @@
             y: canvas.height - 30,
             speed: 8,
             dx: 0,
-            color: '#FFCC00'
+            color: '#FFCC00',
+            damageState: 0,
+            gap: 0
         };
         
         // Balls array
@@ -1171,8 +1173,15 @@
             // Don't draw paddle if exploding
             if (gameResetting) return;
             
+            const hasGap = paddle.gap > 0;
+            const leftWidth = hasGap ? (paddle.width - paddle.gap) / 2 : paddle.width;
+            const rightX = hasGap ? paddle.x + leftWidth + paddle.gap : 0;
+
             ctx.beginPath();
-            ctx.rect(paddle.x, paddle.y, paddle.width, paddle.height);
+            ctx.rect(paddle.x, paddle.y, leftWidth, paddle.height);
+            if (hasGap) {
+                ctx.rect(rightX, paddle.y, leftWidth, paddle.height);
+            }
             ctx.fillStyle = paddle.color;
             ctx.fill();
             ctx.closePath();
@@ -1188,7 +1197,8 @@
             
                 // Add shine effect
                 ctx.beginPath();
-                ctx.rect(paddle.x, paddle.y, paddle.width, 5);
+                ctx.rect(paddle.x, paddle.y, leftWidth, 5);
+                if (hasGap) ctx.rect(rightX, paddle.y, leftWidth, 5);
                 ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
                 ctx.fill();
                 ctx.closePath();
@@ -1196,7 +1206,8 @@
                 // Sticky Glue Visual
                 if (activePaddlePowerUp === 'sticky') {
                     ctx.beginPath();
-                    ctx.rect(paddle.x, paddle.y, paddle.width, 5);
+                    ctx.rect(paddle.x, paddle.y, leftWidth, 5);
+                    if (hasGap) ctx.rect(rightX, paddle.y, leftWidth, 5);
                     ctx.fillStyle = '#32CD32'; // Lime Green Glue
                     ctx.fill();
                     ctx.closePath();
@@ -1210,7 +1221,12 @@
                     ctx.shadowColor = '#FFD700';
                     ctx.strokeStyle = `rgba(255, 215, 0, ${0.6 + 0.4 * gPulse})`;
                     ctx.lineWidth = 3;
-                    ctx.strokeRect(paddle.x - 3, paddle.y - 3, paddle.width + 6, paddle.height + 6);
+                    if (hasGap) {
+                        ctx.strokeRect(paddle.x - 3, paddle.y - 3, leftWidth + 6, paddle.height + 6);
+                        ctx.strokeRect(rightX - 3, paddle.y - 3, leftWidth + 6, paddle.height + 6);
+                    } else {
+                        ctx.strokeRect(paddle.x - 3, paddle.y - 3, paddle.width + 6, paddle.height + 6);
+                    }
                     ctx.restore();
                 }
             }
@@ -1784,8 +1800,18 @@
                     }
                 }
                 
+                // Check if falling in the gap
+                let inGap = false;
+                if (paddle.gap > 0) {
+                    const paddleCenter = paddle.x + paddle.width / 2;
+                    if (ball.x > paddleCenter - paddle.gap / 2 && ball.x < paddleCenter + paddle.gap / 2) {
+                        inGap = true;
+                    }
+                }
+
                 // Paddle collision
                 if (
+                    !inGap &&
                     ball.y + ball.radius > paddle.y &&
                     ball.x > paddle.x &&
                     ball.x < paddle.x + paddle.width
@@ -2035,12 +2061,61 @@
             resetBallPowerUps();
             resetPaddlePowerUps();
             paddle.width = defaultPaddleWidth;
+            paddle.damageState = 0;
+            paddle.gap = 0;
             fallingItems = [];
             shieldActive = false;
             immortalActive = false;
             immortalTimer = 0;
         }
         
+        // Paddle Damage State Logic
+        function damagePaddle() {
+            if (immortalActive) {
+                // Bomb bounces off harmlessly during immortality
+                createExplosion(paddle.x + paddle.width/2, paddle.y, '#FFD700');
+                return;
+            }
+
+            if (paddle.damageState === 0) {
+                // Hit 1: Shrink drastically
+                paddle.damageState = 1;
+                const oldWidth = paddle.width;
+                paddle.width = Math.max(30 * scaleFactor, defaultPaddleWidth * 0.4);
+                paddle.x += (oldWidth - paddle.width) / 2; // Keep centered
+                
+                // Adjust balls on paddle
+                balls.forEach(b => {
+                    if (b.onPaddle) {
+                         const ratio = b.paddleOffset / oldWidth;
+                         b.paddleOffset = ratio * paddle.width;
+                         b.x = paddle.x + b.paddleOffset;
+                    }
+                });
+
+                createExplosion(paddle.x + paddle.width/2, paddle.y + paddle.height/2, '#FF4500');
+                triggerScreenShake(3);
+                playSound('wallBounce');
+            } else if (paddle.damageState === 1) {
+                // Hit 2: Introduce Gap
+                paddle.damageState = 2;
+                paddle.gap = 40 * scaleFactor;
+                // Ensure outer width is wide enough to show gap properly
+                const minWidthWithGap = paddle.gap + 30 * scaleFactor; 
+                if (paddle.width < minWidthWithGap) {
+                    const diff = minWidthWithGap - paddle.width;
+                    paddle.width = minWidthWithGap;
+                    paddle.x -= diff / 2;
+                }
+                createExplosion(paddle.x + paddle.width/2, paddle.y + paddle.height/2, '#FF4500');
+                triggerScreenShake(5);
+                playSound('wallBounce');
+            } else {
+                // Hit 3: Destroy
+                explodePaddle();
+            }
+        }
+
         // Paddle Explosion Logic
         function explodePaddle() {
             gameResetting = true;
@@ -2189,6 +2264,19 @@
                     continue;
                 }
                 
+                // Check Gap Fall-Through
+                let inGap = false;
+                if (paddle.gap > 0) {
+                    const paddleCenter = paddle.x + paddle.width / 2;
+                    if (item.x > paddleCenter - paddle.gap / 2 && item.x < paddleCenter + paddle.gap / 2) {
+                        inGap = true;
+                    }
+                }
+
+                if (inGap) {
+                    continue; // Let the item fall freely through the hole!
+                }
+
                 // Paddle Collision
                 let testX = item.x;
                 let testY = item.y;
@@ -2206,11 +2294,8 @@
                 if (distance <= item.radius) {
                     // Hit paddle!
                     if (item.type === 'bomb' || item.type === 'brickBullet') {
-                        if (!gameResetting && !immortalActive) {
-                            explodePaddle();
-                        } else if (immortalActive) {
-                            // Bomb bounces off harmlessly during immortality
-                            createExplosion(item.x, item.y, '#FFD700');
+                        if (!gameResetting) {
+                            damagePaddle();
                         }
                     } else if (item.type === 'rain') {
                         // Extra Life
@@ -2268,6 +2353,10 @@
                  paddle.width *= 2;
                  if (paddle.width > canvas.width * 0.8) paddle.width = canvas.width * 0.8;
                  if (!activePaddlePowerUp) paddle.color = 'green';
+                 
+                 // Wide fully cures the paddle!
+                 paddle.damageState = 0;
+                 paddle.gap = 0;
                  return;
              } 
              if (type === 'narrow') {
