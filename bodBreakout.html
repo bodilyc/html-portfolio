@@ -1597,36 +1597,52 @@
         
         // Move paddle
         function movePaddle(timeScale = 1) {
-            const maxSpeed = paddle.speed * 2.2; // Top speed is much higher than base
-            const acceleration = 1.2;
-            const friction = 0.85;
+            const maxSpeed = paddle.speed * 2.4; // Fast enough to reach edges, controllable enough to be precise
+            // Scale-aware acceleration & friction — feels consistent on all screen sizes
+            const acceleration = 1.2 * scaleFactor;
+            const braking = 2.2 * scaleFactor; // Stronger decel when pressing opposite direction
+            const friction = 0.72; // Higher friction = paddle stops faster when key released
 
-            // Apply acceleration
-            if (rightPressed) {
-                paddle.dx += acceleration;
-                if (paddle.dx > maxSpeed) paddle.dx = maxSpeed;
-            } else if (leftPressed) {
-                paddle.dx -= acceleration;
-                if (paddle.dx < -maxSpeed) paddle.dx = -maxSpeed;
+            // Determine intended direction from keys
+            const wantRight = rightPressed && !leftPressed;
+            const wantLeft = leftPressed && !rightPressed;
+
+            if (wantRight) {
+                if (paddle.dx < 0) {
+                    // Moving left but want right — brake hard for snappy reversal
+                    paddle.dx += braking;
+                    if (paddle.dx > 0) paddle.dx = 0; // Don't overshoot into positive
+                } else {
+                    paddle.dx += acceleration;
+                    if (paddle.dx > maxSpeed) paddle.dx = maxSpeed;
+                }
+            } else if (wantLeft) {
+                if (paddle.dx > 0) {
+                    // Moving right but want left — brake hard for snappy reversal
+                    paddle.dx -= braking;
+                    if (paddle.dx < 0) paddle.dx = 0; // Don't overshoot into negative
+                } else {
+                    paddle.dx -= acceleration;
+                    if (paddle.dx < -maxSpeed) paddle.dx = -maxSpeed;
+                }
             } else {
-                // Apply friction when keys are released
+                // No keys held — apply friction to glide to a stop
                 paddle.dx *= friction;
-                
-                // Stop completely if moving very slowly
-                if (Math.abs(paddle.dx) < 0.5) {
+                if (Math.abs(paddle.dx) < 0.3) {
                     paddle.dx = 0;
                 }
             }
 
             // Apply velocity to position
             paddle.x += paddle.dx * timeScale;
-            // Note: Mouse movement sets paddle.x directly, which works with this hybrid approach
-            
-            // Wall collision enforcement
+
+            // Wall collision — clamp position AND kill velocity to prevent buildup
             if (paddle.x < 0) {
                 paddle.x = 0;
+                paddle.dx = 0;
             } else if (paddle.x + paddle.width > canvas.width) {
                 paddle.x = canvas.width - paddle.width;
+                paddle.dx = 0;
             }
         }
 
@@ -3237,6 +3253,7 @@
             const relativeX = e.clientX - canvas.getBoundingClientRect().left;
             if (relativeX > 0 && relativeX < canvas.width) {
                 paddle.x = relativeX - paddle.width / 2;
+                paddle.dx = 0; // Kill keyboard velocity so it doesn't fight mouse position
                 // Clamp paddle to canvas bounds
                 if (paddle.x < 0) paddle.x = 0;
                 else if (paddle.x + paddle.width > canvas.width) paddle.x = canvas.width - paddle.width;
@@ -3248,6 +3265,7 @@
             const relativeX = e.touches[0].clientX - canvas.getBoundingClientRect().left;
             if (relativeX > 0 && relativeX < canvas.width) {
                  paddle.x = relativeX - paddle.width / 2;
+                 paddle.dx = 0; // Kill keyboard velocity so it doesn't fight touch position
                  // Clamp paddle to canvas bounds
                  if (paddle.x < 0) paddle.x = 0;
                  else if (paddle.x + paddle.width > canvas.width) paddle.x = canvas.width - paddle.width;
@@ -3257,8 +3275,10 @@
         // Keyboard controls
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Right' || e.key === 'ArrowRight') {
+                e.preventDefault(); // Prevent page scrolling
                 rightPressed = true;
             } else if (e.key === 'Left' || e.key === 'ArrowLeft') {
+                e.preventDefault(); // Prevent page scrolling
                 leftPressed = true;
             } else if (e.key === ' ' || e.key === 'Spacebar') {
                 e.preventDefault(); // Prevent scrolling or button clicking
@@ -3271,8 +3291,10 @@
 
         document.addEventListener('keyup', (e) => {
             if (e.key === 'Right' || e.key === 'ArrowRight') {
+                e.preventDefault();
                 rightPressed = false;
             } else if (e.key === 'Left' || e.key === 'ArrowLeft') {
+                e.preventDefault();
                 leftPressed = false;
             }
         });
