@@ -699,6 +699,7 @@
                     rock.x *= ratio;
                     rock.y *= ratio;
                     rock.dx *= ratio;
+                    rock.dy *= ratio;
                     rock.radius *= ratio;
                     rock.coreRadius *= ratio;
                 });
@@ -846,6 +847,7 @@
                         x: Math.random() * (canvas.width - 200) + 100,
                         y: Math.random() * (canvas.height - brickOffsetTop - 250) + brickOffsetTop + 150,
                         dx: (Math.random() > 0.5 ? 1 : -1) * (0.3 + Math.random() * 0.4), // Slow horizontal drift
+                        dy: (Math.random() > 0.5 ? 1 : -1) * (0.2 + Math.random() * 0.3), // Slow vertical drift
                         radius: 120, // Effect radius
                         coreRadius: 15, // Visual rocky core
                         type: Math.random() > 0.5 ? 'blackhole' : 'repulsor',
@@ -1072,7 +1074,8 @@
                 sticky: activePaddlePowerUp === 'sticky',
                 onPaddle: isSticky,
                 paddleOffset: paddle.width / 2,
-                stickTimer: -1 // -1 means infinite (e.g. start of level/life)
+                stickTimer: -1, // -1 means infinite (e.g. start of level/life)
+                gravityEntrapTime: {} // Track time spent inside each gravity well (keyed by index)
             };
             
             if (!isSticky) {
@@ -1650,6 +1653,7 @@
         function moveBalls(timeScale = 1) {
             // Update Gravity Rock Positions (once per frame)
             activeGravityRocks.forEach(rock => {
+                // Horizontal drift
                 rock.x += rock.dx * timeScale;
                 if (rock.x - rock.coreRadius < 0) {
                     rock.dx = Math.abs(rock.dx);
@@ -1657,6 +1661,17 @@
                 } else if (rock.x + rock.coreRadius > canvas.width) {
                     rock.dx = -Math.abs(rock.dx);
                     rock.x = canvas.width - rock.coreRadius;
+                }
+                // Vertical drift
+                rock.y += rock.dy * timeScale;
+                const minY = brickOffsetTop + 100 * scaleFactor; // Don't drift into bricks
+                const maxY = canvas.height - 80 * scaleFactor;   // Don't drift near paddle
+                if (rock.y - rock.coreRadius < minY) {
+                    rock.dy = Math.abs(rock.dy);
+                    rock.y = minY + rock.coreRadius;
+                } else if (rock.y + rock.coreRadius > maxY) {
+                    rock.dy = -Math.abs(rock.dy);
+                    rock.y = maxY - rock.coreRadius;
                 }
             });
 
@@ -1692,12 +1707,16 @@
                 ball.y += ball.dy * timeScale;
                 
                 // Gravity Rock Physics
-                activeGravityRocks.forEach(rock => {
+                activeGravityRocks.forEach((rock, rockIdx) => {
                     const dx = rock.x - ball.x;
                     const dy = rock.y - ball.y;
                     const dist = Math.sqrt(dx * dx + dy * dy);
                     
                     if (dist < rock.radius && dist > rock.coreRadius) {
+                        // Track entrapment time for this ball inside this rock
+                        if (!ball.gravityEntrapTime) ball.gravityEntrapTime = {};
+                        ball.gravityEntrapTime[rockIdx] = (ball.gravityEntrapTime[rockIdx] || 0) + FIXED_TIME_STEP * timeScale;
+
                         // Calculate pull vector
                         const force = (rock.radius - dist) / rock.radius; // Stronger near center
                         let pullX = (dx / dist) * force * rock.strength * timeScale;
@@ -1710,6 +1729,19 @@
                         
                         ball.dx += pullX;
                         ball.dy += pullY;
+
+                        // Orbital Decay: after 2 seconds inside a well, apply increasing outward kick
+                        const entrapMs = ball.gravityEntrapTime[rockIdx] || 0;
+                        const ENTRAP_THRESHOLD = 2000; // 2 seconds before decay kicks in
+                        if (entrapMs > ENTRAP_THRESHOLD) {
+                            const overTime = (entrapMs - ENTRAP_THRESHOLD) / 1000; // seconds over threshold
+                            const kickStrength = Math.min(overTime * 0.6, 3.0); // ramp up, cap at 3.0
+                            // Push radially outward from rock center
+                            const awayX = -dx / dist;
+                            const awayY = -dy / dist;
+                            ball.dx += awayX * kickStrength * timeScale;
+                            ball.dy += awayY * kickStrength * timeScale;
+                        }
                         
                         // Enforce max speed so it doesn't slingshot out of control
                         const speed = Math.sqrt(ball.dx * ball.dx + ball.dy * ball.dy);
@@ -1730,6 +1762,11 @@
                             const angle = Math.random() * Math.PI * 2;
                             ball.dx = Math.cos(angle) * minSpeed;
                             ball.dy = Math.sin(angle) * minSpeed;
+                        }
+                    } else {
+                        // Ball is outside this rock's radius — reset entrapment timer
+                        if (ball.gravityEntrapTime && ball.gravityEntrapTime[rockIdx]) {
+                            ball.gravityEntrapTime[rockIdx] = 0;
                         }
                     }
                 });
