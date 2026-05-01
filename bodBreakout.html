@@ -737,12 +737,34 @@
         }
         
         // Create bricks for current GameState.level
+                // Calculate brick grid dimensions based on level
+        function getLevelConfig(level) {
+            let config = { rows: 5, columns: 10, hits: 1, boss: false, rocks: 0, shooters: 0, moving: false };
+            
+            if (level >= 10) { config.rows = 8; config.columns = 13; }
+            else if (level >= 7) { config.rows = 7; config.columns = 12; }
+            else if (level >= 4) { config.rows = 6; config.columns = 11; }
+            
+            if (level % 5 === 0 && level >= 5) config.boss = true;
+            
+            if (level >= 6 && !config.boss) {
+                config.rocks = level >= 15 ? 3 : (level >= 11 ? 2 : 1);
+            }
+            
+            if (level >= 4) config.moving = true;
+            
+            if (level >= 8) {
+                config.shooters = Math.min(3, 1 + Math.floor((level - 8) / 3));
+            }
+            
+            return config;
+        }
+
         function createBricks() {
-            // Update grid size based on GameState.level
-            if (GameState.level >= 10) { brickRows = 8; brickColumns = 13; }
-            else if (GameState.level >= 7) { brickRows = 7; brickColumns = 12; }
-            else if (GameState.level >= 4) { brickRows = 6; brickColumns = 11; }
-            else { brickRows = 5; brickColumns = 10; }
+            // Update grid size based on level
+            const lvlConfig = getLevelConfig(GameState.level);
+            brickRows = lvlConfig.rows;
+            brickColumns = lvlConfig.columns;
             
             // Recalculate brickWidth based on new columns
             brickWidth = (canvas.width - (brickOffsetLeft * 2) - (brickPadding * (brickColumns - 1))) / brickColumns;
@@ -772,14 +794,12 @@
             boss = null;
             
             // Boss Level (every 5th GameState.level starting at 5)
-            GameState.isBossLevel = (GameState.level % 5 === 0 && GameState.level >= 5);
+            GameState.GameState.isBossLevel = lvlConfig.boss;
 
             // Gravity Rocks (Level 6+)
             activeGravityRocks = [];
-            if (GameState.level >= 6 && !GameState.isBossLevel) {
-                let numRocks = 1;
-                if (GameState.level >= 15) numRocks = 3;
-                else if (GameState.level >= 11) numRocks = 2;
+            if (lvlConfig.rocks > 0) {
+                let numRocks = lvlConfig.rocks;
                 for (let i = 0; i < numRocks; i++) {
                     activeGravityRocks.push({
                         x: Math.random() * (canvas.width - 200) + 100,
@@ -870,19 +890,15 @@
                             visible = true;
                     }
                     
-                    // Multi-hit bricks (Level 7+)
+                    // Multi-hit bricks
                     let hits = 1;
                     if (GameState.level >= 7 && visible) {
                         const rand = Math.random();
-                        if (GameState.level >= 15) {
-                            if (rand < 0.2) hits = 3;
-                            else if (rand < 0.5) hits = 2;
-                        } else if (GameState.level >= 11) {
-                            if (rand < 0.1) hits = 3;
-                            else if (rand < 0.4) hits = 2;
-                        } else {
-                            if (rand < 0.2) hits = 2;
-                        }
+                        if (GameState.level >= 15 && rand < 0.2) hits = 3;
+                        else if (GameState.level >= 15 && rand < 0.5) hits = 2;
+                        else if (GameState.level >= 11 && rand < 0.1) hits = 3;
+                        else if (GameState.level >= 11 && rand < 0.4) hits = 2;
+                        else if (GameState.level >= 7 && rand < 0.2) hits = 2;
                     }
 
                     bricks[r][c] = {
@@ -958,7 +974,7 @@
             }
 
             // Moving/Drifting Bricks (Level 4+)
-            if (GameState.level >= 4) {
+            if (lvlConfig.moving) {
                 for (let r = 0; r < brickRows; r++) {
                     for (let c = 0; c < brickColumns; c++) {
                         // Start sparse (10%) and scale up slowly
@@ -973,7 +989,7 @@
             }
 
             // Shooter Bricks (Level 8+)
-            if (GameState.level >= 8) {
+            if (lvlConfig.shooters > 0) {
                 let availableShooters = [];
                 for (let r = 0; r < brickRows; r++) {
                     for (let c = 0; c < brickColumns; c++) {
@@ -982,7 +998,7 @@
                         }
                     }
                 }
-                const maxShooters = Math.min(3, 1 + Math.floor((GameState.level - 8) / 3)); // Max 3
+                const maxShooters = lvlConfig.shooters;
                 for (let i = 0; i < maxShooters; i++) {
                     if (availableShooters.length === 0) break;
                     const idx = Math.floor(Math.random() * availableShooters.length);
@@ -1845,9 +1861,23 @@
                                     const minOverlapV  = Math.min(overlapTop, overlapBot);
 
                                     if (minOverlapH < minOverlapV) {
-                                        ball.dx = -ball.dx; // Side hit
+                                        // Side hit
+                                        if (overlapLeft < overlapRight) {
+                                            ball.x = brick.x - ball.radius;
+                                            if (ball.dx > 0) ball.dx = -ball.dx;
+                                        } else {
+                                            ball.x = brick.x + brick.width + ball.radius;
+                                            if (ball.dx < 0) ball.dx = -ball.dx;
+                                        }
                                     } else {
-                                        ball.dy = -ball.dy; // Top/bottom hit
+                                        // Top/bottom hit
+                                        if (overlapTop < overlapBot) {
+                                            ball.y = brick.y - ball.radius;
+                                            if (ball.dy > 0) ball.dy = -ball.dy;
+                                        } else {
+                                            ball.y = brick.y + brick.height + ball.radius;
+                                            if (ball.dy < 0) ball.dy = -ball.dy;
+                                        }
                                     }
                                 }
                                 
@@ -1904,8 +1934,23 @@
                         const isSideHit    = minOverlapH < minOverlapV;
 
                         if (!ball.through) {
-                            if (isSideHit) ball.dx = -ball.dx;
-                            else ball.dy = -ball.dy;
+                            if (isSideHit) {
+                                if (overlapLeft < overlapRight) {
+                                    ball.x = boss.x - ball.radius;
+                                    if (ball.dx > 0) ball.dx = -ball.dx;
+                                } else {
+                                    ball.x = boss.x + boss.width + ball.radius;
+                                    if (ball.dx < 0) ball.dx = -ball.dx;
+                                }
+                            } else {
+                                if (overlapTop < overlapBot) {
+                                    ball.y = boss.y - ball.radius;
+                                    if (ball.dy > 0) ball.dy = -ball.dy;
+                                } else {
+                                    ball.y = boss.y + boss.height + ball.radius;
+                                    if (ball.dy < 0) ball.dy = -ball.dy;
+                                }
+                            }
                         }
 
                         // Reset side hit counter on non-side hits
@@ -2116,16 +2161,13 @@
         }
         
         function moveParticles(timeScale = 1) {
-            for (let i = particles.length - 1; i >= 0; i--) {
+            for (let i = 0; i < particles.length; i++) {
                 const p = particles[i];
                 p.x += p.dx * timeScale;
                 p.y += p.dy * timeScale;
                 p.alpha -= 0.02 * timeScale;
-                
-                if (p.alpha <= 0) {
-                    particles.splice(i, 1);
-                }
             }
+            particles = particles.filter(p => p.alpha > 0);
         }
         
         function drawParticles() {
@@ -2174,7 +2216,7 @@
             for (let i = fallingItems.length - 1; i >= 0; i--) {
                 const item = fallingItems[i];
                 if (!item.active) {
-                    fallingItems.splice(i, 1);
+                    item.active = false;
                     continue;
                 }
                 
@@ -2203,7 +2245,7 @@
                         }
                     }
                     if (hitBall) {
-                        fallingItems.splice(i, 1);
+                        item.active = false;
                         continue;
                     }
 
@@ -2218,7 +2260,7 @@
                 
                 // Off screen
                 if (item.y > canvas.height) {
-                    fallingItems.splice(i, 1);
+                    item.active = false;
                     continue;
                 }
                 
@@ -2279,6 +2321,7 @@
                     return; 
                 }
             }
+            fallingItems = fallingItems.filter(item => item.active);
         }
 
         // Activate Power-Up
@@ -2419,11 +2462,11 @@
                 }
             });
             // Age bolts
-            for (let i = lightningBolts.length - 1; i >= 0; i--) {
+            for (let i = 0; i < lightningBolts.length; i++) {
                 lightningBolts[i].timer -= FIXED_TIME_STEP * timeScale;
                 lightningBolts[i].alpha = Math.max(0, lightningBolts[i].timer / 180);
-                if (lightningBolts[i].timer <= 0) lightningBolts.splice(i, 1);
             }
+            lightningBolts = lightningBolts.filter(b => b.timer > 0);
         }
 
         function drawLightningBolts() {
@@ -2651,10 +2694,6 @@
         // ===== SOUND SYSTEM =====
         const lastSoundTime = {};
         function playSound(type) {
-            if (!audioCtx) {
-                try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); }
-                catch(e) { return; }
-            }
             if (audioCtx.state === 'suspended') audioCtx.resume();
             const now = audioCtx.currentTime;
 
@@ -2945,7 +2984,7 @@
             for (let i = bullets.length - 1; i >= 0; i--) {                
                 let b = bullets[i];
                 if (!b.active) {
-                    bullets.splice(i, 1);
+                    b.active = false;
                     continue;
                 }
                 
@@ -2965,14 +3004,14 @@
                         spaceshipHitCount++;
                         createExplosion(spaceship.x + spaceship.width / 2, spaceship.y + spaceship.height / 2, '#00ffcc');
                         updateUI();
-                        bullets.splice(i, 1);
+                        b.active = false;
                         continue;
                     }
                 }
                 
                 // Off screen
                 if (b.y < 0) {
-                    bullets.splice(i, 1);
+                    b.active = false;
                     continue;
                 }
                 
@@ -3039,7 +3078,7 @@
                     }
                 }
             }
-            
+            bullets = bullets.filter(b => b.active);
         }
 
         // Activate movement for the last remaining block
@@ -3221,6 +3260,11 @@
         });
         
         startBtn.addEventListener('click', function() {
+            if (!audioCtx) {
+                try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); }
+                catch(e) {}
+            }
+            if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
             this.blur(); // Remove focus so Spacebar doesn't trigger it again
             if (!GameState.gameRunning) {
                 if (GameState.gamePaused) {
