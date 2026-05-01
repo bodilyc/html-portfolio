@@ -73,7 +73,10 @@
             margin: 0 auto;
             box-shadow: 0 0 20px rgba(0, 0, 0, 0.8);
             border: 2px solid rgba(255, 255, 255, 0.1);
-            max-width: 100%;
+            width: 100%;
+            height: auto;
+            aspect-ratio: 760 / 450;
+            object-fit: contain;
         }
         
         .controls {
@@ -355,7 +358,7 @@
             color: #ffcc00;
         }
         
-        .current-score { background: rgba(255, 204, 0, 0.25); outline: 2px solid #FFCC00; }
+        .current-GameState.score { background: rgba(255, 204, 0, 0.25); outline: 2px solid #FFCC00; }
 
         /* Reset */
         .reset-container {
@@ -384,15 +387,15 @@
         <div class="game-info">
             <div class="info-item">
                 <span>SCORE</span>
-                <span id="score" class="info-value">0</span>
+                <span id="GameState.score" class="info-value">0</span>
             </div>
             <div class="info-item">
                 <span>LIVES</span>
-                <span id="lives" class="info-value">3</span>
+                <span id="GameState.lives" class="info-value">3</span>
             </div>
             <div class="info-item">
                 <span>LEVEL</span>
-                <span id="level" class="info-value">1</span>
+                <span id="GameState.level" class="info-value">1</span>
             </div>
             <div class="info-item">
                 <span>SPEED</span>
@@ -400,7 +403,7 @@
             </div>
             <div class="info-item">
                 <span>HIGH SCORE</span>
-                <span id="high-score" class="info-value">0</span>
+                <span id="high-GameState.score" class="info-value">0</span>
             </div>
         </div>
         
@@ -413,7 +416,7 @@
             <p style="margin-top: 10px; font-size: 0.9rem; color: #ccc;">Press SPACE to launch ball and bullets. Use Arrows to move.</p>
         </div>
         
-        <div id="levelIndicator" class="level-indicator">
+        <div id="levelIndicator" class="GameState.level-indicator">
             LEVEL <span id="levelNum">1</span>
         </div>
         
@@ -425,7 +428,7 @@
         
         <div id="gameWin" class="game-win">
             <h2>LEVEL COMPLETE!</h2>
-            <p>You completed level <span id="completedLevel">1</span></p>
+            <p>You completed GameState.level <span id="completedLevel">1</span></p>
             <button id="nextLevelBtn" class="btn">NEXT LEVEL</button>
         </div>
         
@@ -466,9 +469,9 @@
             <h3>HOW TO PLAY</h3>
             <ul>
                 <li>Move the <span class="highlight">paddle</span> with your mouse or touch</li>
-                <li>Break all bricks to advance to the next level</li>
-                <li>Each level increases the ball speed</li>
-                <li>You start with <span class="highlight">3 lives</span>. Earn +1 life every 500 points!</li>
+                <li>Break all bricks to advance to the next GameState.level</li>
+                <li>Each GameState.level increases the ball speed</li>
+                <li>You start with <span class="highlight">3 GameState.lives</span>. Earn +1 life every 500 points!</li>
                 <li>Levels are <span class="highlight">unlimited</span>. How far can you go?</li>
             </ul>
         </div>
@@ -480,11 +483,11 @@
         // Game elements
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
-        const scoreElement = document.getElementById('score');
-        const livesElement = document.getElementById('lives');
-        const levelElement = document.getElementById('level');
+        const scoreElement = document.getElementById('GameState.score');
+        const livesElement = document.getElementById('GameState.lives');
+        const levelElement = document.getElementById('GameState.level');
         const speedElement = document.getElementById('speed');
-        const highScoreElement = document.getElementById('high-score');
+        const highScoreElement = document.getElementById('high-GameState.score');
         const startBtn = document.getElementById('startBtn');
         const pauseBtn = document.getElementById('pauseBtn');
         const resetBtn = document.getElementById('resetBtn');
@@ -505,12 +508,33 @@
         const closeLeaderboardBtn = document.getElementById('closeLeaderboardBtn');
         
         // Game variables
-        let score = 0;
-        let lastLifeScore = 0; // Track score for extra lives
-        let lives = 3;
-        let level = 1;
-        
-        // High Score System
+
+        const GameState = {
+            score: 0,
+            lastLifeScore: 0,
+            lives: 3,
+            level: 1,
+            gameRunning: false,
+            gamePaused: false,
+            currentBallSpeed: 4,
+            activeBricksCount: 0,
+            activeBallPowerUp: null,
+            activePaddlePowerUp: null,
+            canShoot: false,
+            lastShotTime: 0,
+            gameResetting: false,
+            resetTimer: 0,
+            shakeTimer: 0,
+            shakeIntensity: 5,
+            comboCount: 0,
+            comboTimer: 0,
+            shieldActive: false,
+            immortalActive: false,
+            immortalTimer: 0,
+            isBossLevel: false
+        };
+
+// High Score System
         let myScores = JSON.parse(localStorage.getItem('breakoutMyScores')) || [];
         
         // Handle migration from legacy single highScores if needed
@@ -520,7 +544,7 @@
             localStorage.setItem('breakoutMyScores', JSON.stringify(myScores));
         }
         
-        // Update high score display in UI
+        // Update high GameState.score display in UI
         function updateHighScoreDisplay() {
             const best = myScores.length > 0 ? myScores[0].score : 0;
             highScoreElement.textContent = best;
@@ -529,9 +553,7 @@
         updateHighScoreDisplay();
         // Legacy cleanup (unnecessary now)
         
-        let gameRunning = false;
-        let gamePaused = false;
-        let lastTime = 0;
+                        let lastTime = 0;
         let accumulator = 0;
         const FIXED_TIME_STEP = 16.666; // 60 FPS target
         // ballOnPaddle is now ball-specific, but we keep this as a global "start state" flag?
@@ -548,7 +570,7 @@
         // Design reference dimensions (original fixed canvas size)
         const BASE_WIDTH = 760;
         const BASE_HEIGHT = 450;
-        let scaleFactor = 1; // updated by resizeCanvas()
+        
         
         // Paddle properties
         let defaultPaddleWidth = 100;
@@ -567,49 +589,33 @@
         // Balls array
         let balls = [];
         const baseBallSpeed = 4; // Initial speed
-        let currentBallSpeed = baseBallSpeed;
-        
+                
         // Active bricks count
-        let activeBricksCount = 0;
-        
+                
         // Power-ups
         const powerUpTypes = ['through', 'wide', 'sticky', 'narrow', 'multiball', 'shooter', 'bomb', 'rain', 'blast', 'shield', 'magnet', 'lightning', 'star'];
-        let activeBallPowerUp = null;   // 'through' or null
-        let activePaddlePowerUp = null; // 'sticky', 'shooter', or null
-        let bullets = [];
+                        let bullets = [];
         let fallingItems = [];
         let spaceship = { active: false, x: 0, y: 15, width: 40, height: 15, speed: 2 };
         let spaceshipHitCount = 0;
-        let canShoot = false;
-        let lastShotTime = 0;
-        
+                        
         // Particles for explosion
         let particles = [];
-        let gameResetting = false;
-        let resetTimer = 0;
-        
+                        
         let activeGravityRocks = [];
 
         // Screen Shake
-        let shakeTimer = 0;
-        let shakeIntensity = 5;
-
+                
         // Combo Scoring
-        let comboCount = 0;
-        let comboTimer = 0;
-        let comboTexts = [];
+                        let comboTexts = [];
 
         // Shield
-        let shieldActive = false;
-
+        
         // Immortality (Star power-up)
-        let immortalActive = false;
-        let immortalTimer = 0;
-        const IMMORTAL_DURATION = 10000; // 10 seconds in ms
+                        const IMMORTAL_DURATION = 10000; // 10 seconds in ms
 
         // Boss
-        let isBossLevel = false;
-        let boss = null;
+                let boss = null;
 
         // Portal Bricks
         let portalBricks = [];
@@ -636,98 +642,24 @@
         
         // Resize canvas to fit available space and scale all game elements
         function resizeCanvas() {
-            const container = document.querySelector('.game-container');
-            const containerStyle = getComputedStyle(container);
-            const paddingLeft = parseFloat(containerStyle.paddingLeft);
-            const paddingRight = parseFloat(containerStyle.paddingRight);
-            const borderLeft = parseFloat(containerStyle.borderLeftWidth);
-            const borderRight = parseFloat(containerStyle.borderRightWidth);
-            const availableWidth = container.clientWidth - paddingLeft - paddingRight;
+            // Replaced by CSS scaling. Internal canvas size remains fixed.
+            canvas.width = BASE_WIDTH;
+            canvas.height = BASE_HEIGHT;
             
-            // Use the smaller of available width or our base design width
-            const newWidth = Math.min(availableWidth, BASE_WIDTH);
-            const oldScaleFactor = scaleFactor;
-            scaleFactor = newWidth / BASE_WIDTH;
-            const ratio = (oldScaleFactor > 0) ? (scaleFactor / oldScaleFactor) : 1;
-            const newHeight = Math.round(BASE_HEIGHT * scaleFactor);
-            
-            canvas.width = Math.round(newWidth);
-            canvas.height = newHeight;
-            
-            // Recalculate brick layout proportionally
             brickPadding = 0;
-            brickOffsetLeft = Math.round(35 * scaleFactor);
-            brickOffsetTop = Math.round(45 * scaleFactor);
-            brickHeight = Math.round(20 * scaleFactor);
+            brickOffsetLeft = 35;
+            brickOffsetTop = 45;
+            brickHeight = 20;
             brickWidth = (canvas.width - (brickOffsetLeft * 2) - (brickPadding * (brickColumns - 1))) / brickColumns;
             
-            // Scale paddle
-            defaultPaddleWidth = Math.round(100 * scaleFactor);
-            paddle.width = paddle.width * ratio;
-            paddle.height = Math.round(15 * scaleFactor);
-            paddle.speed = Math.max(4, Math.round(8 * scaleFactor));
-            paddle.x = paddle.x * ratio;
-            paddle.y = canvas.height - Math.round(30 * scaleFactor);
+            defaultPaddleWidth = 100;
+            paddle.width = defaultPaddleWidth;
+            paddle.height = 15;
+            paddle.speed = 8;
+            paddle.y = canvas.height - 30;
             
-            // Scale ball radius
-            ballRadius = Math.max(5, Math.round(10 * scaleFactor));
-
-            // Rescale existing objects if actively playing
-            if (typeof bricks !== 'undefined' && bricks.length > 0) {
-                for (let r = 0; r < bricks.length; r++) {
-                    for (let c = 0; c < bricks[r].length; c++) {
-                        const b = bricks[r][c];
-                        b.x = b.x * ratio;
-                        b.y = b.y * ratio;
-                        b.width = brickWidth;
-                        b.height = brickHeight;
-                    }
-                }
-            }
-            if (typeof balls !== 'undefined') {
-                balls.forEach(ball => {
-                    ball.x *= ratio;
-                    ball.y *= ratio;
-                    ball.dx *= ratio;
-                    ball.dy *= ratio;
-                    ball.speed *= ratio;
-                    ball.radius = ballRadius;
-                });
-            }
-            if (typeof activeGravityRocks !== 'undefined') {
-                activeGravityRocks.forEach(rock => {
-                    rock.x *= ratio;
-                    rock.y *= ratio;
-                    rock.dx *= ratio;
-                    rock.dy *= ratio;
-                    rock.radius *= ratio;
-                    rock.coreRadius *= ratio;
-                });
-            }
-            if (typeof fallingItems !== 'undefined') {
-                fallingItems.forEach(item => {
-                    item.x *= ratio;
-                    item.y *= ratio;
-                    item.speed *= ratio;
-                    item.radius *= ratio;
-                });
-            }
-            if (typeof spaceship !== 'undefined') {
-                spaceship.x *= ratio;
-                spaceship.y *= ratio;
-                spaceship.width *= ratio;
-                spaceship.height *= ratio;
-                spaceship.speed *= ratio;
-            }
-            if (typeof boss !== 'undefined' && boss) {
-                boss.x *= ratio;
-                boss.y *= ratio;
-                boss.width *= ratio;
-                boss.height *= ratio;
-                boss.speed *= ratio;
-            }
+            ballRadius = 10;
             
-            // Re-render the offscreen grid when canvas size changes
             renderOffscreenGrid();
         }
         
@@ -760,7 +692,7 @@
             }
         }
         
-        // Generate a random color palette for each level using HSL
+        // Generate a random color palette for each GameState.level using HSL
         function generateLevelColors() {
             const baseHue = Math.floor(Math.random() * 360);
             const colors = [];
@@ -777,7 +709,7 @@
 
         
         function launchBall() {
-            if (gameRunning && !gamePaused) {
+            if (GameState.gameRunning && !GameState.gamePaused) {
                 let launched = false;
                 balls.forEach(b => {
                     if (b.onPaddle) {
@@ -804,20 +736,20 @@
             return false;
         }
         
-        // Create bricks for current level
+        // Create bricks for current GameState.level
         function createBricks() {
-            // Update grid size based on level
-            if (level >= 10) { brickRows = 8; brickColumns = 13; }
-            else if (level >= 7) { brickRows = 7; brickColumns = 12; }
-            else if (level >= 4) { brickRows = 6; brickColumns = 11; }
+            // Update grid size based on GameState.level
+            if (GameState.level >= 10) { brickRows = 8; brickColumns = 13; }
+            else if (GameState.level >= 7) { brickRows = 7; brickColumns = 12; }
+            else if (GameState.level >= 4) { brickRows = 6; brickColumns = 11; }
             else { brickRows = 5; brickColumns = 10; }
             
             // Recalculate brickWidth based on new columns
             brickWidth = (canvas.width - (brickOffsetLeft * 2) - (brickPadding * (brickColumns - 1))) / brickColumns;
             
             bricks = [];
-            spaceshipHitCount = 0; // Reset spaceship hits each level
-            // Generate fresh random colors each level
+            spaceshipHitCount = 0; // Reset spaceship hits each GameState.level
+            // Generate fresh random colors each GameState.level
             const colors = generateLevelColors();
             
             // List of all brick coordinates
@@ -834,20 +766,20 @@
 
             
             // Reset active bricks count
-            activeBricksCount = 0;
+            GameState.activeBricksCount = 0;
             portalBricks = [];
             brickShootTimer = 3000;
             boss = null;
             
-            // Boss Level (every 5th level starting at 5)
-            isBossLevel = (level % 5 === 0 && level >= 5);
+            // Boss Level (every 5th GameState.level starting at 5)
+            GameState.isBossLevel = (GameState.level % 5 === 0 && GameState.level >= 5);
 
             // Gravity Rocks (Level 6+)
             activeGravityRocks = [];
-            if (level >= 6 && !isBossLevel) {
+            if (GameState.level >= 6 && !GameState.isBossLevel) {
                 let numRocks = 1;
-                if (level >= 15) numRocks = 3;
-                else if (level >= 11) numRocks = 2;
+                if (GameState.level >= 15) numRocks = 3;
+                else if (GameState.level >= 11) numRocks = 2;
                 for (let i = 0; i < numRocks; i++) {
                     activeGravityRocks.push({
                         x: Math.random() * (canvas.width - 200) + 100,
@@ -862,7 +794,7 @@
                     });
                 }
             }
-            if (isBossLevel) {
+            if (GameState.isBossLevel) {
                 // Initialize empty brick grid so iteration doesn't crash
                 for (let r = 0; r < brickRows; r++) {
                     bricks[r] = [];
@@ -940,12 +872,12 @@
                     
                     // Multi-hit bricks (Level 7+)
                     let hits = 1;
-                    if (level >= 7 && visible) {
+                    if (GameState.level >= 7 && visible) {
                         const rand = Math.random();
-                        if (level >= 15) {
+                        if (GameState.level >= 15) {
                             if (rand < 0.2) hits = 3;
                             else if (rand < 0.5) hits = 2;
-                        } else if (level >= 11) {
+                        } else if (GameState.level >= 11) {
                             if (rand < 0.1) hits = 3;
                             else if (rand < 0.4) hits = 2;
                         } else {
@@ -973,7 +905,7 @@
                     
                     if (visible) {
                         allCoordinates.push({r, c});
-                        activeBricksCount++;
+                        GameState.activeBricksCount++;
                     }
                 }
             }
@@ -992,17 +924,17 @@
                     const coord = invisibleCoords.splice(idx, 1)[0];
                     bricks[coord.r][coord.c].visible = true;
                     allCoordinates.push(coord);
-                    activeBricksCount++;
+                    GameState.activeBricksCount++;
                 }
             }
             
             // Randomly assign power-ups (5 to 10)
             const numPowerUps = 5 + Math.floor(Math.random() * 6);
-            // Determine max bomb blocks based on level
-            const maxBombs = level < 7 ? 0 : (level < 11 ? 1 : 2); // Cap at 2 permanently
+            // Determine max bomb blocks based on GameState.level
+            const maxBombs = GameState.level < 7 ? 0 : (GameState.level < 11 ? 1 : 2); // Cap at 2 permanently
             let bombsPlaced = 0;
             let starsPlaced = 0;
-            const maxStars = 1; // Star on any level, max 1 per level
+            const maxStars = 1; // Star on any GameState.level, max 1 per GameState.level
             for (let i = 0; i < numPowerUps; i++) {
                 if (allCoordinates.length === 0) break;
                 const index = Math.floor(Math.random() * allCoordinates.length);
@@ -1026,11 +958,11 @@
             }
 
             // Moving/Drifting Bricks (Level 4+)
-            if (level >= 4) {
+            if (GameState.level >= 4) {
                 for (let r = 0; r < brickRows; r++) {
                     for (let c = 0; c < brickColumns; c++) {
                         // Start sparse (10%) and scale up slowly
-                        const moveChance = 0.10 + Math.min(0.15, (level - 4) * 0.02);
+                        const moveChance = 0.10 + Math.min(0.15, (GameState.level - 4) * 0.02);
                         if (bricks[r][c].visible && Math.random() < moveChance) {
                             const driftSpeed = 0.3 + Math.random() * 0.5;
                             bricks[r][c].speed = driftSpeed;
@@ -1041,7 +973,7 @@
             }
 
             // Shooter Bricks (Level 8+)
-            if (level >= 8) {
+            if (GameState.level >= 8) {
                 let availableShooters = [];
                 for (let r = 0; r < brickRows; r++) {
                     for (let c = 0; c < brickColumns; c++) {
@@ -1050,7 +982,7 @@
                         }
                     }
                 }
-                const maxShooters = Math.min(3, 1 + Math.floor((level - 8) / 3)); // Max 3
+                const maxShooters = Math.min(3, 1 + Math.floor((GameState.level - 8) / 3)); // Max 3
                 for (let i = 0; i < maxShooters; i++) {
                     if (availableShooters.length === 0) break;
                     const idx = Math.floor(Math.random() * availableShooters.length);
@@ -1060,7 +992,7 @@
             }
 
             // Portal Bricks (Level 3+)
-            if (level >= 3) {
+            if (GameState.level >= 3) {
                 let available = [];
                 for (let r = 0; r < brickRows; r++) {
                     for (let c = 0; c < brickColumns; c++) {
@@ -1076,7 +1008,7 @@
                     const pos2 = available.splice(idx2, 1)[0];
                     bricks[pos1.r][pos1.c].visible = false;
                     bricks[pos2.r][pos2.c].visible = false;
-                    activeBricksCount -= 2;
+                    GameState.activeBricksCount -= 2;
                     portalBricks = [
                         { x: bricks[pos1.r][pos1.c].x, y: bricks[pos1.r][pos1.c].y, width: brickWidth, height: brickHeight, linkedIndex: 1, pulse: 0 },
                         { x: bricks[pos2.r][pos2.c].x, y: bricks[pos2.r][pos2.c].y, width: brickWidth, height: brickHeight, linkedIndex: 0, pulse: Math.PI }
@@ -1085,7 +1017,7 @@
             }
         }
         
-        // Reset ball position (Start of level/life)
+        // Reset ball position (Start of GameState.level/life)
         function resetBalls() {
             balls = [];
             createBall(true); // Create one sticky ball
@@ -1097,15 +1029,15 @@
                 radius: ballRadius,
                 x: paddle.x + paddle.width / 2,
                 y: paddle.y - ballRadius,
-                speed: currentBallSpeed,
+                speed: GameState.currentBallSpeed,
                 dx: 0,
                 dy: 0,
-                color: activeBallPowerUp === 'through' ? 'black' : '#FFFF00',
-                through: activeBallPowerUp === 'through',
-                sticky: activePaddlePowerUp === 'sticky',
+                color: GameState.activeBallPowerUp === 'through' ? 'black' : '#FFFF00',
+                through: GameState.activeBallPowerUp === 'through',
+                sticky: GameState.activePaddlePowerUp === 'sticky',
                 onPaddle: isSticky,
                 paddleOffset: paddle.width / 2,
-                stickTimer: -1, // -1 means infinite (e.g. start of level/life)
+                stickTimer: -1, // -1 means infinite (e.g. start of GameState.level/life)
                 gravityEntrapTime: {} // Track time spent inside each gravity well (keyed by index)
             };
             
@@ -1113,7 +1045,7 @@
                 // Launch immediately if not sticky start
                 b.dx = (Math.random() > 0.5 ? 1 : -1) * b.speed;
                 b.dy = -b.speed;
-                b.y = paddle.y - Math.round(30 * scaleFactor); // Start slightly higher
+                b.y = paddle.y - Math.round(30); // Start slightly higher
             }
             
             balls.push(b);
@@ -1125,15 +1057,15 @@
         
         // Update UI elements
         function updateUI() {
-            scoreElement.textContent = score;
-            livesElement.textContent = lives;
-            speedElement.textContent = currentBallSpeed.toFixed(1);
+            scoreElement.textContent = GameState.score;
+            livesElement.textContent = GameState.lives;
+            speedElement.textContent = GameState.currentBallSpeed.toFixed(1);
             
             // Extra Life check (Now every 2000 points)
-            if (score - lastLifeScore >= 2000) {
-                lives++;
-                lastLifeScore += 2000;
-                livesElement.textContent = lives;
+            if (GameState.score - GameState.lastLifeScore >= 2000) {
+                GameState.lives++;
+                GameState.lastLifeScore += 2000;
+                livesElement.textContent = GameState.lives;
                 
                 // Animate
                 livesElement.classList.remove('extra-life-anim');
@@ -1141,39 +1073,39 @@
                 livesElement.classList.add('extra-life-anim');
             }
             
-            levelElement.textContent = level;
-            // Display top high score
+            levelElement.textContent = GameState.level;
+            // Display top high GameState.score
             updateHighScoreDisplay();
         }
 
         function init() {
             resizeCanvas(); // Adapt to current screen size
             lastTime = performance.now();
-            score = 0;
-            lastLifeScore = 0;
-            lives = 3;
-            level = 1;
-            currentBallSpeed = baseBallSpeed;
+            GameState.score = 0;
+            GameState.lastLifeScore = 0;
+            GameState.lives = 3;
+            GameState.level = 1;
+            GameState.currentBallSpeed = baseBallSpeed;
             updateUI();
             updateHighScoreDisplay();
             createBricks();
             resetBalls(); // Reset to one ball on paddle
             resetPowerUps();
-            gameRunning = true;
-            gamePaused = false;
+            GameState.gameRunning = true;
+            GameState.gamePaused = false;
             gameOverScreen.style.display = 'none';
             gameWinScreen.style.display = 'none';
             levelIndicator.style.display = 'none';
             leaderboard.style.display = 'none';
             highScoreModal.style.display = 'none';
-            comboCount = 0;
-            comboTimer = 0;
+            GameState.comboCount = 0;
+            GameState.comboTimer = 0;
             comboTexts = [];
-            shieldActive = false;
-            isBossLevel = false;
+            GameState.shieldActive = false;
+            GameState.isBossLevel = false;
             boss = null;
             portalBricks = [];
-            shakeTimer = 0;
+            GameState.shakeTimer = 0;
             canvas.style.transform = '';
             draw(); // Draw initial state
         }
@@ -1181,8 +1113,8 @@
         // Shoot bullets
         function shoot() {
             const now = Date.now();
-            if (now - lastShotTime > 250) { // Cooldown
-                lastShotTime = now;
+            if (now - GameState.lastShotTime > 250) { // Cooldown
+                GameState.lastShotTime = now;
                 bullets.push({
                     x: paddle.x,
                     y: paddle.y,
@@ -1205,7 +1137,7 @@
         // Draw paddle
         function drawPaddle() {
             // Don't draw paddle if exploding
-            if (gameResetting) return;
+            if (GameState.gameResetting) return;
             
             const hasGap = paddle.gap > 0;
             const leftWidth = hasGap ? (paddle.width - paddle.gap) / 2 : paddle.width;
@@ -1221,7 +1153,7 @@
             ctx.closePath();
             
             // Draw guns if shooter
-            if (canShoot) {
+            if (GameState.canShoot) {
                 ctx.fillStyle = '#C0C0C0';
                 // Left gun
                 ctx.fillRect(paddle.x - 2, paddle.y - 5, 6, 10);
@@ -1238,7 +1170,7 @@
                 ctx.closePath();
 
                 // Sticky Glue Visual
-                if (activePaddlePowerUp === 'sticky') {
+                if (GameState.activePaddlePowerUp === 'sticky') {
                     ctx.beginPath();
                     ctx.rect(paddle.x, paddle.y, leftWidth, 5);
                     if (hasGap) ctx.rect(rightX, paddle.y, leftWidth, 5);
@@ -1248,11 +1180,9 @@
                 }
 
                 // Immortal gold aura around paddle
-                if (immortalActive) {
+                if (GameState.immortalActive) {
                     const gPulse = 0.5 + 0.5 * Math.sin(Date.now() / 120);
                     ctx.save();
-                    ctx.shadowBlur = 20 + 14 * gPulse;
-                    ctx.shadowColor = '#FFD700';
                     ctx.strokeStyle = `rgba(255, 215, 0, ${0.6 + 0.4 * gPulse})`;
                     ctx.lineWidth = 3;
                     if (hasGap) {
@@ -1267,17 +1197,15 @@
 
             // Draw the immortality HUD indicator (star icon + countdown)
             function drawImmortalHUD() {
-                if (!immortalActive) return;
-                const secsLeft = Math.ceil(immortalTimer / 1000);
+                if (!GameState.immortalActive) return;
+                const secsLeft = Math.ceil(GameState.immortalTimer / 1000);
                 const pulse = 0.7 + 0.3 * Math.sin(Date.now() / 200);
                 const hudX = canvas.width - 10;
                 const hudY = 14;
                 ctx.save();
                 ctx.textAlign = 'right';
                 ctx.textBaseline = 'top';
-                ctx.shadowBlur = 14 * pulse;
-                ctx.shadowColor = '#FFD700';
-                ctx.font = `bold ${Math.round(18 * scaleFactor)}px Arial`;
+                ctx.font = `bold ${Math.round(18)}px Arial`;
                 ctx.fillStyle = `rgba(255, 215, 0, ${pulse})`;
                 ctx.fillText(`⭐ ${secsLeft}s`, hudX, hudY);
                 ctx.restore();
@@ -1354,8 +1282,6 @@
                         const pulse = 0.6 + 0.4 * Math.sin(Date.now() / 150);
                         ctx.rotate(item.rotation);
                         // Glow aura
-                        ctx.shadowBlur = 18 * pulse;
-                        ctx.shadowColor = '#FFD700';
                         // Star path
                         ctx.beginPath();
                         for (let s = 0; s < spikes * 2; s++) {
@@ -1373,7 +1299,6 @@
                         ctx.strokeStyle = '#FFF8DC';
                         ctx.lineWidth = 1.5;
                         ctx.stroke();
-                        ctx.shadowBlur = 0;
                         ctx.rotate(-item.rotation);
                         // ⭐ symbol text for clarity
                         ctx.font = `bold ${Math.round(r * 0.9)}px Arial`;
@@ -1447,10 +1372,7 @@
                     ctx.arc(ball.x, ball.y, ball.radius + 4 + pulse * 4, 0, Math.PI * 2);
                     ctx.strokeStyle = `rgba(0, 255, 255, ${0.6 + 0.4 * pulse})`;
                     ctx.lineWidth = 2;
-                    ctx.shadowBlur = 14;
-                    ctx.shadowColor = '#00FFFF';
                     ctx.stroke();
-                    ctx.shadowBlur = 0;
                     ctx.closePath();
                 }
 
@@ -1529,10 +1451,7 @@
                                 ctx.strokeStyle = `rgba(255, 215, 0, ${alpha})`;
                                 ctx.lineWidth = 3;
                                 ctx.stroke();
-                                ctx.shadowBlur = 12 * alpha;
-                                ctx.shadowColor = '#FFD700';
                                 ctx.stroke();
-                                ctx.shadowBlur = 0;
                                 ctx.fillStyle = `rgba(255, 200, 0, 0.25)`;
                             } else if (brick.powerUp === 'bomb') {
                                 ctx.strokeStyle = `rgba(255, 255, 255, ${alpha})`;
@@ -1563,7 +1482,7 @@
                                 ctx.fill();
                             }
                             ctx.fillStyle = 'white';
-                            ctx.font = `bold ${10 * scaleFactor}px Arial`;
+                            ctx.font = `bold ${10}px Arial`;
                             ctx.textAlign = 'center';
                             ctx.textBaseline = 'middle';
                             ctx.fillText(brick.hits.toString(), brick.x + brick.width / 2, brick.y + brick.height / 2);
@@ -1588,8 +1507,8 @@
         function movePaddle(timeScale = 1) {
             const maxSpeed = paddle.speed * 2.4; // Fast enough to reach edges, controllable enough to be precise
             // Scale-aware acceleration & friction — feels consistent on all screen sizes
-            const acceleration = 1.2 * scaleFactor;
-            const braking = 2.2 * scaleFactor; // Stronger decel when pressing opposite direction
+            const acceleration = 1.2;
+            const braking = 2.2; // Stronger decel when pressing opposite direction
             const friction = 0.72; // Higher friction = paddle stops faster when key released
 
             // Determine intended direction from keys
@@ -1650,8 +1569,8 @@
                 }
                 // Vertical drift
                 rock.y += rock.dy * timeScale;
-                const minY = brickOffsetTop + 100 * scaleFactor; // Don't drift into bricks
-                const maxY = canvas.height - 80 * scaleFactor;   // Don't drift near paddle
+                const minY = brickOffsetTop + 100; // Don't drift into bricks
+                const maxY = canvas.height - 80;   // Don't drift near paddle
                 if (rock.y - rock.coreRadius < minY) {
                     rock.dy = Math.abs(rock.dy);
                     rock.y = minY + rock.coreRadius;
@@ -1758,7 +1677,7 @@
                 });
 
                 // Magnet Paddle
-                if (activePaddlePowerUp === 'magnet' && ball.y > canvas.height * 0.6) {
+                if (GameState.activePaddlePowerUp === 'magnet' && ball.y > canvas.height * 0.6) {
                     const paddleCenterX = paddle.x + paddle.width / 2;
                     ball.dx += (paddleCenterX - ball.x) * 0.002 * timeScale;
                 }
@@ -1793,7 +1712,7 @@
                         else if (spaceshipHitCount === 1) points = 150;
                         else if (spaceshipHitCount === 2) points = 50;
                         
-                        score += points;
+                        GameState.score += points;
                         spaceshipHitCount++;
                         createExplosion(spaceship.x + spaceship.width / 2, spaceship.y + spaceship.height / 2, '#00ffcc');
                         updateUI();
@@ -1819,17 +1738,17 @@
                 }
                 
                 // Shield collision
-                if (shieldActive && ball.y + ball.radius > canvas.height - 10) {
+                if (GameState.shieldActive && ball.y + ball.radius > canvas.height - 10) {
                     ball.dy = -Math.abs(ball.dy);
                     ball.y = canvas.height - 10 - ball.radius;
-                    shieldActive = false;
+                    GameState.shieldActive = false;
                     createExplosion(ball.x, canvas.height - 10, '#00ffff');
                     playSound('shield');
                 }
 
                 // Bottom wall - remove ball (or bounce if immortal)
                 if (ball.y + ball.radius > canvas.height) {
-                    if (immortalActive) {
+                    if (GameState.immortalActive) {
                         ball.dy = -Math.abs(ball.dy);
                         ball.y = canvas.height - ball.radius;
                         playSound('shield');
@@ -1938,7 +1857,7 @@
                                 
                                 if (brick.hits <= 0) {
                                     brick.visible = false;
-                                    if (activeBricksCount > 0) activeBricksCount--;
+                                    if (GameState.activeBricksCount > 0) GameState.activeBricksCount--;
                                     registerBrickHit(brick.x + brick.width / 2, brick.y, brick.r);
                                     
                                     if (brick.powerUp) {
@@ -1947,11 +1866,11 @@
                                     
                                     updateUI();
                                     
-                                    if (activeBricksCount === 1) {
+                                    if (GameState.activeBricksCount === 1) {
                                         activateLastBlockMovement();
                                     }
                                     
-                                    if (activeBricksCount <= 0) {
+                                    if (GameState.activeBricksCount <= 0) {
                                         levelComplete();
                                         return;
                                     }
@@ -1969,7 +1888,7 @@
                 }
 
                 // Boss collision
-                if (isBossLevel && boss && boss.hp > 0) {
+                if (GameState.isBossLevel && boss && boss.hp > 0) {
                     if (ball.x + ball.radius > boss.x &&
                         ball.x - ball.radius < boss.x + boss.width &&
                         ball.y + ball.radius > boss.y &&
@@ -2007,13 +1926,13 @@
 
                         if (dealDamage) {
                             boss.hp--;
-                            score += 20;
+                            GameState.score += 20;
                             createExplosion(ball.x, ball.y, '#ff0044');
                             playSound('bossHit');
                             triggerScreenShake(3);
                             updateUI();
                             if (boss.hp <= 0) {
-                                score += 500;
+                                GameState.score += 500;
                                 createExplosion(boss.x + boss.width / 2, boss.y + boss.height / 2, '#ff0044');
                                 
                                 // Guaranteed high-value drop from boss
@@ -2064,9 +1983,9 @@
                 }
             }
             
-            // Check lives only if no balls left
+            // Check GameState.lives only if no balls left
             if (balls.length === 0) {
-                if (!gameResetting) {
+                if (!GameState.gameResetting) {
                     explodePaddle();
                 }
             }
@@ -2074,28 +1993,28 @@
         
         // Reset ball effects only (does NOT touch paddle state)
         function resetBallPowerUps() {
-            activeBallPowerUp = null;
+            GameState.activeBallPowerUp = null;
             lightningBolts = [];
             balls.forEach(b => {
                 b.color = '#FFFF00';
                 b.through = false;
                 b.lightning = false;
-                b.speed = currentBallSpeed;
+                b.speed = GameState.currentBallSpeed;
             });
         }
 
         // Reset paddle effects only (does NOT touch ball state or paddle width)
         function resetPaddlePowerUps() {
-            activePaddlePowerUp = null;
+            GameState.activePaddlePowerUp = null;
             paddle.color = '#FFCC00';
             balls.forEach(b => {
                 b.sticky = false;
             });
-            canShoot = false;
+            GameState.canShoot = false;
             bullets.forEach(b => b.active = false);
         }
 
-        // Full reset (used on life loss / level transition)
+        // Full reset (used on life loss / GameState.level transition)
         function resetPowerUps() {
             resetBallPowerUps();
             resetPaddlePowerUps();
@@ -2103,14 +2022,14 @@
             paddle.damageState = 0;
             paddle.gap = 0;
             fallingItems = [];
-            shieldActive = false;
-            immortalActive = false;
-            immortalTimer = 0;
+            GameState.shieldActive = false;
+            GameState.immortalActive = false;
+            GameState.immortalTimer = 0;
         }
         
         // Paddle Damage State Logic
         function damagePaddle() {
-            if (immortalActive) {
+            if (GameState.immortalActive) {
                 // Bomb bounces off harmlessly during immortality
                 createExplosion(paddle.x + paddle.width/2, paddle.y, '#FFD700');
                 return;
@@ -2120,7 +2039,7 @@
                 // Hit 1: Shrink drastically
                 paddle.damageState = 1;
                 const oldWidth = paddle.width;
-                paddle.width = Math.max(30 * scaleFactor, defaultPaddleWidth * 0.4);
+                paddle.width = Math.max(30, defaultPaddleWidth * 0.4);
                 paddle.x += (oldWidth - paddle.width) / 2; // Keep centered
                 
                 // Adjust balls on paddle
@@ -2138,9 +2057,9 @@
             } else if (paddle.damageState === 1) {
                 // Hit 2: Introduce Gap
                 paddle.damageState = 2;
-                paddle.gap = 40 * scaleFactor;
+                paddle.gap = 40;
                 // Ensure outer width is wide enough to show gap properly
-                const minWidthWithGap = paddle.gap + 30 * scaleFactor; 
+                const minWidthWithGap = paddle.gap + 30; 
                 if (paddle.width < minWidthWithGap) {
                     const diff = minWidthWithGap - paddle.width;
                     paddle.width = minWidthWithGap;
@@ -2157,22 +2076,22 @@
 
         // Paddle Explosion Logic
         function explodePaddle() {
-            gameResetting = true;
-            resetTimer = Date.now() + 1500; // 1.5 seconds delay
+            GameState.gameResetting = true;
+            GameState.resetTimer = Date.now() + 1500; // 1.5 seconds delay
             createExplosion(paddle.x + paddle.width/2, paddle.y + paddle.height/2, paddle.color);
             triggerScreenShake(6);
             playSound('lifeLoss');
             
             // "Hide" paddle visually but keep object
-            // We'll handle drawing effectively by checking gameResetting in drawPaddle
+            // We'll handle drawing effectively by checking GameState.gameResetting in drawPaddle
         }
         
         function resetLife() {
-             gameResetting = false;
-             lives--;
+             GameState.gameResetting = false;
+             GameState.lives--;
              updateUI();
              
-             if (lives <= 0) {
+             if (GameState.lives <= 0) {
                  handleGameOver();
              } else {
                  resetBalls();
@@ -2226,8 +2145,8 @@
             fallingItems.push({
                 x: x,
                 y: y,
-                radius: 12 * scaleFactor,
-                speed: 2.5 * scaleFactor,
+                radius: 12,
+                speed: 2.5,
                 type: type,
                 active: true,
                 rotation: 0
@@ -2276,8 +2195,8 @@
                             hitBall = true;
                             // Deflect the ball slightly
                             b.dy = -b.dy;
-                            // Add some score for destroying a bomb
-                            score += 50;
+                            // Add some GameState.score for destroying a bomb
+                            GameState.score += 50;
                             updateUI();
                             createExplosion(item.x, item.y, '#FF4500'); // Orange/Red explosion
                             break;
@@ -2333,12 +2252,12 @@
                 if (distance <= item.radius) {
                     // Hit paddle!
                     if (item.type === 'bomb' || item.type === 'brickBullet') {
-                        if (!gameResetting) {
+                        if (!GameState.gameResetting) {
                             damagePaddle();
                         }
                     } else if (item.type === 'rain') {
                         // Extra Life
-                        lives++;
+                        GameState.lives++;
                         updateUI();
                         // Visual fanfare
                         createExplosion(paddle.x + paddle.width/2, paddle.y, '#00CED1');
@@ -2354,7 +2273,7 @@
                         createExplosion(paddle.x + paddle.width/2, paddle.y, 'white');
                         playSound('powerUp');
                     }
-                    score += 25;
+                    GameState.score += 25;
                     updateUI();
                     item.active = false;
                     return; 
@@ -2368,7 +2287,7 @@
              if (type === 'wide') {
                  paddle.width *= 2;
                  if (paddle.width > canvas.width * 0.8) paddle.width = canvas.width * 0.8;
-                 if (!activePaddlePowerUp) paddle.color = 'green';
+                 if (!GameState.activePaddlePowerUp) paddle.color = 'green';
                  
                  // Wide fully cures the paddle!
                  paddle.damageState = 0;
@@ -2378,14 +2297,14 @@
              if (type === 'narrow') {
                  paddle.width /= 2;
                  if (paddle.width < 25) paddle.width = 25;
-                 if (!activePaddlePowerUp) paddle.color = 'red';
+                 if (!GameState.activePaddlePowerUp) paddle.color = 'red';
                  return;
              }
 
              // --- Ball Power-Ups (only reset ball state) ---
              if (type === 'through' || type === 'multiball' || type === 'blast' || type === 'lightning') {
                  resetBallPowerUps();
-                 activeBallPowerUp = type;
+                 GameState.activeBallPowerUp = type;
 
                  if (type === 'through') {
                      balls.forEach(b => { b.through = true; b.color = 'black'; });
@@ -2409,13 +2328,13 @@
              // --- Paddle Power-Ups (only reset paddle state) ---
              if (type === 'sticky' || type === 'shooter' || type === 'magnet') {
                  resetPaddlePowerUps();
-                 activePaddlePowerUp = type;
+                 GameState.activePaddlePowerUp = type;
 
                  if (type === 'sticky') {
                      balls.forEach(b => { b.sticky = true; });
                  } else if (type === 'shooter') {
                      paddle.color = 'purple';
-                     canShoot = true;
+                     GameState.canShoot = true;
                  } else if (type === 'magnet') {
                      paddle.color = '#4488ff';
                  }
@@ -2424,14 +2343,14 @@
 
              // --- Shield ---
              if (type === 'shield') {
-                 shieldActive = true;
+                 GameState.shieldActive = true;
                  return;
              }
 
              // --- Star / Immortality ---
              if (type === 'star') {
-                 immortalActive = true;
-                 immortalTimer = IMMORTAL_DURATION; // Always reset to full 10s
+                 GameState.immortalActive = true;
+                 GameState.immortalTimer = IMMORTAL_DURATION; // Always reset to full 10s
                  return;
              }
         }
@@ -2474,12 +2393,12 @@
             target.hits--;
             if (target.hits <= 0) {
                 target.visible = false;
-                if (activeBricksCount > 0) activeBricksCount--;
+                if (GameState.activeBricksCount > 0) GameState.activeBricksCount--;
                 registerBrickHit(target.x + target.width / 2, target.y + target.height / 2, target.r);
                 if (target.powerUp) spawnFallingItem(target.x + target.width / 2, target.y + target.height / 2, target.powerUp);
                 createExplosion(tx, ty, '#00FFFF');
                 updateUI();
-                if (activeBricksCount <= 0 && !isBossLevel) {
+                if (GameState.activeBricksCount <= 0 && !GameState.isBossLevel) {
                     levelComplete();
                 }
             } else {
@@ -2489,7 +2408,7 @@
         }
 
         function updateLightningBalls(timeScale) {
-            if (activeBallPowerUp !== 'lightning') return;
+            if (GameState.activeBallPowerUp !== 'lightning') return;
             balls.forEach(ball => {
                 if (!ball.lightning || ball.onPaddle) return;
                 ball.lightningTimer = (ball.lightningTimer || 0) + FIXED_TIME_STEP * timeScale;
@@ -2511,8 +2430,6 @@
             lightningBolts.forEach(bolt => {
                 ctx.save();
                 ctx.globalAlpha = bolt.alpha;
-                ctx.shadowBlur = 12;
-                ctx.shadowColor = '#00FFFF';
                 ctx.lineWidth = 2;
                 bolt.segs.forEach(seg => {
                     ctx.beginPath();
@@ -2540,23 +2457,23 @@
         
         // Level complete
         function levelComplete() {
-            gameRunning = false;
-            completedLevelElement.textContent = level;
+            GameState.gameRunning = false;
+            completedLevelElement.textContent = GameState.level;
             gameWinScreen.style.display = 'block';
         }
         
         // Game over
         function handleGameOver() {
-            gameRunning = false;
+            GameState.gameRunning = false;
             
-            // Check for high score
-            if (checkHighScore(score)) {
-                newScoreDisplay.textContent = score;
+            // Check for high GameState.score
+            if (checkHighScore(GameState.score)) {
+                newScoreDisplay.textContent = GameState.score;
                 initialsInput.value = '';
                 highScoreModal.style.display = 'block';
                 initialsInput.focus();
             } else {
-                // Not a high score — clear any previous current flags
+                // Not a high GameState.score — clear any previous current flags
                 myScores.forEach(e => e.current = false);
                 showLeaderboard();
             }
@@ -2570,9 +2487,9 @@
             const initials = initialsInput.value.toUpperCase() || 'UNK';
             // Clear any previous current flags
             myScores.forEach(e => e.current = false);
-            const newEntry = { name: initials, score: score, level: level, current: true };
+            const newEntry = { name: initials, score: GameState.score, level: GameState.level, current: true };
             
-            if (myScores.length < 10 || score > myScores[myScores.length - 1].score) {
+            if (myScores.length < 10 || GameState.score > myScores[myScores.length - 1].score) {
                 myScores.push(newEntry);
                 myScores.sort((a, b) => b.score - a.score);
                 if (myScores.length > 10) myScores.pop();
@@ -2605,7 +2522,7 @@
             } else {
                 myScores.forEach((entry, index) => {
                     const row = document.createElement('tr');
-                    if (entry.current) row.classList.add('current-score');
+                    if (entry.current) row.classList.add('current-GameState.score');
                     row.innerHTML = `
                         <td>${index + 1}</td>
                         <td>${entry.name}</td>
@@ -2620,16 +2537,16 @@
             gameOverScreen.style.display = 'none';
         }
         
-        // Next level
+        // Next GameState.level
         function nextLevel() {
-            // Removed boss speed dip for consistent level speed increase
+            // Removed boss speed dip for consistent GameState.level speed increase
 
-            level++;
+            GameState.level++;
             // Removed Level 5 cap - infinite levels!
             
             // Increase ball speed logic: cap at 9 (scaled slower)
-            if (currentBallSpeed < 9) {
-                currentBallSpeed += 0.25;
+            if (GameState.currentBallSpeed < 9) {
+                GameState.currentBallSpeed += 0.25;
             }
             
             resetPowerUps(); 
@@ -2637,15 +2554,15 @@
             // Update UI
             updateUI();
             
-            // Show level indicator
-            levelNumElement.textContent = level;
+            // Show GameState.level indicator
+            levelNumElement.textContent = GameState.level;
             levelIndicator.style.display = 'block';
             setTimeout(() => {
                 levelIndicator.style.display = 'none';
                 createBricks();
                 resetBalls();
                 lastTime = performance.now();
-                gameRunning = true;
+                GameState.gameRunning = true;
                 update();
             }, 2000);
         }
@@ -2659,7 +2576,7 @@
             drawBricks();
             drawPortalBricks();
             drawGravityRocks();
-            if (isBossLevel) drawBoss();
+            if (GameState.isBossLevel) drawBoss();
             if (spaceship.active) drawSpaceship();
             drawShield();
             drawPaddle();
@@ -2834,17 +2751,17 @@
 
         // ===== SCREEN SHAKE =====
         function triggerScreenShake(intensity = 5) {
-            shakeTimer = 300;
-            shakeIntensity = intensity;
+            GameState.shakeTimer = 300;
+            GameState.shakeIntensity = intensity;
         }
 
         function applyScreenShake() {
-            if (shakeTimer > 0) {
-                const dx = (Math.random() - 0.5) * shakeIntensity * 2;
-                const dy = (Math.random() - 0.5) * shakeIntensity * 2;
+            if (GameState.shakeTimer > 0) {
+                const dx = (Math.random() - 0.5) * GameState.shakeIntensity * 2;
+                const dy = (Math.random() - 0.5) * GameState.shakeIntensity * 2;
                 canvas.style.transform = `translate(${dx}px, ${dy}px)`;
-                shakeTimer -= FIXED_TIME_STEP;
-                if (shakeTimer <= 0) {
+                GameState.shakeTimer -= FIXED_TIME_STEP;
+                if (GameState.shakeTimer <= 0) {
                     canvas.style.transform = '';
                 }
             }
@@ -2852,9 +2769,9 @@
 
         // ===== COMBO SCORING =====
         function updateCombo(timeScale) {
-            if (comboTimer > 0) {
-                comboTimer -= FIXED_TIME_STEP * timeScale;
-                if (comboTimer <= 0) comboCount = 0;
+            if (GameState.comboTimer > 0) {
+                GameState.comboTimer -= FIXED_TIME_STEP * timeScale;
+                if (GameState.comboTimer <= 0) GameState.comboCount = 0;
             }
             for (let i = comboTexts.length - 1; i >= 0; i--) {
                 const t = comboTexts[i];
@@ -2869,33 +2786,33 @@
                 ctx.save();
                 ctx.globalAlpha = t.alpha;
                 ctx.fillStyle = '#FFD700';
-                ctx.font = `bold ${18 * scaleFactor}px Arial`;
+                ctx.font = `bold ${18}px Arial`;
                 ctx.textAlign = 'center';
                 ctx.fillText(t.text, t.x, t.y);
                 ctx.restore();
             });
-            if (comboCount >= 2) {
+            if (GameState.comboCount >= 2) {
                 ctx.save();
                 ctx.fillStyle = '#FFD700';
-                ctx.font = `bold ${20 * scaleFactor}px Arial`;
+                ctx.font = `bold ${20}px Arial`;
                 ctx.textAlign = 'center';
                 const pulse = 1 + Math.sin(Date.now() / 100) * 0.1;
-                ctx.setTransform(pulse, 0, 0, pulse, canvas.width / 2, 25 * scaleFactor);
-                ctx.fillText(`COMBO x${comboCount}!`, 0, 0);
+                ctx.setTransform(pulse, 0, 0, pulse, canvas.width / 2, 25);
+                ctx.fillText(`COMBO x${GameState.comboCount}!`, 0, 0);
                 ctx.restore();
             }
         }
 
         function registerBrickHit(brickX, brickY, row) {
-            comboCount++;
-            comboTimer = 1500;
+            GameState.comboCount++;
+            GameState.comboTimer = 1500;
             const rowPoints = 10 + Math.floor((1 - (row || 0) / Math.max(1, brickRows - 1)) * 20); // 30 down to 10 based on row
-            const points = rowPoints * Math.max(1, comboCount);
-            score += points;
-            if (comboCount >= 2) {
-                comboTexts.push({ x: brickX, y: brickY, text: `x${comboCount}!`, alpha: 1 });
+            const points = rowPoints * Math.max(1, GameState.comboCount);
+            GameState.score += points;
+            if (GameState.comboCount >= 2) {
+                comboTexts.push({ x: brickX, y: brickY, text: `x${GameState.comboCount}!`, alpha: 1 });
             }
-            if (comboCount === 5 || comboCount === 10) playSound('combo');
+            if (GameState.comboCount === 5 || GameState.comboCount === 10) playSound('combo');
             playSound('brickBreak');
         }
 
@@ -2908,30 +2825,30 @@
                 y: brickOffsetTop,
                 width: bossWidth,
                 height: bossHeight,
-                hp: 20 + level * 2,
-                maxHp: 20 + level * 2,
-                speed: 1 + level * 0.1,
-                dx: 1 + level * 0.1,
+                hp: 20 + GameState.level * 2,
+                maxHp: 20 + GameState.level * 2,
+                speed: 1 + GameState.level * 0.1,
+                dx: 1 + GameState.level * 0.1,
                 shootTimer: 3000,
                 color: '#ff0044'
             };
-            activeBricksCount = 0;
+            GameState.activeBricksCount = 0;
         }
 
         function moveBoss(timeScale) {
-            if (!isBossLevel || !boss) return;
+            if (!GameState.isBossLevel || !boss) return;
             boss.x += boss.dx * timeScale;
             if (boss.x <= 0) { boss.x = 0; boss.dx = Math.abs(boss.dx); }
             else if (boss.x + boss.width >= canvas.width) { boss.x = canvas.width - boss.width; boss.dx = -Math.abs(boss.dx); }
             boss.shootTimer -= FIXED_TIME_STEP * timeScale;
             if (boss.shootTimer <= 0) {
-                boss.shootTimer = Math.max(1000, 2500 - level * 50);
+                boss.shootTimer = Math.max(1000, 2500 - GameState.level * 50);
                 spawnFallingItem(boss.x + boss.width / 2, boss.y + boss.height, 'bomb');
             }
         }
 
         function drawBoss() {
-            if (!isBossLevel || !boss) return;
+            if (!GameState.isBossLevel || !boss) return;
             ctx.fillStyle = boss.color;
             ctx.fillRect(boss.x, boss.y, boss.width, boss.height);
             ctx.strokeStyle = '#fff';
@@ -2954,7 +2871,7 @@
             ctx.lineWidth = 1;
             ctx.strokeRect(barX, barY, barWidth, barHeight);
             ctx.fillStyle = 'white';
-            ctx.font = `bold ${14 * scaleFactor}px Arial`;
+            ctx.font = `bold ${14}px Arial`;
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
             ctx.fillText('BOSS', boss.x + boss.width / 2, boss.y + boss.height / 2);
@@ -2962,18 +2879,15 @@
 
         // ===== SHIELD =====
         function drawShield() {
-            if (!shieldActive) return;
+            if (!GameState.shieldActive) return;
             const shieldY = canvas.height - 10;
             const pulse = 0.5 + 0.5 * Math.sin(Date.now() / 200);
             ctx.strokeStyle = `rgba(0, 255, 255, ${0.5 + pulse * 0.5})`;
             ctx.lineWidth = 4;
-            ctx.shadowColor = '#00ffff';
-            ctx.shadowBlur = 10;
             ctx.beginPath();
             ctx.moveTo(0, shieldY);
             ctx.lineTo(canvas.width, shieldY);
             ctx.stroke();
-            ctx.shadowBlur = 0;
         }
 
         // ===== PORTAL BRICKS =====
@@ -2993,7 +2907,7 @@
                 ctx.lineWidth = 3;
                 ctx.strokeRect(-portal.width / 2, -portal.height / 2, portal.width, portal.height);
                 ctx.fillStyle = 'white';
-                ctx.font = `bold ${12 * scaleFactor}px Arial`;
+                ctx.font = `bold ${12}px Arial`;
                 ctx.textAlign = 'center';
                 ctx.textBaseline = 'middle';
                 ctx.fillText(index === 0 ? 'A' : 'B', 0, 0);
@@ -3003,7 +2917,7 @@
 
         // ===== SHOOTER BRICKS =====
         function updateShooterBricks(timeScale) {
-            if (level < 7 || isBossLevel) return;
+            if (GameState.level < 7 || GameState.isBossLevel) return;
             brickShootTimer -= FIXED_TIME_STEP * timeScale;
             if (brickShootTimer <= 0) {
                 brickShootTimer = 3000;
@@ -3047,7 +2961,7 @@
                         else if (spaceshipHitCount === 1) points = 150;
                         else if (spaceshipHitCount === 2) points = 50;
                         
-                        score += points;
+                        GameState.score += points;
                         spaceshipHitCount++;
                         createExplosion(spaceship.x + spaceship.width / 2, spaceship.y + spaceship.height / 2, '#00ffcc');
                         updateUI();
@@ -3076,7 +2990,7 @@
                                 brick.hits--;
                                 if (brick.hits <= 0) {
                                     brick.visible = false;
-                                    if (activeBricksCount > 0) activeBricksCount--;
+                                    if (GameState.activeBricksCount > 0) GameState.activeBricksCount--;
                                     registerBrickHit(brick.x + brick.width / 2, brick.y, brick.r);
                                     
                                     if (brick.powerUp) {
@@ -3086,11 +3000,11 @@
                                     updateUI();
                                     b.active = false;
                                     
-                                    if (activeBricksCount === 1) {
+                                    if (GameState.activeBricksCount === 1) {
                                         activateLastBlockMovement();
                                     }
                                     
-                                    if (activeBricksCount === 0) {
+                                    if (GameState.activeBricksCount === 0) {
                                         levelComplete();
                                         return;
                                     }
@@ -3104,17 +3018,17 @@
                 }
 
                 // Boss collision (bullets)
-                if (isBossLevel && boss && boss.hp > 0) {
+                if (GameState.isBossLevel && boss && boss.hp > 0) {
                     if (b.x < boss.x + boss.width && b.x + b.width > boss.x &&
                         b.y < boss.y + boss.height && b.y + b.height > boss.y) {
                         boss.hp--;
-                        score += 20;
+                        GameState.score += 20;
                         createExplosion(b.x, b.y, '#ff0044');
                         playSound('bossHit');
                         updateUI();
                         b.active = false;
                         if (boss.hp <= 0) {
-                            score += 500;
+                            GameState.score += 500;
                             createExplosion(boss.x + boss.width / 2, boss.y + boss.height / 2, '#ff0044');
                             playSound('explosion');
                             triggerScreenShake(8);
@@ -3153,7 +3067,7 @@
                         if (brick.x <= 0) {
                             brick.x = 0;
                             brick.dx = Math.abs(brick.dx);
-                            if (activeBricksCount === 1) {
+                            if (GameState.activeBricksCount === 1) {
                                 brick.speed *= 1.1;
                                 brick.speed = Math.min(brick.speed, 25);
                                 brick.dx = brick.speed;
@@ -3161,7 +3075,7 @@
                         } else if (brick.x + brick.width >= canvas.width) {
                             brick.x = canvas.width - brick.width;
                             brick.dx = -Math.abs(brick.dx);
-                            if (activeBricksCount === 1) {
+                            if (GameState.activeBricksCount === 1) {
                                 brick.speed *= 1.1;
                                 brick.speed = Math.min(brick.speed, 25);
                                 brick.dx = -brick.speed;
@@ -3191,7 +3105,7 @@
 
         // Game loop
         function update() {
-            if (!gameRunning || gamePaused) {
+            if (!GameState.gameRunning || GameState.gamePaused) {
                 lastTime = performance.now();
                 return;
             }
@@ -3210,9 +3124,9 @@
             // Fixed timestep physics update (e.g. 16.666ms per step)
             // This runs multiple physics steps if the framerate drops, ensuring consistent physics.
             while (accumulator >= FIXED_TIME_STEP) {
-                if (gameResetting) {
+                if (GameState.gameResetting) {
                     moveParticles(1);
-                    if (Date.now() > resetTimer) {
+                    if (Date.now() > GameState.resetTimer) {
                         resetLife();
                     }
                 } else {
@@ -3229,11 +3143,11 @@
                     applyScreenShake();
                     moveParticles(1);
                     // Immortality countdown
-                    if (immortalActive) {
-                        immortalTimer -= FIXED_TIME_STEP;
-                        if (immortalTimer <= 0) {
-                            immortalActive = false;
-                            immortalTimer = 0;
+                    if (GameState.immortalActive) {
+                        GameState.immortalTimer -= FIXED_TIME_STEP;
+                        if (GameState.immortalTimer <= 0) {
+                            GameState.immortalActive = false;
+                            GameState.immortalTimer = 0;
                         }
                     }
                 }
@@ -3248,7 +3162,9 @@
         
         // Event listeners
         canvas.addEventListener('mousemove', (e) => {
-            const relativeX = e.clientX - canvas.getBoundingClientRect().left;
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = canvas.width / rect.width;
+            const relativeX = (e.clientX - rect.left) * scaleX;
             if (relativeX > 0 && relativeX < canvas.width) {
                 paddle.x = relativeX - paddle.width / 2;
                 paddle.dx = 0; // Kill keyboard velocity so it doesn't fight mouse position
@@ -3260,7 +3176,9 @@
         
         canvas.addEventListener('touchmove', (e) => {
             e.preventDefault();
-            const relativeX = e.touches[0].clientX - canvas.getBoundingClientRect().left;
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = canvas.width / rect.width;
+            const relativeX = (e.touches[0].clientX - rect.left) * scaleX;
             if (relativeX > 0 && relativeX < canvas.width) {
                  paddle.x = relativeX - paddle.width / 2;
                  paddle.dx = 0; // Kill keyboard velocity so it doesn't fight touch position
@@ -3281,7 +3199,7 @@
             } else if (e.key === ' ' || e.key === 'Spacebar') {
                 e.preventDefault(); // Prevent scrolling or button clicking
                 const launched = launchBall();
-                if (!launched && canShoot) {
+                if (!launched && GameState.canShoot) {
                     shoot();
                 }
             }
@@ -3304,9 +3222,9 @@
         
         startBtn.addEventListener('click', function() {
             this.blur(); // Remove focus so Spacebar doesn't trigger it again
-            if (!gameRunning) {
-                if (gamePaused) {
-                    gamePaused = false;
+            if (!GameState.gameRunning) {
+                if (GameState.gamePaused) {
+                    GameState.gamePaused = false;
                     lastTime = performance.now();
                     update();
                 } else {
@@ -3318,10 +3236,10 @@
         
         pauseBtn.addEventListener('click', function() {
             this.blur();
-            if (gameRunning) {
-                gamePaused = !gamePaused;
-                pauseBtn.textContent = gamePaused ? 'Resume' : 'Pause';
-                if (!gamePaused) {
+            if (GameState.gameRunning) {
+                GameState.gamePaused = !GameState.gamePaused;
+                pauseBtn.textContent = GameState.gamePaused ? 'Resume' : 'Pause';
+                if (!GameState.gamePaused) {
                     lastTime = performance.now();
                     update();
                 }
