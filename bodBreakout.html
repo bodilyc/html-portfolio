@@ -2018,7 +2018,7 @@
                             ball.dy = Math.abs(exitSpeed * Math.sin(angle));
                             ball.portalSpeedTarget = fullSpeed; // store target speed
                             ball.portalSpeedRamp = 60;          // frames to ramp up
-                            ball.teleportCooldown = 12;
+                            ball.teleportCooldown = 60;         // 1 second cooldown to prevent infinite loops
                             createExplosion(portal.x + portal.width / 2, portal.y + portal.height / 2, '#ff00ff');
                             createExplosion(linked.x + linked.width / 2, linked.y + linked.height / 2, '#00ffff');
                             playSound('portal');
