@@ -2694,6 +2694,7 @@
         // ===== SOUND SYSTEM =====
         const lastSoundTime = {};
         function playSound(type) {
+            if (!audioCtx) return;
             if (audioCtx.state === 'suspended') audioCtx.resume();
             const now = audioCtx.currentTime;
 
