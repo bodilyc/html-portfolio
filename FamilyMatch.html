@@ -8,14 +8,14 @@
     <link rel="stylesheet" href="FamilyMatchStyle.css">
 </head>
 <body>
-    <!-- Family Selection Modal. -->
+    <!-- Family Selection Modal -->
     <div class="modal-overlay" id="family-select-modal" style="display: flex;">
         <div class="modal family-select-modal">
             <div class="trophy">👨‍👩‍👧‍👦</div>
             <h2>Choose a Family</h2>
             <p>Select which family you'd like to play with:</p>
             <div class="family-buttons" id="family-buttons">
-                <!-- Populated by JS from manifest.json. -->
+                <!-- Populated by JS from manifest.json -->
             </div>
         </div>
     </div>
@@ -28,10 +28,9 @@
         <!-- Control Buttons -->
         <div class="controls">
             <button class="btn btn-primary" onclick="resetGame()">New Game</button>
-            <button class="btn btn-secondary" onclick="showFamilySelect()">Change Family</button>
+            <button class="btn btn-accent" onclick="showFamilySelect()">Change Family</button>
             <button class="btn btn-secondary" onclick="showLeaderboard()">High Scores</button>
             <button class="btn btn-secondary" onclick="resetRecord()">Reset Scores</button>
-            <button class="btn btn-secondary" style="background: linear-gradient(135deg, #00b4d8, #0077b6); color: white;" onclick="showBuilder()">Deck Builder</button>
         </div>
         
         <!-- Stats Bar -->
@@ -96,56 +95,6 @@
             <ol class="leaderboard-list" id="leaderboard-list"></ol>
             <button class="btn btn-secondary" onclick="hideLeaderboard()">Close</button>
         </div>
-    </div>
-
-    <!-- Deck Builder Modal (hidden by default) -->
-    <div class="builder-overlay" id="builder-overlay">
-      <div class="builder-card">
-        <div class="builder-header">
-          <h2>🛠️ Deck Builder</h2>
-          <button class="btn btn-secondary" onclick="hideBuilder()">Close</button>
-        </div>
-        <div class="builder-columns">
-          <div class="builder-panel">
-            <h3>Visual Editor</h3>
-            <div class="builder-columns">
-              <div>
-                <ul class="builder-family-list" id="builder-family-list"></ul>
-                <div class="builder-inputs">
-                  <input type="text" id="builder-family-name" placeholder="New family name">
-                </div>
-                <div class="builder-actions">
-                  <button onclick="builderAddFamily()">Add Family</button>
-                  <button class="danger" onclick="builderDeleteSelectedFamily()">Delete Selected Family</button>
-                </div>
-                <div class="builder-row">
-                  <button onclick="builderUploadImages()">Upload Photos</button>
-                  <input type="file" id="builder-file-input" accept="image/*" multiple style="display:none" onchange="builderHandleFiles(this.files)">
-                </div>
-              </div>
-              <div>
-                <div id="builder-selected-family-hint" style="margin-bottom:10px; color:#94a3b8; font-size:0.85rem;">Select a family to manage its members.</div>
-                <ul class="builder-members" id="builder-members"></ul>
-                <div class="builder-inputs">
-                  <input type="text" id="builder-member-name" placeholder="Member name">
-                  <button onclick="builderAddMemberToSelected()">Add Member</button>
-                </div>
-              </div>
-            </div>
-          </div>
-          <div class="builder-panel">
-            <h3>JSON Manifest</h3>
-            <textarea id="builder-json" class="builder-json"></textarea>
-            <div class="builder-actions">
-              <button onclick="builderApplyJson()">Apply JSON</button>
-              <button onclick="builderSaveLocal()">Save Locally</button>
-              <button onclick="builderDownload()">Download Manifest</button>
-              <button class="ghost" onclick="builderResetToRepo()">Reset to Repo Version</button>
-            </div>
-            <p style="color:#94a3b8; font-size:0.8rem; margin-top:10px;">Tip: Save locally to keep changes for this browser. Download when you’re ready to publish.</p>
-          </div>
-        </div>
-      </div>
     </div>
 
     <script src="FamilyMatchScript.js"></script>
