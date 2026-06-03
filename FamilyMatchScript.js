@@ -124,21 +124,27 @@ function addHighScore(initials, turns) {
 
 /**
  * Fetches manifest.json and populates the family selection modal
+ * Prefers Deck Builder data when available.
  */
 async function loadManifest() {
     try {
         const response = await fetch('FamilyImages/manifest.json');
-        manifest = await response.json();
-        populateFamilyButtons();
+        const repoManifest = await response.json();
+        manifest = repoManifest;
     } catch (err) {
         console.error('Failed to load manifest:', err);
-        familyButtonsContainer.innerHTML = '<p style="color:#e94560;">Could not load family data. Make sure manifest.json exists.</p>';
+        manifest = {};
     }
+    populateFamilyButtons();
 }
 
-/**
- * Populates family selection buttons from manifest data
- */
+function resolveFamilyImages(family) {
+    const manifestData = resolveManifest();
+    const names = manifestData[family] || [];
+    const localImages = builderGetImages(family);
+    return names.map(name => localImages[name] || `FamilyImages/${family}/${name}`);
+}
+
 function populateFamilyButtons() {
     familyButtonsContainer.innerHTML = '';
     const familyNames = Object.keys(manifest);
@@ -173,17 +179,11 @@ function populateFamilyButtons() {
  */
 function selectFamily(familyName) {
     selectedFamily = familyName;
-    const allImages = manifest[familyName];
+    familyImages = resolveFamilyImages(familyName);
 
-    // Build full image paths
-    let images = allImages.map(filename => `FamilyImages/${familyName}/${filename}`);
-
-    // If more images than max, randomly select a subset
-    if (images.length > MAX_PAIRS) {
-        images = shuffleArray(images).slice(0, MAX_PAIRS);
+    if (familyImages.length > MAX_PAIRS) {
+        familyImages = shuffleArray(familyImages).slice(0, MAX_PAIRS);
     }
-
-    familyImages = images;
 
     // Update subtitle to show selected family
     const subtitle = document.querySelector('.header .subtitle');
@@ -548,3 +548,281 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 });
+
+// ============================================
+// Deck Builder
+// ============================================
+const BUILDER_MANIFEST_KEY = 'familyMatchBuilderManifest';
+const BUILDER_IMAGES_PREFIX = 'familyMatchBuilderImage_';
+
+function getBuilderManifest() {
+  try {
+    const raw = localStorage.getItem(BUILDER_MANIFEST_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch (e) {
+    return null;
+  }
+}
+
+function setBuilderManifest(data) {
+  localStorage.setItem(BUILDER_MANIFEST_KEY, JSON.stringify(data));
+}
+
+function getDefaultManifest() {
+  return manifest || {
+    Bodily: [
+      'Gordon Bodily.jpg',
+      'Harriett Ann Roberts.jpg',
+      'Jackie Barlow Bodily.jpg',
+      'Lois Carrigan Barlow.jpg',
+      'Olive Marie Merkley Bodily.jpg',
+      'Robert Bodily Jr.jpg',
+      'Vinal Stoker Barlow.jpg',
+      'Walton Edwin Bodily.jpg',
+      'George Davis Merkley.jpg',
+      'Zelpha Allen Bodily.jpg'
+    ]
+  };
+}
+
+function resolveManifest() {
+  const repo = (typeof manifest !== 'undefined') ? manifest : getDefaultManifest();
+  try {
+    const raw = localStorage.getItem(BUILDER_MANIFEST_KEY);
+    const parsed = raw ? JSON.parse(raw) : null;
+    const hasBuilderData = parsed && typeof parsed === 'object' && !Array.isArray(parsed) && Object.keys(parsed).length > 0 && Object.values(parsed).every(v => Array.isArray(v));
+    if (hasBuilderData) {
+      return parsed;
+    }
+  } catch (e) {
+    console.warn('Bad builder manifest; ignoring builder data:', e);
+  }
+  return repo || getDefaultManifest();
+}
+
+function builderGetImages(family) {
+  const out = {};
+  const prefix = BUILDER_IMAGES_PREFIX + family + '_';
+  const keys = Object.keys(localStorage).filter(k => k.startsWith(prefix));
+  keys.forEach(k => {
+    const name = k.slice(prefix.length);
+    out[name] = localStorage.getItem(k);
+  });
+  return out;
+}
+
+function builderSetImage(family, name, dataUrl) {
+  const key = BUILDER_IMAGES_PREFIX + family + '_' + name;
+  if (dataUrl) localStorage.setItem(key, dataUrl);
+  else localStorage.removeItem(key);
+}
+
+function builderDeleteImage(family, name) {
+  builderSetImage(family, name, null);
+}
+
+function builderOpen() {
+  const overlay = document.getElementById('builder-overlay');
+  if (!overlay) return;
+  const data = resolveManifest();
+  document.getElementById('builder-json').value = JSON.stringify(data, null, 2);
+  builderRenderFamilyList(data);
+  builderRenderMembers(null);
+  overlay.classList.add('open');
+}
+
+function hideBuilder() {
+  const overlay = document.getElementById('builder-overlay');
+  if (overlay) overlay.classList.remove('open');
+}
+
+function showBuilder() {
+  builderOpen();
+}
+
+function builderRenderFamilyList(data) {
+  const list = document.getElementById('builder-family-list');
+  if (!list) return;
+  list.innerHTML = '';
+  Object.keys(data || {}).forEach(name => {
+    const li = document.createElement('li');
+    li.className = 'builder-family-item';
+    li.innerHTML = `<strong>${escapeHtml(name)}</strong> <span style="color:#94a3b8;">${(data[name] || []).length} members</span>`;
+    li.addEventListener('click', () => {
+      Array.from(list.children).forEach(el => el.style.borderColor = '#334155');
+      li.style.borderColor = '#22c55e';
+      builderRenderMembers(name);
+    });
+    list.appendChild(li);
+  });
+}
+
+function builderRenderMembers(family) {
+  const container = document.getElementById('builder-members');
+  const hint = document.getElementById('builder-selected-family-hint');
+  if (!container) return;
+  container.innerHTML = '';
+  if (!family) {
+    if (hint) hint.textContent = 'Select a family to manage its members.';
+    return;
+  }
+  if (hint) hint.textContent = `Editing: ${family}`;
+  const data = resolveManifest();
+  const members = data[family] || [];
+  const images = builderGetImages(family);
+  members.forEach(name => {
+    const li = document.createElement('li');
+    li.className = 'builder-member';
+    const img = images[name];
+    if (img) {
+      const imgEl = document.createElement('img');
+      imgEl.src = img;
+      imgEl.style.width = '26px';
+      imgEl.style.height = '26px';
+      imgEl.style.borderRadius = '999px';
+      imgEl.style.objectFit = 'cover';
+      li.prepend(imgEl);
+    }
+    li.appendChild(document.createTextNode(' ' + name));
+    const del = document.createElement('button');
+    del.textContent = '×';
+    del.addEventListener('click', () => builderRemoveMember(family, name));
+    li.appendChild(del);
+    container.appendChild(li);
+  });
+}
+
+function builderAddFamily() {
+  const input = document.getElementById('builder-family-name');
+  const name = (input ? input.value : '').trim();
+  if (!name) return;
+  const data = resolveManifest();
+  if (data[name]) {
+    alert('Family already exists.');
+    return;
+  }
+  data[name] = [];
+  input.value = '';
+  builderSync(data);
+}
+
+function builderDeleteSelectedFamily() {
+  const active = document.querySelector('#builder-family-list .builder-family-item[style*="rgb(34, 197, 94)"]') || document.querySelector('#builder-family-list .builder-family-item');
+  if (!active) return;
+  const name = active.textContent.trim();
+  if (!confirm(`Delete family "${name}"? This only affects the local builder manifest.`)) return;
+  const data = resolveManifest();
+  delete data[name];
+  builderSync(data);
+}
+
+function builderAddMemberToSelected() {
+  const input = document.getElementById('builder-member-name');
+  const name = (input ? input.value : '').trim();
+  if (!name) return;
+  const active = document.querySelector('#builder-family-list .builder-family-item[style*="rgb(34, 197, 94)"]') || document.querySelector('#builder-family-list .builder-family-item');
+  if (!active) {
+    alert('Select a family first.');
+    return;
+  }
+  const family = active.textContent.trim().replace(/ \d+ members$/, '').trim();
+  const data = resolveManifest();
+  if (!data[family]) data[family] = [];
+  if (!data[family].includes(name)) data[family].push(name);
+  input.value = '';
+  builderSync(data);
+  builderRenderMembers(family);
+}
+
+function builderRemoveMember(family, name) {
+  const data = resolveManifest();
+  if (!data[family]) return;
+  data[family] = (data[family] || []).filter(n => n !== name);
+  builderSync(data);
+  builderRenderMembers(family);
+}
+
+function builderSync(data) {
+  setBuilderManifest(data);
+  document.getElementById('builder-json').value = JSON.stringify(data, null, 2);
+  builderRenderFamilyList(data);
+}
+
+function builderApplyJson() {
+  const raw = document.getElementById('builder-json').value || '';
+  try {
+    const data = JSON.parse(raw);
+    if (typeof data !== 'object' || Array.isArray(data)) throw new Error('Invalid manifest');
+    setBuilderManifest(data);
+    builderRenderFamilyList(data);
+    builderRenderMembers(null);
+    alert('Manifest applied.');
+  } catch (e) {
+    alert('Invalid JSON: ' + e.message);
+  }
+}
+
+function builderSaveLocal() {
+  setBuilderManifest(resolveManifest());
+  alert('Saved locally for this browser.');
+}
+
+function builderDownload() {
+  const data = resolveManifest();
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'manifest.json';
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function builderResetToRepo() {
+  if (!confirm('Reset builder to the repo manifest.json?')) return;
+  setBuilderManifest(null);
+  document.getElementById('builder-json').value = JSON.stringify(getDefaultManifest(), null, 2);
+  builderRenderFamilyList(getDefaultManifest());
+  builderRenderMembers(null);
+}
+
+function builderUploadImages() {
+  const active = document.querySelector('#builder-family-list .builder-family-item[style*="rgb(34, 197, 94)"]') || document.querySelector('#builder-family-list .builder-family-item');
+  if (!active) {
+    alert('Select a family first.');
+    return;
+  }
+  const family = active.textContent.trim().replace(/ \d+ members$/, '').trim();
+  const input = document.getElementById('builder-file-input');
+  if (input) {
+    input.dataset.family = family;
+    input.click();
+  }
+}
+
+function builderHandleFiles(files) {
+  if (!files || !files.length) return;
+  const family = document.getElementById('builder-file-input')?.dataset.family;
+  if (!family) return;
+  const data = resolveManifest();
+  if (!data[family]) data[family] = [];
+  Array.from(files).forEach(file => {
+    const reader = new FileReader();
+    reader.onload = e => {
+      const name = file.name;
+      builderSetImage(family, name, e.target.result);
+      if (!data[family].includes(name)) data[family].push(name);
+      builderSync(data);
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+function escapeHtml(text) {
+  return String(text)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}

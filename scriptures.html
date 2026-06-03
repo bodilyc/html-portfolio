@@ -334,6 +334,34 @@
   .history-pts.miss { color: var(--red); }
   .history-pts.skip { color: var(--text-dim); }
 
+  /* Daily toggle */
+  .daily-toggle-row {
+    display: flex;
+    justify-content: flex-end;
+    margin-bottom: 18px;
+  }
+  .daily-toggle-row .toggle-row {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    padding: 6px 12px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    transition: border-color 0.2s, color 0.2s;
+  }
+  .daily-toggle-row .toggle-row:hover { border-color: var(--gold); color: var(--gold-light); }
+  .daily-badge {
+    font-family: 'Cinzel', serif;
+    font-size: 0.75rem;
+    letter-spacing: 2px;
+    color: var(--text-dim);
+    text-transform: uppercase;
+  }
+  .daily-badge.active {
+    color: var(--gold-light);
+  }
+
   /* Game Over Overlay */
   .overlay-share-btn {
     margin-top: 12px;
@@ -408,13 +436,21 @@
 </header>
 
 <div class="game-wrapper">
-
+  <!-- Volume Filters -->
   <div class="volume-filters" id="volFilters">
     <label><input type="checkbox" value="ot" checked> Old Testament</label>
     <label><input type="checkbox" value="nt" checked> New Testament</label>
     <label><input type="checkbox" value="bofm" checked> Book of Mormon</label>
     <label><input type="checkbox" value="dc" checked> D&amp;C</label>
     <label><input type="checkbox" value="pgp" checked> Pearl of Great Price</label>
+  </div>
+
+  <!-- Daily Challenge Toggle -->
+  <div class="daily-toggle-row" id="dailyToggleRow">
+    <label class="toggle-row" style="cursor:pointer;">
+      <input type="checkbox" id="daily-mode-toggle">
+      <span id="dailyBadge" class="daily-badge">Daily Challenge</span>
+    </label>
   </div>
 
   <div class="stats-bar">
@@ -937,6 +973,23 @@ document.querySelectorAll('#volFilters input').forEach(cb => {
   });
 });
 
+// Daily challenge toggle
+const dailyToggle = document.getElementById('daily-mode-toggle');
+if (dailyToggle) {
+  dailyToggle.addEventListener('change', () => {
+    dailyChallengeMode = !!dailyToggle.checked;
+    localStorage.setItem('scriptureSleuthDailyMode', dailyChallengeMode ? '1' : '0');
+    const today = new Date().toISOString().slice(0, 10);
+    if (dailyChallengeMode) {
+      localStorage.removeItem('scriptureSleuthDaily_' + today);
+      localStorage.removeItem('scriptureSleuthDailyScore_' + today);
+    }
+    applyDailyModeUI();
+    renderDailyUI();
+    startGame();
+  });
+}
+
 function pickRandomRef() {
   const rand = Math.floor(Math.random() * totalStandardWorksVerses);
   const targetBookData = SCRIPTURE_WEIGHTS.find(w => rand >= w.start && rand < w.end);
@@ -1458,6 +1511,313 @@ function focusFirstInput() {
     if (!next.disabled) setTimeout(() => next.focus(), 0);
   });
 });
+
+// =====================================================================
+// DAILY CHALLENGE MODE
+// Deterministic verse selection based on UTC date string.
+// =====================================================================
+function hashDjb2(str) {
+  let hash = 5381;
+  for (let i = 0; i < str.length; i++) {
+    hash = ((hash << 5) + hash + str.charCodeAt(i)) >>> 0;
+  }
+  return hash;
+}
+
+function getDailyVerseRef() {
+  const now = new Date();
+  const dateStr = now.toISOString().slice(0, 10); // YYYY-MM-DD UTC
+  const seed = hashDjb2(dateStr);
+  const idx = seed % totalStandardWorksVerses;
+  let verseOffset = idx;
+  for (const [bookName, data] of Object.entries(SCRIPTURE_DB)) {
+    if (!activeVols.includes(data.vol)) continue;
+    let bookVerses = 0;
+    for (const count of data.verses) bookVerses += count;
+    if (verseOffset < bookVerses) {
+      let chapterIdx = 0;
+      while (verseOffset >= data.verses[chapterIdx]) {
+        verseOffset -= data.verses[chapterIdx];
+        chapterIdx++;
+      }
+      return { bookName, chapter: chapterIdx + 1, verse: verseOffset + 1 };
+    }
+    verseOffset -= bookVerses;
+  }
+  return null;
+}
+
+function getDailyStatusKey() {
+  const dateStr = new Date().toISOString().slice(0, 10);
+  return 'scriptureSleuthDaily_' + dateStr;
+}
+
+function isDailyComplete() {
+  return localStorage.getItem(getDailyStatusKey()) === '1';
+}
+
+function markDailyComplete() {
+  localStorage.setItem(getDailyStatusKey(), '1');
+}
+
+function getDailyScoreKey() {
+  const dateStr = new Date().toISOString().slice(0, 10);
+  return 'scriptureSleuthDailyScore_' + dateStr;
+}
+
+function getDailyScore() {
+  const raw = localStorage.getItem(getDailyScoreKey());
+  return raw ? JSON.parse(raw) : null;
+}
+
+function saveDailyScore(score, round, misses) {
+  localStorage.setItem(getDailyScoreKey(), JSON.stringify({ score, round, misses, date: new Date().toISOString() }));
+}
+
+function renderDailyUI() {
+  const completed = isDailyComplete();
+  const dailyScore = getDailyScore();
+  const existing = document.getElementById('dailyBadge');
+  if (!existing) return;
+  if (completed && dailyScore) {
+    existing.textContent = `Today · ${dailyScore.score} pts (${dailyScore.round}r)`;
+    existing.title = `Best today: ${dailyScore.score} points in ${dailyScore.round} rounds`;
+  } else if (completed) {
+    existing.textContent = 'Today · Completed';
+  } else {
+    existing.textContent = 'Today · Daily Challenge';
+  }
+  if (!dailyChallengeMode) {
+    existing.textContent = completed ? 'Daily ✓' : 'Daily';
+  }
+}
+
+function applyDailyModeUI() {
+  const toggle = document.getElementById('daily-mode-toggle');
+  const badge = document.getElementById('dailyBadge');
+  if (!toggle || !badge) return;
+  toggle.checked = dailyChallengeMode;
+  badge.textContent = dailyChallengeMode ? 'Daily Challenge On' : 'Daily Challenge';
+  badge.className = dailyChallengeMode ? 'daily-badge active' : 'daily-badge';
+  document.querySelectorAll('.volume-filters input').forEach(cb => {
+    cb.disabled = dailyChallengeMode;
+  });
+  if (dailyChallengeMode) {
+    document.getElementById('volFilters').style.opacity = '0.55';
+    document.getElementById('volFilters').style.pointerEvents = 'none';
+  } else {
+    document.getElementById('volFilters').style.opacity = '';
+    document.getElementById('volFilters').style.pointerEvents = '';
+  }
+}
+
+let dailyChallengeMode = false;
+
+function loadDailyChallengeState() {
+  const stored = localStorage.getItem('scriptureSleuthDailyMode');
+  dailyChallengeMode = stored === '1';
+  applyDailyModeUI();
+  renderDailyUI();
+}
+
+// Override loadRound when daily challenge mode is active
+const originalLoadRound = loadRound;
+</script>
+
+<script>
+// Patch loadRound to support daily challenge mode
+loadRound = async function() {
+  state.submitted = false;
+  state.loading = true;
+  state.guesses = 0;
+  clearFeedback();
+  resetDropdowns();
+
+  if (dailyChallengeMode) {
+    const dailyRef = getDailyVerseRef();
+    if (!dailyRef) {
+      verseText.textContent = 'Could not determine daily verse.';
+      verseCard.classList.remove('loading');
+      state.loading = false;
+      return;
+    }
+    submitBtn.disabled = true;
+    skipBtn.disabled = true;
+    verseCard.classList.add('loading');
+    verseText.textContent = 'Loading daily challenge\u2026';
+    roundLabel.textContent = `Daily Challenge · Round ${state.round}`;
+    try {
+      const item = await fetchVerse(dailyRef);
+      if (!item || !item.text) {
+        verseText.textContent = 'Could not load today’s scripture. Please try again.';
+        verseCard.classList.remove('loading');
+        state.loading = false;
+        return;
+      }
+      state.currentRef = dailyRef;
+      state.currentUrl = item.url;
+      verseCard.classList.remove('loading');
+      state.loading = false;
+      skipBtn.disabled = false;
+      skipBtn.textContent = 'Skip This Verse';
+      verseText.textContent = item.text;
+      setTimeout(focusFirstInput, 0);
+    } catch (err) {
+      verseText.textContent = 'Error loading daily scripture. Please refresh.';
+      verseCard.classList.remove('loading');
+      state.loading = false;
+    }
+    return;
+  }
+
+  // Default arcade mode
+  originalLoadRound();
+};
+
+// Override nextRound to persist daily completion on game over
+const originalShowGameOver = showGameOver;
+showGameOver = function() {
+  if (dailyChallengeMode) {
+    saveDailyScore(state.score, state.round, state.misses);
+    markDailyComplete();
+    renderDailyUI();
+  }
+  originalShowGameOver();
+};
+
+// Override submit to mark daily complete on final round
+const originalSubmitHandler = submitBtn.onclick;
+submitBtn.onclick = function() {
+  if (state.submitted || state.loading) return;
+  if (dailyChallengeMode) {
+    state.guesses++;
+    const ref = state.currentRef;
+    const correctVol = SCRIPTURE_DB[ref.bookName].vol;
+    const correctBook = ref.bookName;
+    const correctChap = ref.chapter;
+    const correctVerse = ref.verse;
+
+    const guessVol = volSel.value;
+    const guessBook = bookSel.value;
+    const guessChap = parseInt(verseSel.value);
+    const guessVerse = parseInt(verseSel.value);
+
+    const rightVol = guessVol === correctVol;
+    const rightBook = guessBook === correctBook;
+    const rightChap = guessChap === correctChap;
+    const rightVerse = guessVerse === correctVerse;
+
+    let diff = -1;
+    let distMsg = '';
+    if (guessBook && !isNaN(guessChap) && !isNaN(guessVerse)) {
+      const guessIdx = getGlobalVerseIndex(guessBook, guessChap, guessVerse);
+      const actIdx = getGlobalVerseIndex(correctBook, correctChap, correctVerse);
+      if (guessIdx !== -1 && actIdx !== -1) {
+        diff = Math.abs(guessIdx - actIdx);
+        distMsg = `— You are ${diff} verse${diff !== 1 ? 's' : ''} away.`;
+      }
+    } else {
+      distMsg = '— Select Book, Chap & Verse for distance.';
+    }
+
+    const isPerfect = diff === 0;
+    const isLastGuess = state.guesses >= 3;
+
+    if (isPerfect || isLastGuess) {
+      state.submitted = true;
+      submitBtn.disabled = true;
+      skipBtn.disabled = true;
+      let failedRequirement = false;
+      if (correctVol === 'dc') {
+        if (!rightVol || !rightBook || !rightChap) failedRequirement = true;
+      } else {
+        if (!rightVol || !rightBook) failedRequirement = true;
+      }
+      if (failedRequirement) {
+        state.misses++;
+        updatePips();
+      }
+      let pts = 0;
+      if (diff === 0) pts = 2000;
+      else if (diff !== -1) pts = Math.round(10000 / (diff + 10));
+      state.score += pts;
+      scoreDisplay.textContent = state.score;
+      const avg = (state.score / state.round).toFixed(2);
+      avgDisplay.textContent = avg;
+      if (state.score > state.best) {
+        state.best = state.score;
+        localStorage.setItem('scriptureSleuthBest', state.best);
+        bestDisplay.textContent = state.best;
+      }
+      const chapWord = VOLUMES[correctVol]?.chapLabel || 'Chapter';
+      const volName = VOLUMES[correctVol]?.name || correctVol;
+      const officialLink = state.currentUrl ? `<br><a href="${state.currentUrl}" target="_blank" style="color:var(--gold-light); font-size:0.8rem; text-decoration:none; border-bottom:1px solid var(--gold-light); margin-top:8px; display:inline-block;">View on Church Website ↗</a>` : '';
+      answerReveal.innerHTML = `${correctBook} ${correctChap}:${correctVerse}  (${volName})${officialLink}`;
+      answerReveal.classList.add('show');
+      let finalDistMsg = diff !== -1 && diff !== 0 ? `You were ${diff} verse${diff !== 1 ? 's' : ''} away. ` : '';
+      const wasGood = !failedRequirement;
+      applyStreakBonus(wasGood);
+      const roundResult = isPerfect ? 'perfect' : failedRequirement ? 'miss' : 'good';
+      state.shareEmojis.push(roundResult);
+      addHistoryEntry(ref, pts, roundResult);
+      if (isPerfect) {
+        showFeedback(`✦ Perfect! All correct! +${pts} points`, 'right');
+        spawnConfetti();
+      } else if (failedRequirement) {
+        const needed = correctVol === 'dc' ? 'Vol, Book & Sec' : 'Vol & Book';
+        showFeedback(`${finalDistMsg}✕ Miss! You needed ${needed}. +${pts} pts. Miss ${state.misses}/3.`, 'wrong');
+      } else {
+        showFeedback(`${finalDistMsg}Good guess! +${pts} points`, 'partial');
+      }
+      if (diff !== -1) playHotColdTone(diff);
+      if (state.misses >= 3) {
+        saveDailyScore(state.score, state.round, state.misses);
+        markDailyComplete();
+        renderDailyUI();
+        showNextButton(true);
+        return;
+      }
+      showNextButton(false);
+      return;
+    } else {
+      showFeedback(`Guess ${state.guesses}/3 ${distMsg}`, 'wrong');
+      if (diff !== -1) playHotColdTone(diff);
+      return;
+    }
+  }
+  if (originalSubmitHandler) originalSubmitHandler();
+};
+
+// Skip in daily mode
+skipBtn.onclick = function() {
+  if (dailyChallengeMode && !state.loading && !state.submitted) {
+    state.submitted = true;
+    state.misses++;
+    updatePips();
+    const ref = state.currentRef;
+    const volName = VOLUMES[SCRIPTURE_DB[ref.bookName]?.vol]?.name || '';
+    const officialLink = state.currentUrl ? `<br><a href="${state.currentUrl}" target="_blank" style="color:var(--gold-light); font-size:0.8rem; text-decoration:none; border-bottom:1px solid var(--gold-light); margin-top:8px; display:inline-block;">View on Church Website ↗</a>` : '';
+    answerReveal.innerHTML = `${ref.bookName} ${ref.chapter}:${ref.verse}  (${volName})${officialLink}`;
+    answerReveal.classList.add('show');
+    showFeedback(`Skipped — Miss ${state.misses}/3`, 'wrong');
+    submitBtn.disabled = true;
+    skipBtn.disabled = true;
+    playSkipTone();
+    applyStreakBonus(false);
+    state.shareEmojis.push('skip');
+    addHistoryEntry(ref, 0, 'skip');
+    if (state.misses >= 3) {
+      saveDailyScore(state.score, state.round, state.misses);
+      markDailyComplete();
+      renderDailyUI();
+      showNextButton(true);
+      return;
+    }
+    showNextButton(false);
+    return;
+  }
+  if (originalSubmitHandler) originalSubmitHandler();
+};
 </script>
 </body>
 </html>
