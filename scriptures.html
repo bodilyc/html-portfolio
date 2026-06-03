@@ -453,6 +453,36 @@
     </label>
   </div>
 
+  <!-- Daily Challenge Complete Card -->
+  <div id="dailyCompleteCard" class="verse-card" style="display: none; flex-direction: column; align-items: center; text-align: center; background: linear-gradient(135deg, #1e1608, #2a1f0c); border: 2px solid var(--gold); border-radius: 12px; padding: 30px; margin-bottom: 22px; width: 100%;">
+    <h2 style="font-family: 'Cinzel', serif; color: var(--gold-light); font-size: 1.8rem; margin-bottom: 15px;">Daily Challenge Complete</h2>
+    <p id="dailyCompleteScripture" style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-style: normal; margin-bottom: 15px; font-size: 1.15rem; max-width: 600px; line-height: 1.6; text-align: center; color: var(--text);"></p>
+    <div id="dailyCompleteAnswer" style="font-family: 'Cinzel', serif; color: var(--gold); font-size: 1.2rem; margin-bottom: 20px; font-weight: bold; text-shadow: 0 0 10px rgba(201,168,76,0.3);"></div>
+    
+    <div style="display: flex; gap: 40px; justify-content: center; margin-bottom: 20px; width: 100%;">
+      <div>
+        <div style="font-family: 'Cinzel', serif; font-size: 0.75rem; color: var(--text-dim); text-transform: uppercase; letter-spacing: 2px; margin-bottom: 4px;">Daily Score</div>
+        <div id="dailyCompleteScore" style="font-size: 2.2rem; color: var(--gold-light); font-weight: bold; font-family: 'Cinzel', serif;">0</div>
+      </div>
+      <div>
+        <div style="font-family: 'Cinzel', serif; font-size: 0.75rem; color: var(--text-dim); text-transform: uppercase; letter-spacing: 2px; margin-bottom: 4px;">Guesses</div>
+        <div id="dailyCompleteGuesses" style="font-size: 2.2rem; color: var(--gold-light); font-weight: bold; font-family: 'Cinzel', serif;">0/3</div>
+      </div>
+    </div>
+    
+    <div id="dailyShareGrid" style="font-size: 1.8rem; letter-spacing: 6px; margin-bottom: 18px; line-height: 1;"></div>
+    
+    <button class="overlay-share-btn" id="dailyShareBtn" style="margin-bottom: 10px; padding: 10px 24px;">&#128279; Share Result</button>
+    <span class="share-copied-msg" id="dailyShareCopiedMsg" style="min-height: 18px; display: block; font-family: 'Cinzel', serif; font-size: 0.75rem; color: var(--green); letter-spacing: 1px;"></span>
+    
+    <hr style="border: none; border-top: 1px solid var(--border); width: 100%; margin: 20px 0;">
+    
+    <div style="font-family: 'Cinzel', serif; font-size: 0.75rem; color: var(--text-dim); text-transform: uppercase; letter-spacing: 2px; margin-bottom: 8px;">Next Daily Challenge In</div>
+    <div id="dailyCountdown" style="font-size: 1.8rem; color: var(--gold-light); font-weight: bold; font-family: monospace; letter-spacing: 2px; margin-bottom: 22px;">00:00:00</div>
+    
+    <button class="btn btn-primary" id="dailyPlayArcadeBtn">Play Arcade Mode &#10140;</button>
+  </div>
+
   <div class="stats-bar">
     <div class="stat">
       <div class="stat-label">Score</div>
@@ -973,22 +1003,6 @@ document.querySelectorAll('#volFilters input').forEach(cb => {
   });
 });
 
-// Daily challenge toggle
-const dailyToggle = document.getElementById('daily-mode-toggle');
-if (dailyToggle) {
-  dailyToggle.addEventListener('change', () => {
-    dailyChallengeMode = !!dailyToggle.checked;
-    localStorage.setItem('scriptureSleuthDailyMode', dailyChallengeMode ? '1' : '0');
-    const today = new Date().toISOString().slice(0, 10);
-    if (dailyChallengeMode) {
-      localStorage.removeItem('scriptureSleuthDaily_' + today);
-      localStorage.removeItem('scriptureSleuthDailyScore_' + today);
-    }
-    applyDailyModeUI();
-    renderDailyUI();
-    startGame();
-  });
-}
 
 function pickRandomRef() {
   const rand = Math.floor(Math.random() * totalStandardWorksVerses);
@@ -1081,6 +1095,45 @@ async function loadRound() {
   clearFeedback();
   resetDropdowns();
   
+  if (dailyChallengeMode) {
+    const dailyRef = getDailyVerseRef();
+    if (!dailyRef) {
+      verseText.textContent = 'Could not determine daily verse.';
+      verseCard.classList.remove('loading');
+      state.loading = false;
+      return;
+    }
+    
+    submitBtn.disabled = true;
+    skipBtn.disabled = true;
+    verseCard.classList.add('loading');
+    verseText.textContent = 'Loading daily challenge\u2026';
+    roundLabel.textContent = `Daily Challenge`;
+    
+    try {
+      const item = await fetchVerse(dailyRef);
+      if (!item || !item.text) {
+        verseText.textContent = 'Could not load today’s scripture. Please try again.';
+        verseCard.classList.remove('loading');
+        state.loading = false;
+        return;
+      }
+      state.currentRef = dailyRef;
+      state.currentUrl = item.url;
+      verseCard.classList.remove('loading');
+      state.loading = false;
+      skipBtn.disabled = false;
+      skipBtn.textContent = 'Skip This Verse';
+      verseText.textContent = item.text;
+      setTimeout(focusFirstInput, 0);
+    } catch (err) {
+      verseText.textContent = 'Error loading daily scripture. Please refresh.';
+      verseCard.classList.remove('loading');
+      state.loading = false;
+    }
+    return;
+  }
+
   // Auto-fill and lock Volume if only 1 is selected
   if (activeVols.length === 1) {
     volSel.value = activeVols[0];
@@ -1325,6 +1378,16 @@ submitBtn.addEventListener('click', () => {
     // Play tone
     if (diff !== -1) playHotColdTone(diff);
 
+    // Daily challenge: single round — always show results after
+    if (dailyChallengeMode) {
+      saveDailyScore(state.score, state.guesses, state.misses);
+      markDailyComplete();
+      renderDailyUI();
+      showNextButton(true);
+      if (diff !== -1) updateDistanceMeter(diff);
+      return;
+    }
+
     if (state.misses >= 3) {
       showNextButton(true);
       return;
@@ -1381,6 +1444,15 @@ skipBtn.addEventListener('click', () => {
   state.shareEmojis.push('skip');
   addHistoryEntry(ref, 0, 'skip');
 
+  // Daily challenge: single round — always show results after skip
+  if (dailyChallengeMode) {
+    saveDailyScore(state.score, state.guesses, state.misses);
+    markDailyComplete();
+    renderDailyUI();
+    showNextButton(true);
+    return;
+  }
+
   if (state.misses >= 3) {
     showNextButton(true);
     return;
@@ -1391,12 +1463,23 @@ skipBtn.addEventListener('click', () => {
 function showNextButton(isGameOver) {
   countdownWrapper.classList.add('show');
   if (isGameOver) {
-    nextBtn.innerHTML = 'See Results &#8635;';
-    nextBtn.onclick = () => { showGameOver(); };
+    if (dailyChallengeMode) {
+      nextBtn.innerHTML = 'See Results &#8635;';
+      nextBtn.onclick = () => { showDailyCompletedUI(); };
+    } else {
+      nextBtn.innerHTML = 'See Results &#8635;';
+      nextBtn.onclick = () => { showGameOver(); };
+    }
     feedbackBar.textContent = "Game Over! " + feedbackBar.textContent;
   } else {
-    nextBtn.innerHTML = 'Next &#10140;';
-    nextBtn.onclick = () => { nextRound(); };
+    if (dailyChallengeMode) {
+      // Daily is single round — always show results
+      nextBtn.innerHTML = 'See Results &#8635;';
+      nextBtn.onclick = () => { showDailyCompletedUI(); };
+    } else {
+      nextBtn.innerHTML = 'Next &#10140;';
+      nextBtn.onclick = () => { nextRound(); };
+    }
   }
 }
 
@@ -1528,10 +1611,11 @@ function getDailyVerseRef() {
   const now = new Date();
   const dateStr = now.toISOString().slice(0, 10); // YYYY-MM-DD UTC
   const seed = hashDjb2(dateStr);
-  const idx = seed % totalStandardWorksVerses;
+  // Use globalTotalVerses so the daily verse is the same for everyone
+  // regardless of their volume filter settings
+  const idx = seed % globalTotalVerses;
   let verseOffset = idx;
   for (const [bookName, data] of Object.entries(SCRIPTURE_DB)) {
-    if (!activeVols.includes(data.vol)) continue;
     let bookVerses = 0;
     for (const count of data.verses) bookVerses += count;
     if (verseOffset < bookVerses) {
@@ -1612,6 +1696,7 @@ function applyDailyModeUI() {
 }
 
 let dailyChallengeMode = false;
+let dailyCountdownInterval = null;
 
 function loadDailyChallengeState() {
   const stored = localStorage.getItem('scriptureSleuthDailyMode');
@@ -1620,204 +1705,166 @@ function loadDailyChallengeState() {
   renderDailyUI();
 }
 
-// Override loadRound when daily challenge mode is active
-const originalLoadRound = loadRound;
-</script>
+// =====================================================================
+// DAILY COMPLETED UI
+// =====================================================================
+const dailyCompleteCard    = document.getElementById('dailyCompleteCard');
+const dailyCompleteScore   = document.getElementById('dailyCompleteScore');
+const dailyCompleteGuesses = document.getElementById('dailyCompleteGuesses');
+const dailyCompleteScripture = document.getElementById('dailyCompleteScripture');
+const dailyCompleteAnswer  = document.getElementById('dailyCompleteAnswer');
+const dailyShareGrid       = document.getElementById('dailyShareGrid');
+const dailyShareBtn        = document.getElementById('dailyShareBtn');
+const dailyShareCopiedMsg  = document.getElementById('dailyShareCopiedMsg');
+const dailyCountdownEl     = document.getElementById('dailyCountdown');
+const dailyPlayArcadeBtn   = document.getElementById('dailyPlayArcadeBtn');
 
-<script>
-// Patch loadRound to support daily challenge mode
-loadRound = async function() {
-  state.submitted = false;
-  state.loading = true;
-  state.guesses = 0;
-  clearFeedback();
-  resetDropdowns();
+function showDailyCompletedUI() {
+  // Hide game elements
+  document.querySelector('.stats-bar').style.display = 'none';
+  document.querySelector('.dropdowns').style.display = 'none';
+  document.querySelector('.btn-row').style.display = 'none';
+  document.getElementById('historySection').style.display = 'none';
+  verseCard.style.display = 'none';
+  answerReveal.style.display = 'none';
+  feedbackBar.style.display = 'none';
+  countdownWrapper.style.display = 'none';
+  distMeter.style.display = 'none';
+  meterLabel.style.display = 'none';
+  streakBanner.style.display = 'none';
+  roundLabel.style.display = 'none';
 
-  if (dailyChallengeMode) {
-    const dailyRef = getDailyVerseRef();
-    if (!dailyRef) {
-      verseText.textContent = 'Could not determine daily verse.';
-      verseCard.classList.remove('loading');
-      state.loading = false;
-      return;
-    }
-    submitBtn.disabled = true;
-    skipBtn.disabled = true;
-    verseCard.classList.add('loading');
-    verseText.textContent = 'Loading daily challenge\u2026';
-    roundLabel.textContent = `Daily Challenge · Round ${state.round}`;
-    try {
-      const item = await fetchVerse(dailyRef);
-      if (!item || !item.text) {
-        verseText.textContent = 'Could not load today’s scripture. Please try again.';
-        verseCard.classList.remove('loading');
-        state.loading = false;
-        return;
-      }
-      state.currentRef = dailyRef;
-      state.currentUrl = item.url;
-      verseCard.classList.remove('loading');
-      state.loading = false;
-      skipBtn.disabled = false;
-      skipBtn.textContent = 'Skip This Verse';
-      verseText.textContent = item.text;
-      setTimeout(focusFirstInput, 0);
-    } catch (err) {
-      verseText.textContent = 'Error loading daily scripture. Please refresh.';
-      verseCard.classList.remove('loading');
-      state.loading = false;
-    }
-    return;
+  // Populate daily complete card
+  const dailyScore = getDailyScore();
+  const ref = state.currentRef;
+  if (dailyScore) {
+    dailyCompleteScore.textContent = dailyScore.score;
+    dailyCompleteGuesses.textContent = `${dailyScore.round}/3`;
+  } else {
+    dailyCompleteScore.textContent = state.score;
+    dailyCompleteGuesses.textContent = `${state.guesses}/3`;
   }
 
-  // Default arcade mode
-  originalLoadRound();
-};
-
-// Override nextRound to persist daily completion on game over
-const originalShowGameOver = showGameOver;
-showGameOver = function() {
-  if (dailyChallengeMode) {
-    saveDailyScore(state.score, state.round, state.misses);
-    markDailyComplete();
-    renderDailyUI();
-  }
-  originalShowGameOver();
-};
-
-// Override submit to mark daily complete on final round
-const originalSubmitHandler = submitBtn.onclick;
-submitBtn.onclick = function() {
-  if (state.submitted || state.loading) return;
-  if (dailyChallengeMode) {
-    state.guesses++;
-    const ref = state.currentRef;
-    const correctVol = SCRIPTURE_DB[ref.bookName].vol;
-    const correctBook = ref.bookName;
-    const correctChap = ref.chapter;
-    const correctVerse = ref.verse;
-
-    const guessVol = volSel.value;
-    const guessBook = bookSel.value;
-    const guessChap = parseInt(verseSel.value);
-    const guessVerse = parseInt(verseSel.value);
-
-    const rightVol = guessVol === correctVol;
-    const rightBook = guessBook === correctBook;
-    const rightChap = guessChap === correctChap;
-    const rightVerse = guessVerse === correctVerse;
-
-    let diff = -1;
-    let distMsg = '';
-    if (guessBook && !isNaN(guessChap) && !isNaN(guessVerse)) {
-      const guessIdx = getGlobalVerseIndex(guessBook, guessChap, guessVerse);
-      const actIdx = getGlobalVerseIndex(correctBook, correctChap, correctVerse);
-      if (guessIdx !== -1 && actIdx !== -1) {
-        diff = Math.abs(guessIdx - actIdx);
-        distMsg = `— You are ${diff} verse${diff !== 1 ? 's' : ''} away.`;
-      }
-    } else {
-      distMsg = '— Select Book, Chap & Verse for distance.';
-    }
-
-    const isPerfect = diff === 0;
-    const isLastGuess = state.guesses >= 3;
-
-    if (isPerfect || isLastGuess) {
-      state.submitted = true;
-      submitBtn.disabled = true;
-      skipBtn.disabled = true;
-      let failedRequirement = false;
-      if (correctVol === 'dc') {
-        if (!rightVol || !rightBook || !rightChap) failedRequirement = true;
-      } else {
-        if (!rightVol || !rightBook) failedRequirement = true;
-      }
-      if (failedRequirement) {
-        state.misses++;
-        updatePips();
-      }
-      let pts = 0;
-      if (diff === 0) pts = 2000;
-      else if (diff !== -1) pts = Math.round(10000 / (diff + 10));
-      state.score += pts;
-      scoreDisplay.textContent = state.score;
-      const avg = (state.score / state.round).toFixed(2);
-      avgDisplay.textContent = avg;
-      if (state.score > state.best) {
-        state.best = state.score;
-        localStorage.setItem('scriptureSleuthBest', state.best);
-        bestDisplay.textContent = state.best;
-      }
-      const chapWord = VOLUMES[correctVol]?.chapLabel || 'Chapter';
-      const volName = VOLUMES[correctVol]?.name || correctVol;
-      const officialLink = state.currentUrl ? `<br><a href="${state.currentUrl}" target="_blank" style="color:var(--gold-light); font-size:0.8rem; text-decoration:none; border-bottom:1px solid var(--gold-light); margin-top:8px; display:inline-block;">View on Church Website ↗</a>` : '';
-      answerReveal.innerHTML = `${correctBook} ${correctChap}:${correctVerse}  (${volName})${officialLink}`;
-      answerReveal.classList.add('show');
-      let finalDistMsg = diff !== -1 && diff !== 0 ? `You were ${diff} verse${diff !== 1 ? 's' : ''} away. ` : '';
-      const wasGood = !failedRequirement;
-      applyStreakBonus(wasGood);
-      const roundResult = isPerfect ? 'perfect' : failedRequirement ? 'miss' : 'good';
-      state.shareEmojis.push(roundResult);
-      addHistoryEntry(ref, pts, roundResult);
-      if (isPerfect) {
-        showFeedback(`✦ Perfect! All correct! +${pts} points`, 'right');
-        spawnConfetti();
-      } else if (failedRequirement) {
-        const needed = correctVol === 'dc' ? 'Vol, Book & Sec' : 'Vol & Book';
-        showFeedback(`${finalDistMsg}✕ Miss! You needed ${needed}. +${pts} pts. Miss ${state.misses}/3.`, 'wrong');
-      } else {
-        showFeedback(`${finalDistMsg}Good guess! +${pts} points`, 'partial');
-      }
-      if (diff !== -1) playHotColdTone(diff);
-      if (state.misses >= 3) {
-        saveDailyScore(state.score, state.round, state.misses);
-        markDailyComplete();
-        renderDailyUI();
-        showNextButton(true);
-        return;
-      }
-      showNextButton(false);
-      return;
-    } else {
-      showFeedback(`Guess ${state.guesses}/3 ${distMsg}`, 'wrong');
-      if (diff !== -1) playHotColdTone(diff);
-      return;
-    }
-  }
-  if (originalSubmitHandler) originalSubmitHandler();
-};
-
-// Skip in daily mode
-skipBtn.onclick = function() {
-  if (dailyChallengeMode && !state.loading && !state.submitted) {
-    state.submitted = true;
-    state.misses++;
-    updatePips();
-    const ref = state.currentRef;
+  if (ref) {
     const volName = VOLUMES[SCRIPTURE_DB[ref.bookName]?.vol]?.name || '';
-    const officialLink = state.currentUrl ? `<br><a href="${state.currentUrl}" target="_blank" style="color:var(--gold-light); font-size:0.8rem; text-decoration:none; border-bottom:1px solid var(--gold-light); margin-top:8px; display:inline-block;">View on Church Website ↗</a>` : '';
-    answerReveal.innerHTML = `${ref.bookName} ${ref.chapter}:${ref.verse}  (${volName})${officialLink}`;
-    answerReveal.classList.add('show');
-    showFeedback(`Skipped — Miss ${state.misses}/3`, 'wrong');
-    submitBtn.disabled = true;
-    skipBtn.disabled = true;
-    playSkipTone();
-    applyStreakBonus(false);
-    state.shareEmojis.push('skip');
-    addHistoryEntry(ref, 0, 'skip');
-    if (state.misses >= 3) {
-      saveDailyScore(state.score, state.round, state.misses);
-      markDailyComplete();
-      renderDailyUI();
-      showNextButton(true);
+    dailyCompleteAnswer.textContent = `${ref.bookName} ${ref.chapter}:${ref.verse} (${volName})`;
+    dailyCompleteScripture.textContent = verseText.textContent || '';
+  }
+
+  // Build emoji grid
+  const emojiMap = { perfect: '\uD83D\uDFE9', good: '\uD83D\uDFE8', miss: '\uD83D\uDFE5', skip: '\u2B1C' };
+  dailyShareGrid.textContent = state.shareEmojis.map(e => emojiMap[e] || '\u2B1C').join('');
+
+  // Show card
+  dailyCompleteCard.style.display = 'flex';
+
+  // Start countdown to next daily challenge (midnight UTC)
+  startDailyCountdown();
+}
+
+function hideDailyCompletedUI() {
+  dailyCompleteCard.style.display = 'none';
+  if (dailyCountdownInterval) {
+    clearInterval(dailyCountdownInterval);
+    dailyCountdownInterval = null;
+  }
+
+  // Restore game elements
+  document.querySelector('.stats-bar').style.display = '';
+  document.querySelector('.dropdowns').style.display = '';
+  document.querySelector('.btn-row').style.display = '';
+  document.getElementById('historySection').style.display = '';
+  verseCard.style.display = '';
+  answerReveal.style.display = '';
+  feedbackBar.style.display = '';
+  countdownWrapper.style.display = '';
+  distMeter.style.display = '';
+  meterLabel.style.display = '';
+  streakBanner.style.display = '';
+  roundLabel.style.display = '';
+}
+
+function startDailyCountdown() {
+  if (dailyCountdownInterval) clearInterval(dailyCountdownInterval);
+
+  function updateCountdown() {
+    const now = new Date();
+    const tomorrow = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1));
+    const diff = tomorrow - now;
+    if (diff <= 0) {
+      dailyCountdownEl.textContent = '00:00:00';
+      clearInterval(dailyCountdownInterval);
       return;
     }
-    showNextButton(false);
-    return;
+    const h = String(Math.floor(diff / 3600000)).padStart(2, '0');
+    const m = String(Math.floor((diff % 3600000) / 60000)).padStart(2, '0');
+    const s = String(Math.floor((diff % 60000) / 1000)).padStart(2, '0');
+    dailyCountdownEl.textContent = `${h}:${m}:${s}`;
   }
-  if (originalSubmitHandler) originalSubmitHandler();
-};
+
+  updateCountdown();
+  dailyCountdownInterval = setInterval(updateCountdown, 1000);
+}
+
+function buildDailyShareText() {
+  const dateStr = new Date().toISOString().slice(0, 10);
+  const emojiMap = { perfect: '\uD83D\uDFE9', good: '\uD83D\uDFE8', miss: '\uD83D\uDFE5', skip: '\u2B1C' };
+  const grid = state.shareEmojis.map(e => emojiMap[e] || '\u2B1C').join('');
+  return `Scripture Sleuth \u2721 Daily Challenge\n${dateStr}\nScore: ${state.score} | Guesses: ${state.guesses}/3\n${grid}\n`;
+}
+
+dailyShareBtn.addEventListener('click', async () => {
+  const text = buildDailyShareText();
+  try {
+    await navigator.clipboard.writeText(text);
+    dailyShareCopiedMsg.textContent = '\u2713 Copied to clipboard!';
+  } catch(e) {
+    const ta = document.createElement('textarea');
+    ta.value = text; document.body.appendChild(ta); ta.select();
+    document.execCommand('copy'); document.body.removeChild(ta);
+    dailyShareCopiedMsg.textContent = '\u2713 Copied!';
+  }
+  setTimeout(() => { dailyShareCopiedMsg.textContent = ''; }, 2500);
+});
+
+dailyPlayArcadeBtn.addEventListener('click', () => {
+  hideDailyCompletedUI();
+  dailyChallengeMode = false;
+  localStorage.setItem('scriptureSleuthDailyMode', '0');
+  applyDailyModeUI();
+  renderDailyUI();
+  startGame();
+});
+
+// =====================================================================
+// DAILY CHALLENGE TOGGLE HANDLER
+// =====================================================================
+const dailyToggle = document.getElementById('daily-mode-toggle');
+if (dailyToggle) {
+  dailyToggle.addEventListener('change', () => {
+    dailyChallengeMode = !!dailyToggle.checked;
+    localStorage.setItem('scriptureSleuthDailyMode', dailyChallengeMode ? '1' : '0');
+    applyDailyModeUI();
+    renderDailyUI();
+
+    if (dailyChallengeMode && isDailyComplete()) {
+      // Already completed today — show completed card
+      showDailyCompletedUI();
+    } else {
+      hideDailyCompletedUI();
+      startGame();
+    }
+  });
+}
+
+// =====================================================================
+// STARTUP — CHECK DAILY STATE
+// =====================================================================
+loadDailyChallengeState();
+// If user had daily mode on and already completed, show the completed card
+if (dailyChallengeMode && isDailyComplete()) {
+  showDailyCompletedUI();
+}
 </script>
 </body>
 </html>
