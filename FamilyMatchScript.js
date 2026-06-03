@@ -5,7 +5,7 @@
  */
 
 // ============================================
-// Game Configuration
+// Game Configuration.
 // ============================================
 const MAX_PAIRS = 15; // Maximum pairs (30 cards) for grid layout
 let familyImages = [];    // Populated dynamically from selected family
@@ -48,74 +48,74 @@ const familyButtonsContainer = document.getElementById('family-buttons');
  * Shuffles an array using Fisher-Yates algorithm
  */
 function shuffleArray(array) {
-    const shuffled = [...array];
-    for (let i = shuffled.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-    }
-    return shuffled;
+  const shuffled = [...array];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  return shuffled;
 }
 
 /**
  * Extracts the person's name from the image path
  */
 function extractName(imagePath) {
-    return imagePath.split("/").pop().split(".")[0];
+  return imagePath.split("/").pop().split(".")[0];
 }
 
 /**
  * Gets all high scores from localStorage (per-family)
  */
 function getHighScores() {
-    const key = `familyMatchHighScores_${selectedFamily}`;
-    const scores = localStorage.getItem(key);
-    return scores ? JSON.parse(scores) : [];
+  const key = `familyMatchHighScores_${selectedFamily}`;
+  const scores = localStorage.getItem(key);
+  return scores ? JSON.parse(scores) : [];
 }
 
 /**
  * Saves high scores to localStorage (per-family)
  */
 function saveHighScores(scores) {
-    const key = `familyMatchHighScores_${selectedFamily}`;
-    localStorage.setItem(key, JSON.stringify(scores));
+  const key = `familyMatchHighScores_${selectedFamily}`;
+  localStorage.setItem(key, JSON.stringify(scores));
 }
 
 /**
  * Gets the best record from high scores
  */
 function getBestRecord() {
-    const scores = getHighScores();
-    return scores.length > 0 ? scores[0].turns : null;
+  const scores = getHighScores();
+  return scores.length > 0 ? scores[0].turns : null;
 }
 
 /**
  * Checks if a score qualifies for the leaderboard
  */
 function isHighScore(turns) {
-    const scores = getHighScores();
-    if (scores.length < 10) return true;
-    return turns < scores[scores.length - 1].turns;
+  const scores = getHighScores();
+  if (scores.length < 10) return true;
+  return turns < scores[scores.length - 1].turns;
 }
 
 /**
  * Adds a new high score to the leaderboard
  */
 function addHighScore(initials, turns) {
-    const scores = getHighScores();
-    const newScore = {
-        initials: initials.toUpperCase(),
-        turns: turns,
-        date: new Date().toLocaleDateString()
-    };
+  const scores = getHighScores();
+  const newScore = {
+    initials: initials.toUpperCase(),
+    turns: turns,
+    date: new Date().toLocaleDateString()
+  };
 
-    scores.push(newScore);
-    scores.sort((a, b) => a.turns - b.turns);
+  scores.push(newScore);
+  scores.sort((a, b) => a.turns - b.turns);
 
-    if (scores.length > 10) {
-        scores.length = 10;
-    }
+  if (scores.length > 10) {
+    scores.length = 10;
+  }
 
-    saveHighScores(scores);
+  saveHighScores(scores);
 }
 
 // ============================================
@@ -127,83 +127,83 @@ function addHighScore(initials, turns) {
  * Prefers Deck Builder data when available.
  */
 async function loadManifest() {
-    try {
-        const response = await fetch('FamilyImages/manifest.json');
-        const repoManifest = await response.json();
-        manifest = repoManifest;
-    } catch (err) {
-        console.error('Failed to load manifest:', err);
-        manifest = {};
-    }
-    populateFamilyButtons();
+  try {
+    const response = await fetch('FamilyImages/manifest.json');
+    const repoManifest = await response.json();
+    manifest = repoManifest;
+  } catch (err) {
+    console.error('Failed to load manifest:', err);
+    manifest = {};
+  }
+  populateFamilyButtons();
 }
 
 function resolveFamilyImages(family) {
-    const manifestData = resolveManifest();
-    const names = manifestData[family] || [];
-    const localImages = builderGetImages(family);
-    return names.map(name => localImages[name] || `FamilyImages/${family}/${name}`);
+  const manifestData = resolveManifest();
+  const names = manifestData[family] || [];
+  const localImages = builderGetImages(family);
+  return names.map(name => localImages[name] || `FamilyImages/${family}/${name}`);
 }
 
 function populateFamilyButtons() {
-    familyButtonsContainer.innerHTML = '';
-    const familyNames = Object.keys(manifest);
+  familyButtonsContainer.innerHTML = '';
+  const familyNames = Object.keys(manifest);
 
-    if (familyNames.length === 0) {
-        familyButtonsContainer.innerHTML = '<p style="color:#aaa;">No families found. Add image folders to FamilyImages/.</p>';
-        return;
-    }
+  if (familyNames.length === 0) {
+    familyButtonsContainer.innerHTML = '<p style="color:#aaa;">No families found. Add image folders to FamilyImages/.</p>';
+    return;
+  }
 
-    const icons = ['👨‍👩‍👧‍👦', '👪', '🏠', '❤️', '🌟', '🎯', '🎨', '🌈'];
+  const icons = ['👨‍👩‍👧‍👦', '👪', '🏠', '❤️', '🌟', '🎯', '🎨', '🌈'];
 
-    familyNames.forEach((name, index) => {
-        const count = manifest[name].length;
-        const icon = icons[index % icons.length];
+  familyNames.forEach((name, index) => {
+    const count = manifest[name].length;
+    const icon = icons[index % icons.length];
 
-        const btn = document.createElement('button');
-        btn.className = 'family-btn';
-        btn.innerHTML = `
+    const btn = document.createElement('button');
+    btn.className = 'family-btn';
+    btn.innerHTML = `
             <div class="family-btn-icon">${icon}</div>
             <div class="family-btn-info">
                 <div class="family-btn-name">${name}</div>
                 <div class="family-btn-count">${count} family member${count !== 1 ? 's' : ''}</div>
             </div>
         `;
-        btn.addEventListener('click', () => selectFamily(name));
-        familyButtonsContainer.appendChild(btn);
-    });
+    btn.addEventListener('click', () => selectFamily(name));
+    familyButtonsContainer.appendChild(btn);
+  });
 }
 
 /**
  * Selects a family and starts the game
  */
 function selectFamily(familyName) {
-    selectedFamily = familyName;
-    familyImages = resolveFamilyImages(familyName);
+  selectedFamily = familyName;
+  familyImages = resolveFamilyImages(familyName);
 
-    if (familyImages.length > MAX_PAIRS) {
-        familyImages = shuffleArray(familyImages).slice(0, MAX_PAIRS);
-    }
+  if (familyImages.length > MAX_PAIRS) {
+    familyImages = shuffleArray(familyImages).slice(0, MAX_PAIRS);
+  }
 
-    // Update subtitle to show selected family
-    const subtitle = document.querySelector('.header .subtitle');
-    subtitle.innerHTML = `<span class="family-label">Playing: ${familyName}</span>`;
+  // Update subtitle to show selected family
+  const subtitle = document.querySelector('.header .subtitle');
+  subtitle.innerHTML = `<span class="family-label">Playing: ${familyName}</span>`;
 
-    // Hide family selection modal
-    familySelectModal.style.display = 'none';
+  // Hide family selection modal
+  familySelectModal.style.display = 'none';
 
-    // Update grid columns based on card count
-    updateGridColumns(familyImages.length);
+  // Update grid columns based on card count
+  updateGridColumns(familyImages.length);
 
-    // Start the game
-    resetGame();
+  // Start the game
+  resetGame();
 }
 
 /**
  * Shows the family selection modal
  */
 function showFamilySelect() {
-    familySelectModal.style.display = 'flex';
+  familySelectModal.style.display = 'flex';
 }
 
 /**
@@ -211,11 +211,11 @@ function showFamilySelect() {
  * Cards will wrap to more rows on narrower screens via CSS.
  */
 function updateGridColumns(numPairs) {
-    const totalCards = numPairs * 2;
-    // Target 3 rows: spread cards across columns
-    const cols = Math.ceil(totalCards / 3);
+  const totalCards = numPairs * 2;
+  // Target 3 rows: spread cards across columns
+  const cols = Math.ceil(totalCards / 3);
 
-    cardContainer.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
+  cardContainer.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
 }
 
 // ============================================
@@ -226,46 +226,46 @@ function updateGridColumns(numPairs) {
  * Creates a single card element
  */
 function createCard(imagePath, index) {
-    const card = document.createElement('div');
-    card.classList.add('card');
-    card.dataset.imagePath = imagePath;
-    card.dataset.index = index;
+  const card = document.createElement('div');
+  card.classList.add('card');
+  card.dataset.imagePath = imagePath;
+  card.dataset.index = index;
 
-    const cardInner = document.createElement('div');
-    cardInner.classList.add('card-inner');
+  const cardInner = document.createElement('div');
+  cardInner.classList.add('card-inner');
 
-    const cardFront = document.createElement('div');
-    cardFront.classList.add('card-front');
+  const cardFront = document.createElement('div');
+  cardFront.classList.add('card-front');
 
-    const cardBack = document.createElement('div');
-    cardBack.classList.add('card-back');
+  const cardBack = document.createElement('div');
+  cardBack.classList.add('card-back');
 
-    const img = document.createElement('img');
-    img.src = imagePath;
-    img.alt = extractName(imagePath);
-    img.loading = 'lazy';
-    cardBack.appendChild(img);
+  const img = document.createElement('img');
+  img.src = imagePath;
+  img.alt = extractName(imagePath);
+  img.loading = 'lazy';
+  cardBack.appendChild(img);
 
-    cardInner.appendChild(cardFront);
-    cardInner.appendChild(cardBack);
-    card.appendChild(cardInner);
+  cardInner.appendChild(cardFront);
+  cardInner.appendChild(cardBack);
+  card.appendChild(cardInner);
 
-    card.addEventListener('click', () => handleCardClick(card));
+  card.addEventListener('click', () => handleCardClick(card));
 
-    return card;
+  return card;
 }
 
 /**
  * Initializes the game board with shuffled cards
  */
 function initializeBoard() {
-    gameCards = shuffleArray([...familyImages, ...familyImages]);
-    cardContainer.innerHTML = '';
+  gameCards = shuffleArray([...familyImages, ...familyImages]);
+  cardContainer.innerHTML = '';
 
-    gameCards.forEach((imagePath, index) => {
-        const card = createCard(imagePath, index);
-        cardContainer.appendChild(card);
-    });
+  gameCards.forEach((imagePath, index) => {
+    const card = createCard(imagePath, index);
+    cardContainer.appendChild(card);
+  });
 }
 
 // ============================================
@@ -276,69 +276,69 @@ function initializeBoard() {
  * Handles a card click event
  */
 function handleCardClick(card) {
-    if (isProcessing ||
-        card.classList.contains('flipped') ||
-        card.classList.contains('matched')) {
-        return;
-    }
+  if (isProcessing ||
+    card.classList.contains('flipped') ||
+    card.classList.contains('matched')) {
+    return;
+  }
 
-    card.classList.add('flipped');
-    flippedCards.push(card);
+  card.classList.add('flipped');
+  flippedCards.push(card);
 
-    if (flippedCards.length === 2) {
-        isProcessing = true;
-        turnCount++;
-        updateStats();
-        checkForMatch();
-    }
+  if (flippedCards.length === 2) {
+    isProcessing = true;
+    turnCount++;
+    updateStats();
+    checkForMatch();
+  }
 }
 
 /**
  * Checks if the two flipped cards match
  */
 function checkForMatch() {
-    const [card1, card2] = flippedCards;
-    const isMatch = card1.dataset.imagePath === card2.dataset.imagePath;
+  const [card1, card2] = flippedCards;
+  const isMatch = card1.dataset.imagePath === card2.dataset.imagePath;
 
-    if (isMatch) {
-        handleMatch(card1, card2);
-    } else {
-        handleMismatch(card1, card2);
-    }
+  if (isMatch) {
+    handleMatch(card1, card2);
+  } else {
+    handleMismatch(card1, card2);
+  }
 }
 
 /**
  * Handles a successful match
  */
 function handleMatch(card1, card2) {
-    const personName = extractName(card1.dataset.imagePath);
+  const personName = extractName(card1.dataset.imagePath);
 
-    card1.classList.add('matched');
-    card2.classList.add('matched');
+  card1.classList.add('matched');
+  card2.classList.add('matched');
 
-    matchedPairs.push(personName);
-    updateMatchedList(personName);
+  matchedPairs.push(personName);
+  updateMatchedList(personName);
 
-    flippedCards = [];
-    isProcessing = false;
-    updateStats();
+  flippedCards = [];
+  isProcessing = false;
+  updateStats();
 
-    // Check for victory
-    if (matchedPairs.length === familyImages.length) {
-        setTimeout(showVictory, 600);
-    }
+  // Check for victory
+  if (matchedPairs.length === familyImages.length) {
+    setTimeout(showVictory, 600);
+  }
 }
 
 /**
  * Handles a mismatch
  */
 function handleMismatch(card1, card2) {
-    setTimeout(() => {
-        card1.classList.remove('flipped');
-        card2.classList.remove('flipped');
-        flippedCards = [];
-        isProcessing = false;
-    }, 1000);
+  setTimeout(() => {
+    card1.classList.remove('flipped');
+    card2.classList.remove('flipped');
+    flippedCards = [];
+    isProcessing = false;
+  }, 1000);
 }
 
 // ============================================
@@ -349,149 +349,149 @@ function handleMismatch(card1, card2) {
  * Updates the stats display
  */
 function updateStats() {
-    turnCountDisplay.textContent = turnCount;
-    matchCountDisplay.textContent = matchedPairs.length;
+  turnCountDisplay.textContent = turnCount;
+  matchCountDisplay.textContent = matchedPairs.length;
 
-    const bestRecord = getBestRecord();
-    bestRecordDisplay.textContent = bestRecord !== null ? bestRecord : '-';
+  const bestRecord = getBestRecord();
+  bestRecordDisplay.textContent = bestRecord !== null ? bestRecord : '-';
 }
 
 /**
  * Adds a name to the matched list display
  */
 function updateMatchedList(name) {
-    const emptyMessage = matchedListDisplay.querySelector('.empty-message');
-    if (emptyMessage) {
-        emptyMessage.remove();
-    }
+  const emptyMessage = matchedListDisplay.querySelector('.empty-message');
+  if (emptyMessage) {
+    emptyMessage.remove();
+  }
 
-    const listItem = document.createElement('li');
-    listItem.textContent = name;
-    matchedListDisplay.appendChild(listItem);
+  const listItem = document.createElement('li');
+  listItem.textContent = name;
+  matchedListDisplay.appendChild(listItem);
 }
 
 /**
  * Clears the matched list display
  */
 function clearMatchedList() {
-    matchedListDisplay.innerHTML = '<li class="empty-message">No matches yet - start playing!</li>';
+  matchedListDisplay.innerHTML = '<li class="empty-message">No matches yet - start playing!</li>';
 }
 
 /**
  * Shows the victory modal or initials input if high score
  */
 function showVictory() {
-    const bestRecord = getBestRecord();
-    const qualifiesForLeaderboard = isHighScore(turnCount);
+  const bestRecord = getBestRecord();
+  const qualifiesForLeaderboard = isHighScore(turnCount);
 
-    if (qualifiesForLeaderboard) {
-        initialsScore.textContent = turnCount;
-        initialsInput.value = '';
-        initialsModal.style.display = 'flex';
-        setTimeout(() => initialsInput.focus(), 100);
-    } else {
-        modalTitle.textContent = 'Congratulations!';
-        modalMessage.innerHTML = `You completed the game in <span class="highlight">${turnCount} turns</span>.<br>Best record: <span class="highlight">${bestRecord} turns</span>`;
-        showVictoryThenLeaderboard();
-    }
+  if (qualifiesForLeaderboard) {
+    initialsScore.textContent = turnCount;
+    initialsInput.value = '';
+    initialsModal.style.display = 'flex';
+    setTimeout(() => initialsInput.focus(), 100);
+  } else {
+    modalTitle.textContent = 'Congratulations!';
+    modalMessage.innerHTML = `You completed the game in <span class="highlight">${turnCount} turns</span>.<br>Best record: <span class="highlight">${bestRecord} turns</span>`;
+    showVictoryThenLeaderboard();
+  }
 
-    updateStats();
+  updateStats();
 }
 
 /**
  * Shows victory modal, then leaderboard when closed
  */
 function showVictoryThenLeaderboard() {
-    victoryModal.style.display = 'flex';
-    victoryModal.dataset.showLeaderboard = 'true';
+  victoryModal.style.display = 'flex';
+  victoryModal.dataset.showLeaderboard = 'true';
 }
 
 /**
  * Submits the high score with initials
  */
 function submitHighScore() {
-    let initials = initialsInput.value.trim().toUpperCase();
+  let initials = initialsInput.value.trim().toUpperCase();
 
-    if (initials.length === 0) {
-        initials = 'AAA';
-    }
+  if (initials.length === 0) {
+    initials = 'AAA';
+  }
 
-    while (initials.length < 3) {
-        initials += '-';
-    }
+  while (initials.length < 3) {
+    initials += '-';
+  }
 
-    initials = initials.substring(0, 3);
+  initials = initials.substring(0, 3);
 
-    addHighScore(initials, turnCount);
-    hideInitialsModal();
-    updateStats();
+  addHighScore(initials, turnCount);
+  hideInitialsModal();
+  updateStats();
 
-    showLeaderboard();
+  showLeaderboard();
 }
 
 /**
  * Hides the initials input modal
  */
 function hideInitialsModal() {
-    initialsModal.style.display = 'none';
+  initialsModal.style.display = 'none';
 }
 
 /**
  * Shows the leaderboard modal
  */
 function showLeaderboard() {
-    const scores = getHighScores();
-    leaderboardList.innerHTML = '';
+  const scores = getHighScores();
+  leaderboardList.innerHTML = '';
 
-    if (scores.length === 0) {
-        leaderboardList.innerHTML = '<li class="no-scores">No high scores yet!</li>';
-    } else {
-        scores.forEach((score, index) => {
-            const li = document.createElement('li');
-            li.className = 'leaderboard-entry';
-            if (index === 0) li.classList.add('gold');
-            if (index === 1) li.classList.add('silver');
-            if (index === 2) li.classList.add('bronze');
+  if (scores.length === 0) {
+    leaderboardList.innerHTML = '<li class="no-scores">No high scores yet!</li>';
+  } else {
+    scores.forEach((score, index) => {
+      const li = document.createElement('li');
+      li.className = 'leaderboard-entry';
+      if (index === 0) li.classList.add('gold');
+      if (index === 1) li.classList.add('silver');
+      if (index === 2) li.classList.add('bronze');
 
-            li.innerHTML = `
+      li.innerHTML = `
                 <span class="rank">${index + 1}</span>
                 <span class="initials">${score.initials}</span>
                 <span class="turns">${score.turns} turns</span>
             `;
-            leaderboardList.appendChild(li);
-        });
-    }
+      leaderboardList.appendChild(li);
+    });
+  }
 
-    leaderboardModal.style.display = 'flex';
+  leaderboardModal.style.display = 'flex';
 }
 
 /**
  * Hides the leaderboard modal
  */
 function hideLeaderboard() {
-    leaderboardModal.style.display = 'none';
+  leaderboardModal.style.display = 'none';
 }
 
 /**
  * Handles clicking on the leaderboard overlay to close
  */
 function handleLeaderboardOverlayClick(event) {
-    if (event.target === leaderboardModal) {
-        hideLeaderboard();
-    }
+  if (event.target === leaderboardModal) {
+    hideLeaderboard();
+  }
 }
 
 /**
  * Hides the victory modal and optionally shows leaderboard
  */
 function hideVictory() {
-    const shouldShowLeaderboard = victoryModal.dataset.showLeaderboard === 'true';
-    victoryModal.style.display = 'none';
-    victoryModal.dataset.showLeaderboard = 'false';
+  const shouldShowLeaderboard = victoryModal.dataset.showLeaderboard === 'true';
+  victoryModal.style.display = 'none';
+  victoryModal.dataset.showLeaderboard = 'false';
 
-    if (shouldShowLeaderboard) {
-        showLeaderboard();
-    }
+  if (shouldShowLeaderboard) {
+    showLeaderboard();
+  }
 }
 
 // ============================================
@@ -502,51 +502,51 @@ function hideVictory() {
  * Resets and starts a new game
  */
 function resetGame() {
-    if (familyImages.length === 0) {
-        // No family selected yet — show selector
-        showFamilySelect();
-        return;
-    }
+  if (familyImages.length === 0) {
+    // No family selected yet — show selector
+    showFamilySelect();
+    return;
+  }
 
-    hideVictory();
-    flippedCards = [];
-    matchedPairs = [];
-    turnCount = 0;
-    isProcessing = false;
+  hideVictory();
+  flippedCards = [];
+  matchedPairs = [];
+  turnCount = 0;
+  isProcessing = false;
 
-    updateStats();
-    clearMatchedList();
-    initializeBoard();
+  updateStats();
+  clearMatchedList();
+  initializeBoard();
 }
 
 /**
  * Resets all high scores for the selected family
  */
 function resetRecord() {
-    if (!selectedFamily) {
-        alert('Please select a family first.');
-        return;
-    }
-    if (confirm(`Are you sure you want to reset all high scores for ${selectedFamily}?`)) {
-        const key = `familyMatchHighScores_${selectedFamily}`;
-        localStorage.removeItem(key);
-        updateStats();
-    }
+  if (!selectedFamily) {
+    alert('Please select a family first.');
+    return;
+  }
+  if (confirm(`Are you sure you want to reset all high scores for ${selectedFamily}?`)) {
+    const key = `familyMatchHighScores_${selectedFamily}`;
+    localStorage.removeItem(key);
+    updateStats();
+  }
 }
 
 // ============================================
 // Initialize Game on Page Load
 // ============================================
 document.addEventListener('DOMContentLoaded', () => {
-    updateStats();
-    loadManifest();
+  updateStats();
+  loadManifest();
 
-    // Add Enter key support for initials input
-    initialsInput.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') {
-            submitHighScore();
-        }
-    });
+  // Add Enter key support for initials input
+  initialsInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      submitHighScore();
+    }
+  });
 });
 
 // ============================================
