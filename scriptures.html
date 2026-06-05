@@ -1553,8 +1553,6 @@ function startGame() {
 // INIT
 // =====================================================================
 bestDisplay.textContent = state.best;
-maintainQueue(); // Start prefetching immediately on page load
-loadRound();
 
 // =====================================================================
 // KEYBOARD NAVIGATION
@@ -1858,12 +1856,19 @@ if (dailyToggle) {
 }
 
 // =====================================================================
-// STARTUP — CHECK DAILY STATE
+// STARTUP — CHECK DAILY STATE & INITIALIZE
 // =====================================================================
 loadDailyChallengeState();
-// If user had daily mode on and already completed, show the completed card
-if (dailyChallengeMode && isDailyComplete()) {
-  showDailyCompletedUI();
+
+if (dailyChallengeMode) {
+  if (isDailyComplete()) {
+    showDailyCompletedUI();
+  } else {
+    loadRound();
+  }
+} else {
+  maintainQueue(); // Start prefetching immediately on page load
+  loadRound();
 }
 </script>
 </body>
