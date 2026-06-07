@@ -654,7 +654,7 @@
         let brickRows = 5;
         let brickColumns = 10;
         let brickPadding = 0;
-        let brickOffsetLeft = 35;
+        let brickOffsetLeft = 0;
         let brickOffsetTop = 45;
         // Calculate brick width based on canvas size to ensure they fit
         let brickWidth = (canvas.width - (brickOffsetLeft * 2) - (brickPadding * (brickColumns - 1))) / brickColumns;
@@ -670,7 +670,7 @@
             canvas.height = BASE_HEIGHT;
             
             brickPadding = 0;
-            brickOffsetLeft = 35;
+            brickOffsetLeft = 0;
             brickOffsetTop = 45;
             brickHeight = 20;
             brickWidth = (canvas.width - (brickOffsetLeft * 2) - (brickPadding * (brickColumns - 1))) / brickColumns;
