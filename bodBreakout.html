@@ -399,40 +399,53 @@
 </head>
 <body>
     <div class="game-container">
-        <h1>BREAKOUT GAME</h1>
-        
-        <div class="game-info">
-            <div class="info-item">
-                <span>SCORE</span>
-                <span id="GameState.score" class="info-value">0</span>
+        <div id="start-screen" style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%;">
+            <h1>BREAKOUT GAME</h1>
+            <div class="instructions" style="max-height: none; margin-bottom: 30px; font-size: 1rem; padding: 20px;">
+                <h3 style="font-size: 1.2rem;">HOW TO PLAY</h3>
+                <ul style="margin: 15px 0;">
+                    <li>Move the <span class="highlight">paddle</span> with your mouse or touch</li>
+                    <li>Break all bricks to advance to the next GameState.level</li>
+                    <li>Each GameState.level increases the ball speed</li>
+                    <li>You start with <span class="highlight">3 GameState.lives</span>. Earn +1 life every 500 points!</li>
+                    <li>Levels are <span class="highlight">unlimited</span>. How far can you go?</li>
+                </ul>
+                <p style="margin-top: 20px; font-size: 1rem; color: #ccc; text-align: center;">Press SPACE to launch ball and bullets. Use Arrows or mouse to move.</p>
             </div>
-            <div class="info-item">
-                <span>LIVES</span>
-                <span id="GameState.lives" class="info-value">3</span>
-            </div>
-            <div class="info-item">
-                <span>LEVEL</span>
-                <span id="GameState.level" class="info-value">1</span>
-            </div>
-            <div class="info-item">
-                <span>SPEED</span>
-                <span id="speed" class="info-value">4.0</span>
-            </div>
-            <div class="info-item">
-                <span>HIGH SCORE</span>
-                <span id="high-GameState.score" class="info-value">0</span>
-            </div>
+            <button id="startBtn" class="btn" style="font-size: 1.5rem; padding: 15px 50px;">START GAME</button>
         </div>
         
-        <div class="canvas-wrapper">
-            <canvas id="gameCanvas" width="760" height="450"></canvas>
-        </div>
-        
-        <div class="controls">
-            <button id="startBtn" class="btn">START GAME</button>
-            <button id="pauseBtn" class="btn">PAUSE</button>
-            <button id="resetBtn" class="btn">RESET GAME</button>
-            <p style="margin-top: 10px; font-size: 0.9rem; color: #ccc;">Press SPACE to launch ball and bullets. Use Arrows or mouse to move.</p>
+        <div id="game-screen" style="display: none; width: 100%; height: 100%; flex-direction: column;">
+            <div class="game-info" style="padding: 0.5vh 1vw; margin-bottom: 0.5vh; font-size: clamp(0.7rem, 1.2vh, 1rem); align-items: center;">
+                <div class="info-item" style="flex-direction: row; align-items: center; gap: 5px;">
+                    <span>SCORE:</span>
+                    <span id="GameState.score" class="info-value" style="font-size: clamp(0.9rem, 1.5vh, 1.2rem);">0</span>
+                </div>
+                <div class="info-item" style="flex-direction: row; align-items: center; gap: 5px;">
+                    <span>LIVES:</span>
+                    <span id="GameState.lives" class="info-value" style="font-size: clamp(0.9rem, 1.5vh, 1.2rem);">3</span>
+                </div>
+                <div class="info-item" style="flex-direction: row; align-items: center; gap: 5px;">
+                    <span>LEVEL:</span>
+                    <span id="GameState.level" class="info-value" style="font-size: clamp(0.9rem, 1.5vh, 1.2rem);">1</span>
+                </div>
+                <div class="info-item" style="flex-direction: row; align-items: center; gap: 5px;">
+                    <span>SPEED:</span>
+                    <span id="speed" class="info-value" style="font-size: clamp(0.9rem, 1.5vh, 1.2rem);">4.0</span>
+                </div>
+                <div class="info-item" style="flex-direction: row; align-items: center; gap: 5px;">
+                    <span>HIGH:</span>
+                    <span id="high-GameState.score" class="info-value" style="font-size: clamp(0.9rem, 1.5vh, 1.2rem);">0</span>
+                </div>
+                <div style="display: flex;">
+                    <button id="pauseBtn" class="btn" style="padding: 4px 10px; font-size: 0.8rem; margin: 0 2px;">PAUSE</button>
+                    <button id="resetBtn" class="btn" style="padding: 4px 10px; font-size: 0.8rem; margin: 0 2px;">RESET</button>
+                </div>
+            </div>
+            
+            <div class="canvas-wrapper">
+                <canvas id="gameCanvas" width="760" height="450"></canvas>
+            </div>
         </div>
         
         <div id="levelIndicator" class="GameState.level-indicator">
@@ -484,16 +497,7 @@
             <button id="closeLeaderboardBtn" class="btn">PLAY AGAIN</button>
         </div>
         
-        <div class="instructions">
-            <h3>HOW TO PLAY</h3>
-            <ul>
-                <li>Move the <span class="highlight">paddle</span> with your mouse or touch</li>
-                <li>Break all bricks to advance to the next GameState.level</li>
-                <li>Each GameState.level increases the ball speed</li>
-                <li>You start with <span class="highlight">3 GameState.lives</span>. Earn +1 life every 500 points!</li>
-                <li>Levels are <span class="highlight">unlimited</span>. How far can you go?</li>
-            </ul>
-        </div>
+
         
         <div style="position: absolute; bottom: 10px; right: 15px; color: rgba(255,255,255,0.3); font-size: 0.8rem;">v1</div>
     </div>
@@ -3280,6 +3284,10 @@
         });
         
         startBtn.addEventListener('click', function() {
+            document.getElementById('start-screen').style.display = 'none';
+            document.getElementById('game-screen').style.display = 'flex';
+            resizeCanvas(); // Ensure canvas scales correctly after display change
+            
             if (!audioCtx) {
                 try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); }
                 catch(e) {}
