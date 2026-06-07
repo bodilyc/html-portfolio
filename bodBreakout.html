@@ -1464,18 +1464,12 @@
                         ctx.fillStyle = drawColor;
                         ctx.fill();
                         
-                        // Add a subtle top highlight for a 3D look
-                        if (brick.shape === 'rectangle' || brick.shape === 'rounded-rect') {
-                            ctx.save();
-                            ctx.beginPath();
-                            if (brick.shape === 'rounded-rect') {
-                                roundedRectPath(ctx, bx, by, bw, bh / 3, 6);
-                            } else {
-                                ctx.rect(bx, by, bw, bh / 3);
-                            }
-                            ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
-                            ctx.fill();
-                            ctx.restore();
+                        // Re-establish path for stroke and effects to ensure the whole block is used
+                        ctx.beginPath();
+                        if (brick.shape === 'rounded-rect') {
+                            roundedRectPath(ctx, bx, by, bw, bh, 6);
+                        } else {
+                            ctx.rect(bx, by, bw, bh);
                         }
                         
                         // Special Effect for PowerUp Bricks
