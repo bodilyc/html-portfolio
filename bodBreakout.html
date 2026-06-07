@@ -19,21 +19,21 @@
             min-height: 100vh;
             background: linear-gradient(135deg, #1a2a6c, #b21f1f, #1a2a6c);
             overflow: hidden;
-            padding: 1vh 1vw;
+            padding: 0; /* Remove body padding to maximize space */
         }
         
         .game-container {
             position: relative;
-            width: 98vw;
-            height: 98vh;
-            max-width: 1600px;
+            width: 100vw;
+            height: 100vh;
+            max-width: 100%;
             background: rgba(0, 0, 0, 0.7);
-            border-radius: 15px;
-            box-shadow: 0 0 30px rgba(0, 0, 0, 0.6);
-            padding: 1.5vh 1.5vw;
+            /* Remove border-radius to feel like a full-screen app */
+            box-shadow: none;
+            padding: 1vh 1vw; /* Minimal internal padding */
             text-align: center;
             backdrop-filter: blur(10px);
-            border: 2px solid rgba(255, 255, 255, 0.1);
+            border: none;
             display: flex;
             flex-direction: column;
         }
