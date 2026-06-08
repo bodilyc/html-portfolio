@@ -1191,10 +1191,10 @@
             livesElement.textContent = GameState.lives;
             speedElement.textContent = GameState.currentBallSpeed.toFixed(1);
             
-            // Extra Life check (Now every 2000 points)
-            if (GameState.score - GameState.lastLifeScore >= 2000) {
+            // Extra Life check (every 10,000 points)
+            if (GameState.score - GameState.lastLifeScore >= 10000) {
                 GameState.lives++;
-                GameState.lastLifeScore += 2000;
+                GameState.lastLifeScore += 10000;
                 livesElement.textContent = GameState.lives;
                 
                 // Animate
@@ -1805,10 +1805,16 @@
                     }
                 });
 
-                // Magnet Paddle
-                if (GameState.activePaddlePowerUp === 'magnet' && ball.y > canvas.height * 0.6) {
+                // Magnet Paddle — only attract when ball is falling (dy > 0) and in lower portion of screen
+                if (GameState.activePaddlePowerUp === 'magnet' && ball.dy > 0 && ball.y > canvas.height * 0.5) {
                     const paddleCenterX = paddle.x + paddle.width / 2;
-                    ball.dx += (paddleCenterX - ball.x) * 0.002 * timeScale;
+                    const pullStrength = 0.0015 * timeScale;
+                    ball.dx += (paddleCenterX - ball.x) * pullStrength;
+                    // Clamp horizontal speed so the magnet can't send the ball flying sideways
+                    const maxDx = Math.abs(ball.dy) * 0.8;
+                    if (Math.abs(ball.dx) > maxDx) {
+                        ball.dx = Math.sign(ball.dx) * maxDx;
+                    }
                 }
 
                 // Teleport cooldown
