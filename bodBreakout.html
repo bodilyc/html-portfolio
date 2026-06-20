@@ -614,11 +614,14 @@
 
         async function fetchGlobalScores(gameKey) {
             try {
-                const res = await fetch(`https://keyvalue.immanuel.co/api/KeyVal/GetValue/${LEADERBOARD_APP_KEY}/${gameKey}`);
+                const res = await fetch(`https://keyvalue.immanuel.co/api/KeyVal/GetValue/${LEADERBOARD_APP_KEY}/${gameKey}`, {
+                    cache: 'no-store'
+                });
                 if (!res.ok) throw new Error('Network response not ok');
                 const hex = await res.json();
-                if (!hex) return [];
+                if (!hex || hex === 'null' || hex === 'undefined') return [];
                 const decoded = hexToString(hex);
+                if (!decoded) return [];
                 return JSON.parse(decoded) || [];
             } catch (e) {
                 console.warn('Failed to fetch global high scores:', e);
@@ -631,7 +634,8 @@
                 const jsonStr = JSON.stringify(scores);
                 const hex = stringToHex(jsonStr);
                 const res = await fetch(`https://keyvalue.immanuel.co/api/KeyVal/UpdateValue/${LEADERBOARD_APP_KEY}/${gameKey}/${hex}`, {
-                    method: 'POST'
+                    method: 'POST',
+                    body: ''
                 });
                 if (!res.ok) throw new Error('Save response not ok');
                 return true;
