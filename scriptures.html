@@ -836,20 +836,29 @@ const LEADERBOARD_APP_KEY = 'craigbodily_html_portfolio_leaderboards';
 const BANNED_INITIALS = ['FUC', 'ASS', 'DIC', 'KOK', 'PIS', 'WTF', 'CNT', 'FAG', 'SEX', 'TIT', 'CUM', 'HEL', 'DAM', 'FUK', 'SHI', 'KKK', 'NIG', 'DIK'];
 let globalScores = null;
 
-function stringToHex(str) {
-  let hex = '';
-  for (let i = 0; i < str.length; i++) {
-    hex += str.charCodeAt(i).toString(16).padStart(2, '0');
-  }
-  return hex;
+// Base64url encode/decode — much shorter than hex for URL paths
+function encodeForUrl(str) {
+  return btoa(unescape(encodeURIComponent(str)))
+    .replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
 }
 
-function hexToString(hex) {
-  let str = '';
-  for (let i = 0; i < hex.length; i += 2) {
-    str += String.fromCharCode(parseInt(hex.substr(i, 2), 16));
+function decodeFromUrl(encoded) {
+  // Handle legacy hex-encoded data (old format was all lowercase hex chars 0-9 a-f)
+  if (/^[0-9a-f]+$/.test(encoded) && encoded.length % 2 === 0) {
+    let str = '';
+    for (let i = 0; i < encoded.length; i += 2) {
+      str += String.fromCharCode(parseInt(encoded.substr(i, 2), 16));
+    }
+    return str;
   }
-  return str;
+  // Base64url decode
+  try {
+    const b64 = encoded.replace(/-/g, '+').replace(/_/g, '/');
+    const padded = b64 + '=='.slice(0, (4 - b64.length % 4) % 4);
+    return decodeURIComponent(escape(atob(padded)));
+  } catch(e) {
+    return null;
+  }
 }
 
 async function fetchGlobalScores(gameKey) {
@@ -858,22 +867,31 @@ async function fetchGlobalScores(gameKey) {
       cache: 'no-store'
     });
     if (!res.ok) throw new Error('Network error');
-    const hex = await res.json();
-    if (!hex || hex === 'null' || hex === 'undefined') return [];
-    const decoded = hexToString(hex);
+    const raw = await res.json();
+    if (!raw || raw === 'null' || raw === 'undefined' || raw === '') return [];
+    const decoded = decodeFromUrl(raw);
     if (!decoded) return [];
-    return JSON.parse(decoded) || [];
+    const parsed = JSON.parse(decoded) || [];
+    // Normalize compact field names {n, s, r} back to {name, score, rounds}
+    return parsed.map(e => ({
+      name: e.name || e.n || '???',
+      score: e.score !== undefined ? e.score : (e.s || 0),
+      rounds: e.rounds !== undefined ? e.rounds : (e.r || 0)
+    }));
   } catch (e) {
     console.warn('Failed to fetch global high scores:', e);
     return null;
   }
 }
 
+
 async function saveGlobalScores(gameKey, scores) {
   try {
-    const jsonStr = JSON.stringify(scores);
-    const hex = stringToHex(jsonStr);
-    const res = await fetch(`https://keyvalue.immanuel.co/api/KeyVal/UpdateValue/${LEADERBOARD_APP_KEY}/${gameKey}/${hex}`, {
+    // Store minimal data to keep URL short: name, score, rounds only
+    const minimal = scores.map(s => ({ n: s.name, s: s.score, r: s.rounds }));
+    const jsonStr = JSON.stringify(minimal);
+    const encoded = encodeForUrl(jsonStr);
+    const res = await fetch(`https://keyvalue.immanuel.co/api/KeyVal/UpdateValue/${LEADERBOARD_APP_KEY}/${gameKey}/${encoded}`, {
       method: 'POST',
       body: ''
     });
