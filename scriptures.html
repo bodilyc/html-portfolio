@@ -51,7 +51,79 @@
     font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
   }
 
-  .game-wrapper { width: 100%; max-width: 780px; }
+  .game-layout-container {
+    display: flex;
+    gap: 30px;
+    width: 100%;
+    max-width: 1100px;
+    justify-content: center;
+    align-items: flex-start;
+    margin: 0 auto;
+  }
+  .game-wrapper {
+    flex: 1;
+    min-width: 320px;
+    max-width: 780px;
+  }
+  .sidebar-leaderboard {
+    width: 280px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+  }
+  .sidebar-leaderboard h3 {
+    font-family: 'Cinzel', serif;
+    color: var(--gold-light);
+    font-size: 1rem;
+    letter-spacing: 2px;
+    margin-bottom: 12px;
+    text-align: center;
+    text-shadow: 0 0 10px rgba(201,168,76,0.3);
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 8px;
+  }
+  .sidebar-leaderboard-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-family: 'EB Garamond', Georgia, serif;
+    font-size: 1rem;
+  }
+  .sidebar-leaderboard-table th {
+    font-family: 'Cinzel', serif;
+    color: var(--gold-light);
+    font-size: 0.72rem;
+    letter-spacing: 1px;
+    padding: 6px 4px;
+    border-bottom: 1px solid var(--border);
+  }
+  .sidebar-leaderboard-table td {
+    padding: 8px 4px;
+    border-bottom: 1px solid rgba(255,255,255,0.03);
+  }
+  .sidebar-leaderboard-table tr:last-child td {
+    border-bottom: none;
+  }
+  .sidebar-leaderboard-table tr.current-score {
+    background: rgba(201, 168, 76, 0.15);
+    font-weight: bold;
+  }
+  
+  @media (max-width: 1024px) {
+    .game-layout-container {
+      flex-direction: column;
+      align-items: center;
+    }
+    .game-wrapper {
+      width: 100%;
+    }
+    .sidebar-leaderboard {
+      width: 100%;
+      max-width: 780px;
+      margin-top: 20px;
+    }
+  }
 
   /* Stats bar */
   .stats-bar {
@@ -463,7 +535,8 @@
   <p style="font-size:0.9rem; margin-top:2px; opacity:0.8;">You can submit early if you don't know the full answer (blank guesses count as incorrect).<br>Press <strong>Enter</strong> to submit.</p>
 </header>
 
-<div class="game-wrapper">
+<div class="game-layout-container">
+  <div class="game-wrapper">
   <!-- Volume Filters -->
   <div class="volume-filters" id="volFilters">
     <label><input type="checkbox" value="ot" checked> Old Testament</label>
@@ -601,6 +674,24 @@
     <div class="history-list" id="historyList"></div>
   </div>
 
+  </div>
+
+  <!-- Right Side: Leaderboard Column -->
+  <div class="sidebar-leaderboard">
+    <h3>🏆 GLOBAL LEADERBOARD</h3>
+    <table class="sidebar-leaderboard-table">
+      <thead>
+        <tr>
+          <th style="width: 20%; text-align: center;">Rank</th>
+          <th style="width: 45%; text-align: left;">Name</th>
+          <th style="width: 35%; text-align: right;">Score</th>
+        </tr>
+      </thead>
+      <tbody id="sidebarLeaderboardBody">
+        <!-- Populated by JS -->
+      </tbody>
+    </table>
+  </div>
 </div>
 
 <script>
@@ -806,8 +897,10 @@ fetchGlobalScores('scripture_sleuth').then(scores => {
   if (scores !== null) {
     globalScores = scores;
     updateBestDisplayFromGlobal();
+    renderLeaderboardTable();
   } else {
     globalScores = [];
+    renderLeaderboardTable();
   }
 });
 
@@ -1060,38 +1153,78 @@ function buildShareText() {
 
 async function renderLeaderboardTable(highlightEntry = null) {
   const tbody = document.getElementById('leaderboardBody');
-  if (!tbody) return;
-  tbody.innerHTML = '';
+  const sidebarTbody = document.getElementById('sidebarLeaderboardBody');
+  
+  const loadingHtml = `<td colspan="4" style="text-align: center; padding: 12px; color: var(--text-dim);">Loading global scores...</td>`;
+  const noRecordsHtml = `<td colspan="4" style="text-align: center; padding: 12px; color: var(--text-dim);">No global records yet.</td>`;
+  
+  if (tbody) tbody.innerHTML = '';
+  if (sidebarTbody) sidebarTbody.innerHTML = '';
   
   if (globalScores === null) {
-    const tr = document.createElement('tr');
-    tr.innerHTML = `<td colspan="4" style="text-align: center; padding: 12px; color: var(--text-dim);">Loading global scores...</td>`;
-    tbody.appendChild(tr);
+    if (tbody) {
+      const tr = document.createElement('tr');
+      tr.innerHTML = loadingHtml;
+      tbody.appendChild(tr);
+    }
+    if (sidebarTbody) {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td colspan="3" style="text-align: center; padding: 12px; color: var(--text-dim);">Loading...</td>`;
+      sidebarTbody.appendChild(tr);
+    }
     return;
   }
   
   if (globalScores.length === 0) {
-    const tr = document.createElement('tr');
-    tr.innerHTML = `<td colspan="4" style="text-align: center; padding: 12px; color: var(--text-dim);">No global records yet.</td>`;
-    tbody.appendChild(tr);
+    if (tbody) {
+      const tr = document.createElement('tr');
+      tr.innerHTML = noRecordsHtml;
+      tbody.appendChild(tr);
+    }
+    if (sidebarTbody) {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td colspan="3" style="text-align: center; padding: 12px; color: var(--text-dim);">No records.</td>`;
+      sidebarTbody.appendChild(tr);
+    }
     return;
   }
   
   globalScores.forEach((entry, idx) => {
-    const tr = document.createElement('tr');
-    tr.style.borderBottom = '1px solid var(--border)';
-    if (highlightEntry && entry.name === highlightEntry.name && entry.score === highlightEntry.score && entry.rounds === highlightEntry.rounds) {
-      tr.style.background = 'rgba(201, 168, 76, 0.18)';
-      tr.style.fontWeight = 'bold';
+    // Populate overlay table
+    if (tbody) {
+      const tr = document.createElement('tr');
+      tr.style.borderBottom = '1px solid var(--border)';
+      if (highlightEntry && entry.name === highlightEntry.name && entry.score === highlightEntry.score && entry.rounds === highlightEntry.rounds) {
+        tr.style.background = 'rgba(201, 168, 76, 0.18)';
+        tr.style.fontWeight = 'bold';
+      }
+      
+      tr.innerHTML = `
+        <td style="padding: 8px; text-align: center;">${idx + 1}</td>
+        <td style="padding: 8px; text-align: left; font-family: 'Cinzel', serif;">${entry.name}</td>
+        <td style="padding: 8px; text-align: right; color: var(--gold-light);">${entry.score}</td>
+        <td style="padding: 8px; text-align: right;">${entry.rounds}</td>
+      `;
+      tbody.appendChild(tr);
     }
     
-    tr.innerHTML = `
-      <td style="padding: 8px; text-align: center;">${idx + 1}</td>
-      <td style="padding: 8px; text-align: left; font-family: 'Cinzel', serif;">${entry.name}</td>
-      <td style="padding: 8px; text-align: right; color: var(--gold-light);">${entry.score}</td>
-      <td style="padding: 8px; text-align: right;">${entry.rounds}</td>
-    `;
-    tbody.appendChild(tr);
+    // Populate sidebar table (shows top 10)
+    if (sidebarTbody) {
+      const tr = document.createElement('tr');
+      tr.style.borderBottom = '1px solid rgba(255,255,255,0.03)';
+      if (highlightEntry && entry.name === highlightEntry.name && entry.score === highlightEntry.score && entry.rounds === highlightEntry.rounds) {
+        tr.className = 'current-score';
+        tr.style.background = 'rgba(201, 168, 76, 0.18)';
+        tr.style.fontWeight = 'bold';
+      }
+      
+      tr.innerHTML = `
+        <td style="padding: 8px 4px; text-align: center;">${idx + 1}</td>
+        <td style="padding: 8px 4px; text-align: left; font-family: 'Cinzel', serif; font-size: 0.9rem;">${entry.name}</td>
+        <td style="padding: 8px 4px; text-align: right; color: var(--gold-light);">${entry.score}</td>
+      `;
+      sidebarTbody.appendChild(tr);
+    }
   });
 }
 
