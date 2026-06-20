@@ -395,6 +395,30 @@
         .reset-btn:hover {
             opacity: 1;
         }
+        .leaderboard-tabs {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        .tab-btn {
+            background: #222 !important;
+            border: 1px solid #444 !important;
+            color: #aaa !important;
+            cursor: pointer;
+            padding: 8px 12px;
+            margin: 0;
+            font-size: 1rem;
+            flex: 1;
+            transition: all 0.2s ease;
+        }
+        .tab-btn.active {
+            background: #ffcc00 !important;
+            color: #000 !important;
+            border-color: #ffcc00 !important;
+            font-weight: bold;
+            box-shadow: 0 0 10px rgba(255, 204, 0, 0.4);
+        }
     </style>
 </head>
 <body>
@@ -479,9 +503,14 @@
         </div>
         
         <div id="leaderboard" class="modal">
-            <h2>MY RECORDS</h2>
+            <h2 id="leaderboardTitle">HIGH SCORES</h2>
             
-            <div id="resetContainer" class="reset-container">
+            <div class="leaderboard-tabs">
+                <button id="tabGlobal" class="btn tab-btn active">GLOBAL</button>
+                <button id="tabLocal" class="btn tab-btn">MY RECORDS</button>
+            </div>
+            
+            <div id="resetContainer" class="reset-container" style="display: none;">
                 <button class="reset-btn" onclick="resetMyScores()">RESET RECORDS</button>
             </div>
 
@@ -562,6 +591,67 @@
         };
 
 // High Score System
+        const LEADERBOARD_APP_KEY = 'craigbodily_html_portfolio_leaderboards';
+        const BANNED_INITIALS = ['FUC', 'ASS', 'DIC', 'KOK', 'PIS', 'WTF', 'CNT', 'FAG', 'SEX', 'TIT', 'CUM', 'HEL', 'DAM', 'FUK', 'SHI', 'KKK', 'NIG', 'DIK'];
+        let activeLeaderboardTab = 'global';
+        let globalScores = null;
+
+        function stringToHex(str) {
+            let hex = '';
+            for (let i = 0; i < str.length; i++) {
+                hex += str.charCodeAt(i).toString(16).padStart(2, '0');
+            }
+            return hex;
+        }
+
+        function hexToString(hex) {
+            let str = '';
+            for (let i = 0; i < hex.length; i += 2) {
+                str += String.fromCharCode(parseInt(hex.substr(i, 2), 16));
+            }
+            return str;
+        }
+
+        async function fetchGlobalScores(gameKey) {
+            try {
+                const res = await fetch(`https://keyvalue.immanuel.co/api/KeyVal/GetValue/${LEADERBOARD_APP_KEY}/${gameKey}`);
+                if (!res.ok) throw new Error('Network response not ok');
+                const hex = await res.json();
+                if (!hex) return [];
+                const decoded = hexToString(hex);
+                return JSON.parse(decoded) || [];
+            } catch (e) {
+                console.warn('Failed to fetch global high scores:', e);
+                return null;
+            }
+        }
+
+        async function saveGlobalScores(gameKey, scores) {
+            try {
+                const jsonStr = JSON.stringify(scores);
+                const hex = stringToHex(jsonStr);
+                const res = await fetch(`https://keyvalue.immanuel.co/api/KeyVal/UpdateValue/${LEADERBOARD_APP_KEY}/${gameKey}/${hex}`, {
+                    method: 'POST'
+                });
+                if (!res.ok) throw new Error('Save response not ok');
+                return true;
+            } catch (e) {
+                console.error('Failed to save global high scores:', e);
+                return false;
+            }
+        }
+
+        function validateInitials(val) {
+            const uppercaseVal = val.toUpperCase().trim();
+            if (!/^[A-Z]{3}$/.test(uppercaseVal)) {
+                return { valid: false, error: 'Initials must be exactly 3 letters.' };
+            }
+            if (BANNED_INITIALS.includes(uppercaseVal)) {
+                return { valid: false, error: 'Initials not allowed. Please choose another.' };
+            }
+            return { valid: true, value: uppercaseVal };
+        }
+
         let myScores = JSON.parse(localStorage.getItem('breakoutMyScores')) || [];
         
         // Handle migration from legacy single highScores if needed
@@ -573,11 +663,20 @@
         
         // Update high GameState.score display in UI
         function updateHighScoreDisplay() {
-            const best = myScores.length > 0 ? myScores[0].score : 0;
-            highScoreElement.textContent = best;
+            const globalBest = globalScores && globalScores.length > 0 ? globalScores[0].score : 0;
+            const localBest = myScores.length > 0 ? myScores[0].score : 0;
+            highScoreElement.textContent = Math.max(globalBest, localBest);
         }
         
-        updateHighScoreDisplay();
+        // Initial fetch of global scores
+        fetchGlobalScores('breakout').then(scores => {
+            if (scores !== null) {
+                globalScores = scores;
+            } else {
+                globalScores = [];
+            }
+            updateHighScoreDisplay();
+        });
         // Legacy cleanup (unnecessary now)
         
                         let lastTime = 0;
@@ -2642,23 +2741,60 @@
         }
 
         function checkHighScore(newScore) {
-            return myScores.length < 10 || newScore > myScores[myScores.length - 1].score;
+            const isLocalHigh = myScores.length < 10 || newScore > myScores[myScores.length - 1].score;
+            const isGlobalHigh = !globalScores || globalScores.length < 10 || newScore > globalScores[globalScores.length - 1].score;
+            return isLocalHigh || isGlobalHigh;
         }
 
-        function submitHighScore() {
-            const initials = initialsInput.value.toUpperCase() || 'UNK';
-            // Clear any previous current flags
-            myScores.forEach(e => e.current = false);
-            const newEntry = { name: initials, score: GameState.score, level: GameState.level, current: true };
+        async function submitHighScore() {
+            const rawInitials = initialsInput.value;
+            const validation = validateInitials(rawInitials);
+            if (!validation.valid) {
+                alert(validation.error);
+                return;
+            }
+            const initials = validation.value;
             
+            submitScoreBtn.disabled = true;
+            submitScoreBtn.textContent = 'SUBMITTING...';
+            
+            // 1. Submit to Local
+            myScores.forEach(e => e.current = false);
+            const newLocalEntry = { name: initials, score: GameState.score, level: GameState.level, current: true };
             if (myScores.length < 10 || GameState.score > myScores[myScores.length - 1].score) {
-                myScores.push(newEntry);
+                myScores.push(newLocalEntry);
                 myScores.sort((a, b) => b.score - a.score);
                 if (myScores.length > 10) myScores.pop();
                 localStorage.setItem('breakoutMyScores', JSON.stringify(myScores));
             }
             
+            // 2. Submit to Global
+            let latestGlobal = await fetchGlobalScores('breakout');
+            if (latestGlobal !== null) {
+                latestGlobal.forEach(e => e.current = false);
+                const newGlobalEntry = { name: initials, score: GameState.score, level: GameState.level, current: true };
+                
+                if (latestGlobal.length < 10 || GameState.score > latestGlobal[latestGlobal.length - 1].score) {
+                    latestGlobal.push(newGlobalEntry);
+                    latestGlobal.sort((a, b) => b.score - a.score);
+                    if (latestGlobal.length > 10) latestGlobal.pop();
+                    const saved = await saveGlobalScores('breakout', latestGlobal);
+                    if (saved) {
+                        globalScores = latestGlobal;
+                    }
+                }
+            } else {
+                console.warn('Could not submit to global, offline fallback.');
+            }
+            
+            submitScoreBtn.disabled = false;
+            submitScoreBtn.textContent = 'SUBMIT';
             highScoreModal.style.display = 'none';
+            
+            activeLeaderboardTab = 'global';
+            document.getElementById('tabGlobal').classList.add('active');
+            document.getElementById('tabLocal').classList.remove('active');
+            
             showLeaderboard();
             updateUI();
             updateHighScoreDisplay();
@@ -2676,23 +2812,52 @@
 
         function showLeaderboard() {
             leaderboardBody.innerHTML = '';
+            const resetContainer = document.getElementById('resetContainer');
             
-            if (myScores.length === 0) {
-                 const row = document.createElement('tr');
-                 row.innerHTML = `<td colspan="4">No Records Yet</td>`;
-                 leaderboardBody.appendChild(row);
-            } else {
-                myScores.forEach((entry, index) => {
+            if (activeLeaderboardTab === 'global') {
+                if (resetContainer) resetContainer.style.display = 'none';
+                
+                if (globalScores === null) {
                     const row = document.createElement('tr');
-                    if (entry.current) row.classList.add('current-GameState.score');
-                    row.innerHTML = `
-                        <td>${index + 1}</td>
-                        <td>${entry.name}</td>
-                        <td>${entry.score}</td>
-                        <td>${entry.level || 1}</td>
-                    `;
+                    row.innerHTML = `<td colspan="4" style="color: #aaa; padding: 20px 0;">Loading Global Scores...</td>`;
                     leaderboardBody.appendChild(row);
-                });
+                } else if (globalScores.length === 0) {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `<td colspan="4" style="padding: 20px 0;">No Global Records Yet</td>`;
+                    leaderboardBody.appendChild(row);
+                } else {
+                    globalScores.forEach((entry, index) => {
+                        const row = document.createElement('tr');
+                        if (entry.current) row.classList.add('current-GameState.score');
+                        row.innerHTML = `
+                            <td>${index + 1}</td>
+                            <td>${entry.name}</td>
+                            <td>${entry.score}</td>
+                            <td>${entry.level || 1}</td>
+                        `;
+                        leaderboardBody.appendChild(row);
+                    });
+                }
+            } else {
+                if (resetContainer) resetContainer.style.display = 'block';
+                
+                if (myScores.length === 0) {
+                     const row = document.createElement('tr');
+                     row.innerHTML = `<td colspan="4" style="padding: 20px 0;">No Records Yet</td>`;
+                     leaderboardBody.appendChild(row);
+                } else {
+                    myScores.forEach((entry, index) => {
+                        const row = document.createElement('tr');
+                        if (entry.current) row.classList.add('current-GameState.score');
+                        row.innerHTML = `
+                            <td>${index + 1}</td>
+                            <td>${entry.name}</td>
+                            <td>${entry.score}</td>
+                            <td>${entry.level || 1}</td>
+                        `;
+                        leaderboardBody.appendChild(row);
+                    });
+                }
             }
             
             leaderboard.style.display = 'block';
@@ -3441,6 +3606,24 @@
             if (e.key === 'Enter') {
                 submitHighScore();
             }
+        });
+        
+        initialsInput.addEventListener('input', function() {
+            this.value = this.value.toUpperCase().replace(/[^A-Z]/g, '');
+        });
+        
+        document.getElementById('tabGlobal').addEventListener('click', function() {
+            activeLeaderboardTab = 'global';
+            this.classList.add('active');
+            document.getElementById('tabLocal').classList.remove('active');
+            showLeaderboard();
+        });
+        
+        document.getElementById('tabLocal').addEventListener('click', function() {
+            activeLeaderboardTab = 'local';
+            this.classList.add('active');
+            document.getElementById('tabGlobal').classList.remove('active');
+            showLeaderboard();
         });
         
         closeLeaderboardBtn.addEventListener('click', function() {

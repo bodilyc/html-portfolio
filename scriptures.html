@@ -209,10 +209,12 @@
   .overlay.active { display: flex; }
   .overlay-card {
     background: var(--bg-card); border: 2px solid var(--gold);
-    border-radius: 16px; padding: 48px 56px; text-align: center;
+    border-radius: 16px; padding: 32px 36px; text-align: center;
     max-width: 480px; width: 90%;
     box-shadow: 0 0 60px rgba(201,168,76,0.2);
     animation: fadeIn 0.4s ease;
+    max-height: 95vh;
+    overflow-y: auto;
   }
   @keyframes fadeIn { from { opacity:0; transform: scale(0.92); } to { opacity:1; transform: scale(1); } }
   .overlay-card h2 { font-family: 'Cinzel', serif; font-size: 2rem; color: var(--gold-light); margin-bottom: 10px; }
@@ -421,6 +423,32 @@
     <div id="shareGrid" style="font-size:1.6rem; letter-spacing:3px; margin:8px 0;"></div>
     <button class="overlay-share-btn" id="shareBtn">&#128279; Share Result</button>
     <span class="share-copied-msg" id="shareCopiedMsg"></span>
+    
+    <div id="highScoreForm" style="display: none; margin: 15px 0;">
+      <p style="color: var(--gold-light); font-size: 1.1rem; font-family: 'Cinzel', serif; letter-spacing: 1px; margin-bottom: 8px;">New Global High Score!</p>
+      <div style="display: flex; justify-content: center; gap: 8px; align-items: center;">
+        <input type="text" id="initialsInput" maxlength="3" placeholder="AAA" style="background: var(--bg-mid); border: 1px solid var(--gold); color: var(--text); padding: 8px; font-family: 'Cinzel', serif; font-size: 1.2rem; text-align: center; border-radius: 6px; width: 100px; text-transform: uppercase; letter-spacing: 3px;">
+        <button id="submitScoreBtn" class="btn btn-primary" style="padding: 10px 18px; font-size: 0.85rem; margin: 0; font-family: 'Cinzel', serif; letter-spacing: 1px;">Submit</button>
+      </div>
+    </div>
+    
+    <div id="leaderboardSection" style="margin-top: 25px;">
+      <h3 style="font-family: 'Cinzel', serif; color: var(--gold-light); font-size: 1.1rem; letter-spacing: 2px; margin-bottom: 10px;">GLOBAL LEADERBOARD</h3>
+      <table style="width: 100%; border-collapse: collapse; font-family: 'EB Garamond', serif; font-size: 1.05rem; margin-top: 10px; border: 1px solid var(--border); border-radius: 8px; overflow: hidden;">
+        <thead>
+          <tr style="background: rgba(201, 168, 76, 0.08); border-bottom: 1px solid var(--border); color: var(--gold-light); font-family: 'Cinzel', serif; font-size: 0.75rem; letter-spacing: 1px;">
+            <th style="padding: 8px; text-align: center; width: 20%;">Rank</th>
+            <th style="padding: 8px; text-align: left; width: 40%;">Name</th>
+            <th style="padding: 8px; text-align: right; width: 20%;">Score</th>
+            <th style="padding: 8px; text-align: right; width: 20%;">Rounds</th>
+          </tr>
+        </thead>
+        <tbody id="leaderboardBody">
+          <!-- Populated by JS -->
+        </tbody>
+      </table>
+    </div>
+
     <hr class="divider">
     <button class="btn btn-primary" id="playAgainBtn" style="margin-top:4px;">Play Again &#8635;</button>
   </div>
@@ -711,6 +739,85 @@ let state = {
 };
 
 // =====================================================================
+// GLOBAL LEADERBOARD INTEGRATION
+// =====================================================================
+const LEADERBOARD_APP_KEY = 'craigbodily_html_portfolio_leaderboards';
+const BANNED_INITIALS = ['FUC', 'ASS', 'DIC', 'KOK', 'PIS', 'WTF', 'CNT', 'FAG', 'SEX', 'TIT', 'CUM', 'HEL', 'DAM', 'FUK', 'SHI', 'KKK', 'NIG', 'DIK'];
+let globalScores = null;
+
+function stringToHex(str) {
+  let hex = '';
+  for (let i = 0; i < str.length; i++) {
+    hex += str.charCodeAt(i).toString(16).padStart(2, '0');
+  }
+  return hex;
+}
+
+function hexToString(hex) {
+  let str = '';
+  for (let i = 0; i < hex.length; i += 2) {
+    str += String.fromCharCode(parseInt(hex.substr(i, 2), 16));
+  }
+  return str;
+}
+
+async function fetchGlobalScores(gameKey) {
+  try {
+    const res = await fetch(`https://keyvalue.immanuel.co/api/KeyVal/GetValue/${LEADERBOARD_APP_KEY}/${gameKey}`);
+    if (!res.ok) throw new Error('Network error');
+    const hex = await res.json();
+    if (!hex) return [];
+    const decoded = hexToString(hex);
+    return JSON.parse(decoded) || [];
+  } catch (e) {
+    console.warn('Failed to fetch global high scores:', e);
+    return null;
+  }
+}
+
+async function saveGlobalScores(gameKey, scores) {
+  try {
+    const jsonStr = JSON.stringify(scores);
+    const hex = stringToHex(jsonStr);
+    const res = await fetch(`https://keyvalue.immanuel.co/api/KeyVal/UpdateValue/${LEADERBOARD_APP_KEY}/${gameKey}/${hex}`, {
+      method: 'POST'
+    });
+    if (!res.ok) throw new Error('Save response not ok');
+    return true;
+  } catch (e) {
+    console.error('Failed to save global high scores:', e);
+    return false;
+  }
+}
+
+function validateInitials(val) {
+  const uppercaseVal = val.toUpperCase().trim();
+  if (!/^[A-Z]{3}$/.test(uppercaseVal)) {
+    return { valid: false, error: 'Initials must be exactly 3 letters.' };
+  }
+  if (BANNED_INITIALS.includes(uppercaseVal)) {
+    return { valid: false, error: 'Initials not allowed. Please choose another.' };
+  }
+  return { valid: true, value: uppercaseVal };
+}
+
+// Initial fetch of global scores
+fetchGlobalScores('scripture_sleuth').then(scores => {
+  if (scores !== null) {
+    globalScores = scores;
+    updateBestDisplayFromGlobal();
+  } else {
+    globalScores = [];
+  }
+});
+
+function updateBestDisplayFromGlobal() {
+  const globalBest = globalScores && globalScores.length > 0 ? globalScores[0].score : 0;
+  const showBest = Math.max(state.best, globalBest);
+  bestDisplay.textContent = showBest;
+}
+
+// =====================================================================
 // DOM REFS
 // =====================================================================
 const volSel   = document.getElementById('volSelect');
@@ -951,7 +1058,48 @@ function buildShareText() {
   return `Scripture Sleuth ✡\nScore: ${state.score} | Rounds: ${state.round}\n${grid}\n`;
 }
 
+async function renderLeaderboardTable(highlightEntry = null) {
+  const tbody = document.getElementById('leaderboardBody');
+  if (!tbody) return;
+  tbody.innerHTML = '';
+  
+  if (globalScores === null) {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td colspan="4" style="text-align: center; padding: 12px; color: var(--text-dim);">Loading global scores...</td>`;
+    tbody.appendChild(tr);
+    return;
+  }
+  
+  if (globalScores.length === 0) {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td colspan="4" style="text-align: center; padding: 12px; color: var(--text-dim);">No global records yet.</td>`;
+    tbody.appendChild(tr);
+    return;
+  }
+  
+  globalScores.forEach((entry, idx) => {
+    const tr = document.createElement('tr');
+    tr.style.borderBottom = '1px solid var(--border)';
+    if (highlightEntry && entry.name === highlightEntry.name && entry.score === highlightEntry.score && entry.rounds === highlightEntry.rounds) {
+      tr.style.background = 'rgba(201, 168, 76, 0.18)';
+      tr.style.fontWeight = 'bold';
+    }
+    
+    tr.innerHTML = `
+      <td style="padding: 8px; text-align: center;">${idx + 1}</td>
+      <td style="padding: 8px; text-align: left; font-family: 'Cinzel', serif;">${entry.name}</td>
+      <td style="padding: 8px; text-align: right; color: var(--gold-light);">${entry.score}</td>
+      <td style="padding: 8px; text-align: right;">${entry.rounds}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
 function showGameOver() {
+  showLeaderboardOverlay(true);
+}
+
+function showLeaderboardOverlay(isGameOverMode) {
   gameOverScore.textContent = state.score;
   gameOverSubtitle.textContent = `${state.round} round${state.round !== 1 ? 's' : ''} • Best: ${state.best}`;
   
@@ -965,7 +1113,93 @@ function showGameOver() {
   });
   shareGrid.textContent = emojiRows.join('');
   shareCopiedMsg.textContent = '';
+  
+  const card = document.querySelector('#gameOverOverlay .overlay-card');
+  const h2 = card.querySelector('h2');
+  const subtitle = document.getElementById('gameOverSubtitle');
+  const bigScore = document.getElementById('gameOverScore');
+  const label = card.querySelector('.label');
+  const shareBtn = document.getElementById('shareBtn');
+  const shareGridContainer = document.getElementById('shareGrid');
+  const shareCopiedMsgContainer = document.getElementById('shareCopiedMsg');
+  const form = document.getElementById('highScoreForm');
+  const dividers = card.querySelectorAll('.divider');
+  
+  if (isGameOverMode) {
+    h2.textContent = 'Game Over';
+    subtitle.style.display = 'block';
+    bigScore.style.display = 'block';
+    label.style.display = 'block';
+    shareBtn.style.display = 'inline-block';
+    shareGridContainer.style.display = 'block';
+    shareCopiedMsgContainer.style.display = 'block';
+    dividers.forEach(d => d.style.display = 'block');
+    
+    const isGlobalHigh = !globalScores || globalScores.length < 10 || state.score > globalScores[globalScores.length - 1].score;
+    if (isGlobalHigh && state.score > 0) {
+      form.style.display = 'block';
+      const initialsInput = document.getElementById('initialsInput');
+      if (initialsInput) {
+        initialsInput.value = '';
+        setTimeout(() => initialsInput.focus(), 100);
+      }
+    } else {
+      form.style.display = 'none';
+    }
+  } else {
+    h2.textContent = 'Leaderboard';
+    subtitle.style.display = 'none';
+    bigScore.style.display = 'none';
+    label.style.display = 'none';
+    shareBtn.style.display = 'none';
+    shareGridContainer.style.display = 'none';
+    shareCopiedMsgContainer.style.display = 'none';
+    form.style.display = 'none';
+    if (dividers.length > 0) dividers[0].style.display = 'none';
+  }
+  
+  renderLeaderboardTable();
   gameOverOverlay.classList.add('active');
+}
+
+async function submitScriptureHighScore() {
+  const initialsInput = document.getElementById('initialsInput');
+  const submitBtn = document.getElementById('submitScoreBtn');
+  if (!initialsInput || !submitBtn) return;
+  
+  const validation = validateInitials(initialsInput.value);
+  if (!validation.valid) {
+    alert(validation.error);
+    return;
+  }
+  const initials = validation.value;
+  
+  submitBtn.disabled = true;
+  submitBtn.textContent = 'Submitting...';
+  
+  let latestGlobal = await fetchGlobalScores('scripture_sleuth');
+  let finalHighlight = null;
+  if (latestGlobal !== null) {
+    const newEntry = { name: initials, score: state.score, rounds: state.round, date: new Date().toISOString() };
+    
+    if (latestGlobal.length < 10 || state.score > latestGlobal[latestGlobal.length - 1].score) {
+      latestGlobal.push(newEntry);
+      latestGlobal.sort((a, b) => b.score - a.score);
+      if (latestGlobal.length > 10) latestGlobal.pop();
+      const saved = await saveGlobalScores('scripture_sleuth', latestGlobal);
+      if (saved) {
+        globalScores = latestGlobal;
+        finalHighlight = newEntry;
+      }
+    }
+  }
+  
+  submitBtn.disabled = false;
+  submitBtn.textContent = 'Submit';
+  document.getElementById('highScoreForm').style.display = 'none';
+  
+  renderLeaderboardTable(finalHighlight);
+  updateBestDisplayFromGlobal();
 }
 
 shareBtn.addEventListener('click', async () => {
@@ -1344,8 +1578,8 @@ submitBtn.addEventListener('click', () => {
     if (state.score > state.best) {
       state.best = state.score;
       localStorage.setItem('scriptureSleuthBest', state.best);
-      bestDisplay.textContent = state.best;
     }
+    updateBestDisplayFromGlobal();
 
     const chapWord = VOLUMES[correctVol]?.chapLabel || 'Chapter';
     const volName  = VOLUMES[correctVol]?.name || correctVol;
@@ -1538,7 +1772,7 @@ function startGame() {
   scoreDisplay.textContent = '0';
   roundDisplay.textContent = '1';
   avgDisplay.textContent   = '0.00';
-  bestDisplay.textContent  = state.best;
+  updateBestDisplayFromGlobal();
   updatePips();
   renderHistory();
   gameOverOverlay.classList.remove('active');
@@ -1852,6 +2086,34 @@ if (dailyToggle) {
       hideDailyCompletedUI();
       startGame();
     }
+  });
+}
+
+// Initials Input filtering & event listeners
+const initialsInput = document.getElementById('initialsInput');
+if (initialsInput) {
+  initialsInput.addEventListener('input', function() {
+    this.value = this.value.toUpperCase().replace(/[^A-Z]/g, '');
+  });
+  initialsInput.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') {
+      submitScriptureHighScore();
+    }
+  });
+}
+
+const submitScoreBtn = document.getElementById('submitScoreBtn');
+if (submitScoreBtn) {
+  submitScoreBtn.addEventListener('click', submitScriptureHighScore);
+}
+
+// Interactive Best score display
+const bestParent = document.getElementById('bestDisplay').parentElement;
+if (bestParent) {
+  bestParent.style.cursor = 'pointer';
+  bestParent.title = 'View Global Leaderboard';
+  bestParent.addEventListener('click', () => {
+    showLeaderboardOverlay(false);
   });
 }
 
