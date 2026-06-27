@@ -871,8 +871,24 @@ async function fetchGlobalScores(gameKey) {
     if (!raw || raw === 'null' || raw === 'undefined' || raw === '') return [];
     const decoded = decodeFromUrl(raw);
     if (!decoded) return [];
-    const parsed = JSON.parse(decoded) || [];
-    // Normalize compact field names {n, s, r} back to {name, score, rounds}
+    
+    let parsed = [];
+    if (decoded.startsWith('[')) {
+      parsed = JSON.parse(decoded) || [];
+    } else {
+      const parts = decoded.split(';').filter(Boolean);
+      parsed = parts.map(p => {
+        const [n, s, extra] = p.split(':');
+        return {
+          n: n,
+          s: parseInt(s) || 0,
+          r: parseInt(extra) || 0,
+          l: parseInt(extra) || 1
+        };
+      });
+    }
+
+    // Normalize compact field names back to {name, score, rounds}
     return parsed.map(e => ({
       name: e.name || e.n || '???',
       score: e.score !== undefined ? e.score : (e.s || 0),
@@ -887,10 +903,9 @@ async function fetchGlobalScores(gameKey) {
 
 async function saveGlobalScores(gameKey, scores) {
   try {
-    // Store minimal data to keep URL short: name, score, rounds only
-    const minimal = scores.map(s => ({ n: s.name, s: s.score, r: s.rounds }));
-    const jsonStr = JSON.stringify(minimal);
-    const encoded = encodeForUrl(jsonStr);
+    // Store minimal data as semicolon-separated string to keep URL extremely short: NAME:SCORE:ROUNDS;...
+    const compactStr = scores.map(s => `${s.name || s.n || '???'}:${s.score !== undefined ? s.score : (s.s || 0)}:${s.rounds !== undefined ? s.rounds : (s.r || 0)}`).join(';');
+    const encoded = encodeForUrl(compactStr);
     const res = await fetch(`https://keyvalue.immanuel.co/api/KeyVal/UpdateValue/${LEADERBOARD_APP_KEY}/${gameKey}/${encoded}`, {
       method: 'POST',
       body: ''
@@ -902,6 +917,7 @@ async function saveGlobalScores(gameKey, scores) {
     return false;
   }
 }
+
 
 function validateInitials(val) {
   const uppercaseVal = val.toUpperCase().trim();
