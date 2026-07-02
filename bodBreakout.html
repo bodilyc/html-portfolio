@@ -375,7 +375,7 @@
             color: #ffcc00;
         }
         
-        .current-GameState.score { background: rgba(255, 204, 0, 0.25); outline: 2px solid #FFCC00; }
+        .current-score { background: rgba(255, 204, 0, 0.25); outline: 2px solid #FFCC00; }
 
         /* Reset */
         .reset-container {
@@ -429,9 +429,9 @@
                 <h3 style="font-size: 1.2rem;">HOW TO PLAY</h3>
                 <ul style="margin: 15px 0;">
                     <li>Move the <span class="highlight">paddle</span> with your mouse or touch</li>
-                    <li>Break all bricks to advance to the next GameState.level</li>
-                    <li>Each GameState.level increases the ball speed</li>
-                    <li>You start with <span class="highlight">3 GameState.lives</span>. Earn +1 life every 500 points!</li>
+                    <li>Break all bricks to advance to the next level</li>
+                    <li>Each level increases the ball speed</li>
+                    <li>You start with <span class="highlight">3 lives</span>. Earn +1 life every 500 points!</li>
                     <li>Levels are <span class="highlight">unlimited</span>. How far can you go?</li>
                 </ul>
                 <p style="margin-top: 20px; font-size: 1rem; color: #ccc; text-align: center;">Press SPACE to launch ball and bullets. Use Arrows or mouse to move.</p>
@@ -443,15 +443,15 @@
             <div class="game-info" style="padding: 0.5vh 1vw; margin-bottom: 0.5vh; font-size: clamp(0.7rem, 1.2vh, 1rem); align-items: center;">
                 <div class="info-item" style="flex-direction: row; align-items: center; gap: 5px;">
                     <span>SCORE:</span>
-                    <span id="GameState.score" class="info-value" style="font-size: clamp(0.9rem, 1.5vh, 1.2rem);">0</span>
+                    <span id="score" class="info-value" style="font-size: clamp(0.9rem, 1.5vh, 1.2rem);">0</span>
                 </div>
                 <div class="info-item" style="flex-direction: row; align-items: center; gap: 5px;">
                     <span>LIVES:</span>
-                    <span id="GameState.lives" class="info-value" style="font-size: clamp(0.9rem, 1.5vh, 1.2rem);">3</span>
+                    <span id="lives" class="info-value" style="font-size: clamp(0.9rem, 1.5vh, 1.2rem);">3</span>
                 </div>
                 <div class="info-item" style="flex-direction: row; align-items: center; gap: 5px;">
                     <span>LEVEL:</span>
-                    <span id="GameState.level" class="info-value" style="font-size: clamp(0.9rem, 1.5vh, 1.2rem);">1</span>
+                    <span id="level" class="info-value" style="font-size: clamp(0.9rem, 1.5vh, 1.2rem);">1</span>
                 </div>
                 <div class="info-item" style="flex-direction: row; align-items: center; gap: 5px;">
                     <span id="hudThemeName" style="font-size: clamp(0.65rem, 1.1vh, 0.9rem); letter-spacing: 1px; opacity: 0.7; color: #ffcc00;"></span>
@@ -462,9 +462,10 @@
                 </div>
                 <div class="info-item" style="flex-direction: row; align-items: center; gap: 5px;">
                     <span>HIGH:</span>
-                    <span id="high-GameState.score" class="info-value" style="font-size: clamp(0.9rem, 1.5vh, 1.2rem);">0</span>
+                    <span id="high-score" class="info-value" style="font-size: clamp(0.9rem, 1.5vh, 1.2rem);">0</span>
                 </div>
                 <div style="display: flex;">
+                    <button id="muteBtn" class="btn" style="padding: 4px 10px; font-size: 0.8rem; margin: 0 2px;">🔊 MUTE</button>
                     <button id="pauseBtn" class="btn" style="padding: 4px 10px; font-size: 0.8rem; margin: 0 2px;">PAUSE</button>
                     <button id="resetBtn" class="btn" style="padding: 4px 10px; font-size: 0.8rem; margin: 0 2px;">RESET</button>
                 </div>
@@ -475,7 +476,7 @@
             </div>
         </div>
         
-        <div id="levelIndicator" class="GameState.level-indicator">
+        <div id="levelIndicator" class="level-indicator">
             LEVEL <span id="levelNum">1</span>
             <div id="themeNameDisplay" style="font-size: 1.1rem; font-weight: normal; margin-top: 6px; letter-spacing: 2px; opacity: 0.85;"></div>
         </div>
@@ -539,14 +540,15 @@
         // Game elements
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
-        const scoreElement = document.getElementById('GameState.score');
-        const livesElement = document.getElementById('GameState.lives');
-        const levelElement = document.getElementById('GameState.level');
+        const scoreElement = document.getElementById('score');
+        const livesElement = document.getElementById('lives');
+        const levelElement = document.getElementById('level');
         const speedElement = document.getElementById('speed');
-        const highScoreElement = document.getElementById('high-GameState.score');
+        const highScoreElement = document.getElementById('high-score');
         const startBtn = document.getElementById('startBtn');
         const pauseBtn = document.getElementById('pauseBtn');
         const resetBtn = document.getElementById('resetBtn');
+        const muteBtn = document.getElementById('muteBtn');
         const levelIndicator = document.getElementById('levelIndicator');
         const levelNumElement = document.getElementById('levelNum');
         const gameOverScreen = document.getElementById('gameOver');
@@ -587,7 +589,8 @@
             shieldActive: false,
             immortalActive: false,
             immortalTimer: 0,
-            isBossLevel: false
+            isBossLevel: false,
+            soundMuted: localStorage.getItem('breakout_muted') === 'true'
         };
 
 // High Score System
@@ -1620,6 +1623,23 @@
         // Draw balls
         function drawBalls() {
             balls.forEach(ball => {
+                // Draw speed trail
+                const speed = Math.sqrt((ball.dx || 0) * (ball.dx || 0) + (ball.dy || 0) * (ball.dy || 0));
+                if (speed > 5.5 && ball.trail && ball.trail.length > 0) {
+                    ctx.save();
+                    const speedRatio = Math.min(1, (speed - 5.5) / 3);
+                    ball.trail.forEach((pos, idx) => {
+                        const ratio = (idx + 1) / ball.trail.length;
+                        ctx.globalAlpha = ratio * 0.4 * speedRatio;
+                        ctx.beginPath();
+                        ctx.arc(pos.x, pos.y, ball.radius * (0.4 + 0.6 * ratio), 0, Math.PI * 2);
+                        ctx.fillStyle = ball.color;
+                        ctx.fill();
+                        ctx.closePath();
+                    });
+                    ctx.restore();
+                }
+
                 ctx.beginPath();
                 ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI * 2);
                 ctx.fillStyle = ball.color;
@@ -1850,6 +1870,7 @@
                 if (ball.onPaddle) {
                     ball.x = paddle.x + ball.paddleOffset;
                     ball.y = paddle.y - ball.radius;
+                    ball.trail = [];
                     
                     if (ball.stickTimer > 0) {
                         ball.stickTimer -= FIXED_TIME_STEP * timeScale;
@@ -1874,6 +1895,11 @@
 
                 ball.x += ball.dx * timeScale;
                 ball.y += ball.dy * timeScale;
+                
+                // Update trail history
+                if (!ball.trail) ball.trail = [];
+                ball.trail.push({ x: ball.x, y: ball.y });
+                if (ball.trail.length > 8) ball.trail.shift();
                 
                 // Gravity Rock Physics
                 activeGravityRocks.forEach((rock, rockIdx) => {
@@ -2864,7 +2890,7 @@
                 } else {
                     globalScores.forEach((entry, index) => {
                         const row = document.createElement('tr');
-                        if (entry.current) row.classList.add('current-GameState.score');
+                        if (entry.current) row.classList.add('current-score');
                         row.innerHTML = `
                             <td>${index + 1}</td>
                             <td>${entry.name}</td>
@@ -2884,7 +2910,7 @@
                 } else {
                     myScores.forEach((entry, index) => {
                         const row = document.createElement('tr');
-                        if (entry.current) row.classList.add('current-GameState.score');
+                        if (entry.current) row.classList.add('current-score');
                         row.innerHTML = `
                             <td>${index + 1}</td>
                             <td>${entry.name}</td>
@@ -2933,7 +2959,6 @@
                 resetBalls();
                 lastTime = performance.now();
                 GameState.gameRunning = true;
-                update();
             }, 2500);
         }
         
@@ -3021,6 +3046,7 @@
         // ===== SOUND SYSTEM =====
         const lastSoundTime = {};
         function playSound(type) {
+            if (GameState.soundMuted) return;
             if (!audioCtx) return;
             if (audioCtx.state === 'suspended') audioCtx.resume();
             const now = audioCtx.currentTime;
@@ -3476,6 +3502,8 @@
         function update() {
             if (!GameState.gameRunning || GameState.gamePaused) {
                 lastTime = performance.now();
+                draw(); // Keep rendering the current frame so it doesn't freeze
+                requestAnimationFrame(update); // Keep the loop alive
                 return;
             }
             
@@ -3604,14 +3632,31 @@
                 if (GameState.gamePaused) {
                     GameState.gamePaused = false;
                     lastTime = performance.now();
-                    update();
                 } else {
                     init();
-                    update();
                 }
             }
         });
         
+        function updateMuteButtonUI() {
+            if (GameState.soundMuted) {
+                muteBtn.textContent = '🔇 MUTED';
+                muteBtn.style.background = 'linear-gradient(to bottom, #777, #555)';
+                muteBtn.style.color = '#fff';
+            } else {
+                muteBtn.textContent = '🔊 MUTE';
+                muteBtn.style.background = '';
+                muteBtn.style.color = '';
+            }
+        }
+
+        muteBtn.addEventListener('click', function() {
+            this.blur();
+            GameState.soundMuted = !GameState.soundMuted;
+            localStorage.setItem('breakout_muted', GameState.soundMuted);
+            updateMuteButtonUI();
+        });
+
         pauseBtn.addEventListener('click', function() {
             this.blur();
             if (GameState.gameRunning) {
@@ -3619,21 +3664,18 @@
                 pauseBtn.textContent = GameState.gamePaused ? 'Resume' : 'Pause';
                 if (!GameState.gamePaused) {
                     lastTime = performance.now();
-                    update();
                 }
             }
         });
         
         resetBtn.addEventListener('click', function() {
             this.blur();
-            cancelAnimationFrame(animationId);
             highScoreModal.style.display = 'none';
             leaderboard.style.display = 'none';
             // Also hide generic game over/win just in case
             gameOverScreen.style.display = 'none';
             gameWinScreen.style.display = 'none';
             init();
-            update();
         });
 
         submitScoreBtn.addEventListener('click', submitHighScore);
@@ -3664,9 +3706,7 @@
         
         closeLeaderboardBtn.addEventListener('click', function() {
             leaderboard.style.display = 'none';
-            cancelAnimationFrame(animationId);
             init();
-            update();
         });
         
         // Disable space in input
@@ -3675,9 +3715,7 @@
         });
         
         restartBtn.addEventListener('click', () => {
-            cancelAnimationFrame(animationId);
             init();
-            update();
         });
         
         nextLevelBtn.addEventListener('click', () => {
@@ -3703,6 +3741,7 @@
         
         // Initialize game
         init();
+        updateMuteButtonUI();
         update();
     </script>
 </body>
