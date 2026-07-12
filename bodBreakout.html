@@ -419,22 +419,105 @@
             font-weight: bold;
             box-shadow: 0 0 10px rgba(255, 204, 0, 0.4);
         }
+        
+        /* Start Screen High Scores Layout */
+        .start-screen-layout {
+            display: flex;
+            gap: 20px;
+            width: 100%;
+            max-width: 900px;
+            justify-content: center;
+            align-items: stretch;
+            margin-bottom: 30px;
+        }
+        
+        .start-high-scores {
+            background: rgba(0, 0, 0, 0.5);
+            padding: 20px;
+            border-radius: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: #ddd;
+            flex: 1;
+            min-width: 280px;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .start-high-scores h3 {
+            color: #ffcc00;
+            margin-bottom: 15px;
+            font-size: 1.2rem;
+            text-align: center;
+        }
+        
+        .start-score-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.85rem;
+        }
+        
+        .start-score-table th, .start-score-table td {
+            padding: 6px 8px;
+            text-align: left;
+        }
+        
+        .start-score-table th {
+            color: #ffcc00;
+            font-weight: bold;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .start-score-table td {
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        @media (max-width: 768px) {
+            .start-screen-layout {
+                flex-direction: column;
+                align-items: center;
+                margin-bottom: 15px;
+                gap: 15px;
+            }
+            .instructions, .start-high-scores {
+                width: 100%;
+                max-width: 500px;
+            }
+        }
     </style>
 </head>
 <body>
     <div class="game-container">
-        <div id="start-screen" style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%;">
+        <div id="start-screen" style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; overflow-y: auto; padding: 20px 0;">
             <h1>BREAKOUT GAME</h1>
-            <div class="instructions" style="max-height: none; margin-bottom: 30px; font-size: 1rem; padding: 20px;">
-                <h3 style="font-size: 1.2rem;">HOW TO PLAY</h3>
-                <ul style="margin: 15px 0;">
-                    <li>Move the <span class="highlight">paddle</span> with your mouse or touch</li>
-                    <li>Break all bricks to advance to the next level</li>
-                    <li>Each level increases the ball speed</li>
-                    <li>You start with <span class="highlight">3 lives</span>. Earn +1 life every 500 points!</li>
-                    <li>Levels are <span class="highlight">unlimited</span>. How far can you go?</li>
-                </ul>
-                <p style="margin-top: 20px; font-size: 1rem; color: #ccc; text-align: center;">Press SPACE to launch ball and bullets. Use Arrows or mouse to move.</p>
+            <div class="start-screen-layout">
+                <div class="instructions" style="flex: 1; min-width: 280px; max-height: none; margin: 0; font-size: 1rem; padding: 20px;">
+                    <h3 style="font-size: 1.2rem;">HOW TO PLAY</h3>
+                    <ul style="margin: 15px 0;">
+                        <li>Move the <span class="highlight">paddle</span> with your mouse or touch</li>
+                        <li>Break all bricks to advance to the next level</li>
+                        <li>Each level increases the ball speed</li>
+                        <li>You start with <span class="highlight">3 lives</span>. Earn +1 life every 500 points!</li>
+                        <li>Levels are <span class="highlight">unlimited</span>. How far can you go?</li>
+                    </ul>
+                    <p style="margin-top: 20px; font-size: 0.95rem; color: #ccc; text-align: center;">Press SPACE to launch ball and bullets. Use Arrows or mouse to move.</p>
+                </div>
+                
+                <div class="start-high-scores">
+                    <h3>GLOBAL TOP 10</h3>
+                    <table class="start-score-table">
+                        <thead>
+                            <tr>
+                                <th>RANK</th>
+                                <th>NAME</th>
+                                <th>SCORE</th>
+                                <th>LEVEL</th>
+                            </tr>
+                        </thead>
+                        <tbody id="startGlobalScoresBody">
+                            <tr><td colspan="4" style="text-align: center; color: #888; padding: 20px 0;">Loading...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
             </div>
             <button id="startBtn" class="btn" style="font-size: 1.5rem; padding: 15px 50px;">START GAME</button>
         </div>
@@ -707,6 +790,33 @@
             highScoreElement.textContent = Math.max(globalBest, localBest);
         }
         
+        function populateStartScreenHighScores() {
+            const startGlobalBody = document.getElementById('startGlobalScoresBody');
+            
+            if (startGlobalBody) {
+                startGlobalBody.innerHTML = '';
+                if (globalScores === null) {
+                    startGlobalBody.innerHTML = `<tr><td colspan="4" style="text-align: center; color: #888; padding: 20px 0;">Loading...</td></tr>`;
+                } else if (globalScores.length === 0) {
+                    startGlobalBody.innerHTML = `<tr><td colspan="4" style="text-align: center; color: #888; padding: 20px 0;">No scores yet</td></tr>`;
+                } else {
+                    globalScores.slice(0, 10).forEach((entry, index) => {
+                        const tr = document.createElement('tr');
+                        tr.innerHTML = `
+                            <td>${index + 1}</td>
+                            <td>${entry.name}</td>
+                            <td>${entry.score}</td>
+                            <td>${entry.level || 1}</td>
+                        `;
+                        startGlobalBody.appendChild(tr);
+                    });
+                }
+            }
+        }
+        
+        // Initial populate (with local scores first, global loading)
+        populateStartScreenHighScores();
+        
         // Initial fetch of global scores
         fetchGlobalScores('breakout').then(scores => {
             if (scores !== null) {
@@ -715,6 +825,7 @@
                 globalScores = [];
             }
             updateHighScoreDisplay();
+            populateStartScreenHighScores();
         });
         // Legacy cleanup (unnecessary now)
         
@@ -2860,6 +2971,7 @@
             showLeaderboard();
             updateUI();
             updateHighScoreDisplay();
+            populateStartScreenHighScores();
             if (document.activeElement) document.activeElement.blur();
         }
 
@@ -2869,6 +2981,7 @@
                 localStorage.setItem('breakoutMyScores', JSON.stringify(myScores));
                 showLeaderboard();
                 updateHighScoreDisplay();
+                populateStartScreenHighScores();
             }
         }
 
