@@ -2594,10 +2594,30 @@
                     spaceship.active = true;
                     spaceship.speed = (Math.random() > 0.5) ? 2 : -2;
                     spaceship.x = (spaceship.speed > 0) ? -spaceship.width : canvas.width;
+                    spaceship.y = 15;
                 }
                 return;
             }
             spaceship.x += spaceship.speed * timeScale;
+            // Bobbing on Y axis
+            spaceship.y = 15 + Math.sin(spaceship.x * 0.05) * 8;
+
+            // Engine Spark Trail
+            if (Math.random() < 0.3 * timeScale) {
+                const trailX = (spaceship.speed > 0) ? spaceship.x : (spaceship.x + spaceship.width);
+                const trailY = spaceship.y + spaceship.height / 2 + (Math.random() - 0.5) * 6;
+                particles.push({
+                    x: trailX,
+                    y: trailY,
+                    dx: -spaceship.speed * 0.4 + (Math.random() - 0.5) * 1.5,
+                    dy: (Math.random() - 0.5) * 1.5,
+                    radius: Math.random() * 2.5 + 1,
+                    color: Math.random() > 0.5 ? '#ff00ff' : '#00ffff',
+                    alpha: 0.8,
+                    life: 1.0
+                });
+            }
+
             if (spaceship.x > canvas.width + 50 || spaceship.x < -spaceship.width - 50) {
                 spaceship.active = false;
             }
@@ -3100,14 +3120,94 @@
         }
 
         function drawSpaceship() {
+            const cx = spaceship.x + spaceship.width / 2;
+            const cy = spaceship.y + spaceship.height / 2;
+            const rx = spaceship.width / 2;
+            const ry = spaceship.height / 2;
+
+            ctx.save();
+
+            // 1. Tractor Beam (semi-transparent fading cone)
+            const beamFlicker = 0.15 + Math.sin(Date.now() * 0.05) * 0.05 + Math.random() * 0.05;
+            const beamGrad = ctx.createLinearGradient(cx, cy, cx, cy + 250);
+            beamGrad.addColorStop(0, `rgba(0, 255, 204, ${beamFlicker})`);
+            beamGrad.addColorStop(1, 'rgba(0, 255, 204, 0)');
+            
             ctx.beginPath();
-            ctx.ellipse(spaceship.x + spaceship.width / 2, spaceship.y + spaceship.height / 2, spaceship.width / 2, spaceship.height / 2, 0, 0, Math.PI * 2);
-            ctx.fillStyle = '#00ffcc';
+            ctx.moveTo(cx - rx * 0.4, cy);
+            ctx.lineTo(cx + rx * 0.4, cy);
+            ctx.lineTo(cx + rx * 2.2, cy + 250);
+            ctx.lineTo(cx - rx * 2.2, cy + 250);
+            ctx.closePath();
+            ctx.fillStyle = beamGrad;
             ctx.fill();
+
+            // 2. Glow Aura (shadowBlur)
+            ctx.shadowColor = '#00ffcc';
+            ctx.shadowBlur = 12;
+
+            // 3. Draw Outer Saucer Ring (glowing metal)
+            const ringGrad = ctx.createRadialGradient(cx, cy, rx * 0.2, cx, cy, rx);
+            ringGrad.addColorStop(0, '#00ffcc');
+            ringGrad.addColorStop(0.5, '#0088aa');
+            ringGrad.addColorStop(1, '#003344');
+
             ctx.beginPath();
-            ctx.arc(spaceship.x + spaceship.width / 2, spaceship.y, spaceship.height / 2, 0, Math.PI * 2);
-            ctx.fillStyle = 'white';
+            ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2);
+            ctx.fillStyle = ringGrad;
             ctx.fill();
+            
+            // Thin metallic stroke
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.6)';
+            ctx.lineWidth = 1;
+            ctx.stroke();
+
+            // 4. Blinking LEDs along the rim
+            const numLEDs = 6;
+            const timeVal = Date.now() * 0.01;
+            for (let i = 0; i < numLEDs; i++) {
+                const angle = Math.PI + (i + 0.5) * (Math.PI / numLEDs); // bottom arc
+                const lx = cx + Math.cos(angle) * rx * 0.8;
+                const ly = cy + Math.sin(angle) * ry * 0.8;
+                
+                const phase = (timeVal + i * (Math.PI / 3)) % (Math.PI * 2);
+                const colorVal = Math.sin(phase) > 0;
+                
+                ctx.beginPath();
+                ctx.arc(lx, ly, 2.5, 0, Math.PI * 2);
+                ctx.shadowBlur = 8;
+                ctx.shadowColor = colorVal ? '#ff00ff' : '#ffff00';
+                ctx.fillStyle = colorVal ? '#ff00ff' : '#ffff00';
+                ctx.fill();
+            }
+
+            // Restore/Reset shadow for dome details
+            ctx.shadowBlur = 0;
+
+            // 5. Draw Glass Dome (white-cyan transparent gradient)
+            const domeGrad = ctx.createLinearGradient(cx, cy - ry * 1.5, cx, cy);
+            domeGrad.addColorStop(0, 'rgba(255, 255, 255, 0.95)');
+            domeGrad.addColorStop(0.6, 'rgba(100, 220, 255, 0.6)');
+            domeGrad.addColorStop(1, 'rgba(0, 100, 150, 0.3)');
+
+            ctx.beginPath();
+            ctx.arc(cx, cy - ry * 0.3, rx * 0.45, Math.PI, 0); // top semi-circle dome
+            ctx.fillStyle = domeGrad;
+            ctx.fill();
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
+            ctx.lineWidth = 1;
+            ctx.stroke();
+
+            // 6. Cute Alien Pilot Core inside the dome
+            const alienPulse = 3 + Math.sin(Date.now() * 0.01) * 1;
+            ctx.beginPath();
+            ctx.arc(cx, cy - ry * 0.5, alienPulse, 0, Math.PI * 2);
+            ctx.fillStyle = '#39ff14'; // neon green alien head
+            ctx.shadowColor = '#39ff14';
+            ctx.shadowBlur = 8;
+            ctx.fill();
+
+            ctx.restore();
         }
         
         function drawGravityRocks() {
