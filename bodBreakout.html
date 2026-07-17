@@ -1433,6 +1433,54 @@
         function spawnExtraBall() {
              createBall(false);
         }
+
+        function explodeBall(count) {
+            if (balls.length === 0) {
+                for (let i = 0; i < count; i++) {
+                    createBall(false);
+                }
+                return;
+            }
+
+            let sourceBall = balls.find(b => !b.onPaddle) || balls[0];
+            const startX = sourceBall.x;
+            const startY = sourceBall.y;
+            const speed = sourceBall.speed || GameState.currentBallSpeed;
+            const through = sourceBall.through;
+            const lightning = sourceBall.lightning;
+            const color = sourceBall.color;
+
+            const idx = balls.indexOf(sourceBall);
+            if (idx > -1) {
+                balls.splice(idx, 1);
+            }
+
+            for (let i = 0; i < count; i++) {
+                let angle;
+                do {
+                    angle = Math.random() * Math.PI * 2;
+                } while (Math.abs(Math.sin(angle)) < 0.3);
+
+                const newBall = {
+                    radius: ballRadius,
+                    x: startX,
+                    y: startY,
+                    speed: speed,
+                    dx: Math.cos(angle) * speed,
+                    dy: Math.sin(angle) * speed,
+                    color: color,
+                    through: through,
+                    lightning: lightning,
+                    sticky: false,
+                    onPaddle: false,
+                    paddleOffset: paddle.width / 2,
+                    stickTimer: -1,
+                    gravityEntrapTime: {},
+                    trail: []
+                };
+                balls.push(newBall);
+            }
+        }
         
         // Update UI elements
         function updateUI() {
@@ -2763,12 +2811,9 @@
                  if (type === 'through') {
                      balls.forEach(b => { b.through = true; b.color = 'black'; });
                  } else if (type === 'multiball') {
-                     spawnExtraBall();
-                     spawnExtraBall();
-                 } else if (type === 'blast') {
-                     for (let i = 0; i < 9; i++) {
-                         spawnExtraBall();
-                     }
+                      explodeBall(3);
+                  } else if (type === 'blast') {
+                      explodeBall(10);
                  } else if (type === 'lightning') {
                      balls.forEach(b => {
                          b.lightning = true;
