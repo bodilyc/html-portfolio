@@ -1849,6 +1849,7 @@
         // Helper to draw a rounded rectangle path
         function roundedRectPath(ctx, x, y, w, h, r) {
             r = Math.min(r, w / 2, h / 2);
+            ctx.beginPath();
             ctx.moveTo(x + r, y);
             ctx.lineTo(x + w - r, y);
             ctx.arcTo(x + w, y, x + w, y + r, r);
@@ -1863,11 +1864,13 @@
         
         // Draw bricks
         function drawBricks() {
+            if (!bricks || bricks.length === 0) return;
             for (let r = 0; r < brickRows; r++) {
+                if (!bricks[r]) continue;
                 for (let c = 0; c < brickColumns; c++) {
                     const brick = bricks[r][c];
-                    if (brick.visible) {
-                        const inset = 1; // Small inset to prevent any edge touching
+                    if (!brick || !brick.visible) continue;
+                    const inset = 1; // Small inset to prevent any edge touching
                         const bx = brick.x + inset;
                         const by = brick.y + inset;
                         const bw = brick.width - inset * 2;
@@ -3454,6 +3457,20 @@
                 ctx.fill();
                 ctx.restore();
             });
+
+            // Launch Call-to-Action Prompt
+            if (balls.some(b => b.onPaddle)) {
+                ctx.save();
+                const promptPulse = 0.7 + 0.3 * Math.sin(Date.now() / 180);
+                ctx.font = 'bold 12px Arial';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'bottom';
+                ctx.fillStyle = `rgba(255, 220, 0, ${promptPulse})`;
+                ctx.shadowColor = '#ffcc00';
+                ctx.shadowBlur = 8;
+                ctx.fillText('▲ CLICK OR PRESS SPACE TO LAUNCH ▲', canvas.width / 2, paddle.y - 30);
+                ctx.restore();
+            }
         }
 
         // ===== ACTIVE POWER-UP HUD BADGES =====
@@ -4162,6 +4179,21 @@
             animationId = requestAnimationFrame(update);
         }
         
+        // Window-level mouse tracking for seamless paddle movement anywhere in window
+        window.addEventListener('mousemove', (e) => {
+            if (!GameState.gameRunning || GameState.gamePaused) return;
+            const rect = canvas.getBoundingClientRect();
+            if (!rect.width) return;
+            const scaleX = canvas.width / rect.width;
+            const relativeX = (e.clientX - rect.left) * scaleX;
+            if (relativeX >= -100 && relativeX <= canvas.width + 100) {
+                paddle.x = relativeX - paddle.width / 2;
+                paddle.dx = 0;
+                if (paddle.x < 0) paddle.x = 0;
+                else if (paddle.x + paddle.width > canvas.width) paddle.x = canvas.width - paddle.width;
+            }
+        });
+
         // Event listeners
         canvas.addEventListener('mousemove', (e) => {
             const rect = canvas.getBoundingClientRect();
@@ -4366,6 +4398,8 @@
         // Initial setup for UI and canvas without starting gameplay loop in background
         resizeCanvas();
         pickTheme();
+        createBricks();
+        resetBalls();
         updateUI();
         updateMuteButtonUI();
         update();
