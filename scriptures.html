@@ -5,11 +5,12 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Scripture Sleuth</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=EB+Garamond:ital,wght@0,400;0,500;1,400&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=EB+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500&display=swap" rel="stylesheet">
 <style>
   :root {
     --gold: #c9a84c;
     --gold-light: #f0d080;
+    --gold-glow: rgba(201, 168, 76, 0.4);
     --bg-dark: #0d0a05;
     --bg-mid: #1a1408;
     --bg-card: #211b0e;
@@ -19,6 +20,8 @@
     --green: #4caf7d;
     --red: #e05555;
     --blue: #5b9bd5;
+    --purple: #a78bfa;
+    --orange: #f59e0b;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
@@ -29,26 +32,67 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    padding: 20px;
+    padding: 20px 16px 80px 16px;
     background-image:
-      radial-gradient(ellipse at 20% 20%, rgba(201,168,76,0.06) 0%, transparent 60%),
-      radial-gradient(ellipse at 80% 80%, rgba(91,90,50,0.06) 0%, transparent 60%);
+      radial-gradient(ellipse at 20% 20%, rgba(201,168,76,0.08) 0%, transparent 60%),
+      radial-gradient(ellipse at 80% 80%, rgba(91,90,50,0.07) 0%, transparent 60%),
+      radial-gradient(ellipse at 50% 50%, rgba(26,20,8,0.9) 0%, var(--bg-dark) 100%);
   }
+  
   header {
     text-align: center;
-    margin-bottom: 24px;
-    padding-top: 10px;
+    margin-bottom: 20px;
+    padding-top: 6px;
+    position: relative;
+    max-width: 800px;
+    width: 100%;
   }
+  .header-top-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+  }
+  .audio-toggle-btn {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    color: var(--gold);
+    font-family: 'Cinzel', serif;
+    font-size: 0.75rem;
+    padding: 6px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    letter-spacing: 1px;
+  }
+  .audio-toggle-btn:hover {
+    border-color: var(--gold);
+    background: rgba(201,168,76,0.1);
+    color: var(--gold-light);
+  }
+  
   header h1 {
     font-family: 'Cinzel', serif;
     font-size: 2.8rem;
     letter-spacing: 4px;
     color: var(--gold-light);
-    text-shadow: 0 0 30px rgba(201,168,76,0.4);
+    text-shadow: 0 0 30px rgba(201,168,76,0.45);
+    margin-bottom: 4px;
   }
-  header p { 
-    color: var(--text-dim); font-size: 1.05rem; margin-top: 4px; 
+  header p.subtitle { 
+    color: var(--text-dim); 
+    font-size: 1.05rem; 
     font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  }
+  header p.sub-instructions {
+    font-size: 0.85rem; 
+    margin-top: 4px; 
+    opacity: 0.8;
+    color: var(--text-dim);
+    font-family: 'EB Garamond', serif;
   }
 
   .game-layout-container {
@@ -63,20 +107,20 @@
   .game-wrapper {
     flex: 1;
     min-width: 320px;
-    max-width: 780px;
+    max-width: 760px;
   }
   .sidebar-leaderboard {
-    width: 280px;
+    width: 290px;
     background: var(--bg-card);
     border: 1px solid var(--border);
     border-radius: 12px;
-    padding: 20px;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+    padding: 18px;
+    box-shadow: 0 4px 25px rgba(0, 0, 0, 0.4);
   }
   .sidebar-leaderboard h3 {
     font-family: 'Cinzel', serif;
     color: var(--gold-light);
-    font-size: 1rem;
+    font-size: 0.95rem;
     letter-spacing: 2px;
     margin-bottom: 12px;
     text-align: center;
@@ -120,257 +164,461 @@
     }
     .sidebar-leaderboard {
       width: 100%;
-      max-width: 780px;
+      max-width: 760px;
       margin-top: 20px;
     }
   }
 
+  /* Mode / Options Bar */
+  .control-panel {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 16px;
+  }
+  .mode-selector {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 4px;
+  }
+  .mode-btn {
+    background: transparent;
+    border: none;
+    color: var(--text-dim);
+    font-family: 'Cinzel', serif;
+    font-size: 0.72rem;
+    letter-spacing: 1px;
+    padding: 6px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-transform: uppercase;
+  }
+  .mode-btn.active {
+    background: rgba(201,168,76,0.18);
+    color: var(--gold-light);
+    border: 1px solid var(--gold);
+    font-weight: 600;
+  }
+
+  /* Volume Filters */
+  .volume-filters {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 6px;
+    margin-bottom: 16px;
+    font-family: 'Cinzel', serif;
+    font-size: 0.72rem;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+  .volume-filters label {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    cursor: pointer;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    padding: 5px 10px;
+    border-radius: 6px;
+    transition: all 0.2s;
+  }
+  .volume-filters label:hover { border-color: var(--gold); color: var(--gold-light); }
+  .volume-filters input { accent-color: var(--gold); cursor: pointer; }
+
+  /* Daily toggle row */
+  .daily-toggle-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .daily-toggle-card {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 12px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .daily-toggle-card:hover { border-color: var(--gold); }
+  .daily-badge {
+    font-family: 'Cinzel', serif;
+    font-size: 0.75rem;
+    letter-spacing: 1.5px;
+    color: var(--text-dim);
+    text-transform: uppercase;
+  }
+  .daily-badge.active { color: var(--gold-light); font-weight: bold; }
+  .daily-streak-badge {
+    font-family: 'Cinzel', serif;
+    font-size: 0.72rem;
+    color: var(--orange);
+    letter-spacing: 1px;
+  }
+
   /* Stats bar */
   .stats-bar {
-    display: flex; justify-content: space-between; align-items: center;
-    background: var(--bg-card); border: 1px solid var(--border);
-    border-radius: 10px; padding: 12px 20px; margin-bottom: 18px;
-    flex-wrap: wrap; gap: 10px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 12px 20px;
+    margin-bottom: 18px;
+    flex-wrap: wrap;
+    gap: 12px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.3);
   }
   .stat { text-align: center; }
-  .stat-label { font-size: 0.7rem; letter-spacing: 2px; color: var(--text-dim); font-family: 'Cinzel', serif; text-transform: uppercase; }
-  .stat-value { font-size: 1.8rem; font-weight: 600; color: var(--gold-light); line-height: 1; }
+  .stat-label {
+    font-size: 0.68rem;
+    letter-spacing: 2px;
+    color: var(--text-dim);
+    font-family: 'Cinzel', serif;
+    text-transform: uppercase;
+    margin-bottom: 2px;
+  }
+  .stat-value {
+    font-size: 1.7rem;
+    font-weight: 600;
+    color: var(--gold-light);
+    line-height: 1;
+    font-family: 'Cinzel', serif;
+  }
   .stat-value.score { color: var(--gold-light); }
   .miss-pips { display: flex; gap: 6px; margin-top: 4px; justify-content: center; }
   .pip { width: 14px; height: 14px; border-radius: 50%; background: var(--border); border: 1px solid #5a4a2a; transition: all 0.3s; }
   .pip.used { background: var(--red); border-color: #ff3333; box-shadow: 0 0 8px rgba(224,85,85,0.6); }
 
+  /* Speed bonus indicator */
+  .speed-bar-container {
+    width: 100%;
+    height: 4px;
+    background: rgba(255,255,255,0.05);
+    border-radius: 2px;
+    overflow: hidden;
+    margin-bottom: 12px;
+    display: none;
+  }
+  .speed-bar-container.active { display: block; }
+  .speed-bar-fill {
+    height: 100%;
+    width: 100%;
+    background: linear-gradient(90deg, var(--gold), #ffea79);
+    transition: width 0.1s linear;
+    box-shadow: 0 0 8px var(--gold-glow);
+  }
+
   /* Verse card */
   .verse-card {
-    background: linear-gradient(135deg, #1e1608, #2a1f0c);
+    background: linear-gradient(135deg, #1c1508, #2a1f0c);
     border: 1px solid var(--gold);
-    border-radius: 12px;
-    padding: 32px 36px;
-    margin-bottom: 22px;
+    border-radius: 14px;
+    padding: 34px 38px;
+    margin-bottom: 18px;
     position: relative;
-    box-shadow: 0 4px 30px rgba(201,168,76,0.1), inset 0 1px 0 rgba(201,168,76,0.15);
-    min-height: 130px;
-    display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 6px 35px rgba(201,168,76,0.12), inset 0 1px 0 rgba(201,168,76,0.2);
+    min-height: 140px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.25s ease, border-color 0.25s ease;
   }
+  .verse-card .corner-ornament {
+    position: absolute;
+    font-size: 0.9rem;
+    color: rgba(201,168,76,0.4);
+    user-select: none;
+  }
+  .verse-card .corner-tl { top: 8px; left: 10px; }
+  .verse-card .corner-tr { top: 8px; right: 10px; }
+  .verse-card .corner-bl { bottom: 8px; left: 10px; }
+  .verse-card .corner-br { bottom: 8px; right: 10px; }
+  
   .verse-card::before {
-    content: '\201C'; position: absolute; top: 8px; left: 18px;
-    font-size: 5rem; color: rgba(201,168,76,0.15); line-height: 1; font-family: Georgia;
+    content: '\201C'; position: absolute; top: 6px; left: 20px;
+    font-size: 5rem; color: rgba(201,168,76,0.15); line-height: 1; font-family: Georgia, serif;
+    pointer-events: none;
   }
   .verse-card::after {
-    content: '\201D'; position: absolute; bottom: -10px; right: 18px;
-    font-size: 5rem; color: rgba(201,168,76,0.15); line-height: 1; font-family: Georgia;
+    content: '\201D'; position: absolute; bottom: -12px; right: 20px;
+    font-size: 5rem; color: rgba(201,168,76,0.15); line-height: 1; font-family: Georgia, serif;
+    pointer-events: none;
   }
   #verseText {
-    font-size: 1.45rem; line-height: 1.8; text-align: center;
-    color: var(--text); font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
-    font-weight: 400; font-style: normal;
+    font-size: 1.45rem;
+    line-height: 1.8;
+    text-align: center;
+    color: var(--text);
+    font-family: 'EB Garamond', Georgia, serif;
+    font-weight: 400;
   }
-  .verse-card.loading #verseText { color: var(--text-dim); animation: pulse 1.5s ease-in-out infinite; font-family: 'EB Garamond', Georgia, serif; font-style: italic; }
-  @keyframes pulse { 0%,100% { opacity:0.4; } 50% { opacity:1; } }
+  #verseText .clue-highlight {
+    color: #ffea79;
+    background: rgba(201,168,76,0.25);
+    padding: 0 4px;
+    border-radius: 4px;
+    box-shadow: 0 0 10px rgba(201,168,76,0.4);
+  }
+  .verse-card.loading #verseText {
+    color: var(--text-dim);
+    animation: pulse 1.4s ease-in-out infinite;
+    font-style: italic;
+  }
+  @keyframes pulse { 0%,100% { opacity:0.35; } 50% { opacity:1; } }
+
   .round-label {
-    font-family: 'Cinzel', serif; font-size: 0.72rem; letter-spacing: 3px;
-    color: var(--text-dim); text-align: center; margin-bottom: 8px;
+    font-family: 'Cinzel', serif;
+    font-size: 0.72rem;
+    letter-spacing: 3px;
+    color: var(--text-dim);
+    text-align: center;
+    margin-bottom: 8px;
     text-transform: uppercase;
   }
-  
-  /* Next round countdown overlay. */
-  .countdown-wrapper {
-    display: flex; justify-content: center; align-items: center; gap: 16px;
-    margin-top: 12px; margin-bottom: 6px;
-    opacity: 0; pointer-events: none; transition: opacity 0.3s;
-  }
-  .countdown-wrapper.show {
-    opacity: 1; pointer-events: auto;
-  }
-  .countdown {
-    width: 44px; height: 44px; border-radius: 50%; border: 2px solid var(--gold);
-    color: var(--gold-light); display: flex; align-items: center; justify-content: center;
-    font-size: 1.5rem; font-family: 'Cinzel', serif; font-weight: bold;
-  }
-  .btn-next {
-    padding: 10px 20px; font-size: 0.9rem; text-transform: uppercase;
-    font-family: 'Cinzel', serif; font-weight: 600; letter-spacing: 1px;
-    background: transparent; border: 1px solid var(--gold); color: var(--gold);
-    border-radius: 8px; cursor: pointer; transition: all 0.2s;
-  }
-  .btn-next:hover {
-    background: rgba(201,168,76,0.1); transform: translateY(-1px);
-  }
 
-  /* Volume Filters */
-  .volume-filters {
-    display: flex; flex-wrap: wrap; justify-content: center; gap: 8px;
-    margin-bottom: 20px; font-family: 'Cinzel', serif; font-size: 0.75rem;
-    color: var(--text-dim); text-transform: uppercase; letter-spacing: 1px;
+  /* Answer reveal */
+  #answerReveal {
+    font-family: 'Cinzel', serif;
+    color: var(--gold-light);
+    text-align: center;
+    font-size: 1.1rem;
+    letter-spacing: 1px;
+    min-height: 26px;
+    margin-bottom: 12px;
+    opacity: 0;
+    transition: opacity 0.4s ease;
   }
-  .volume-filters label {
-    display: flex; align-items: center; gap: 6px; cursor: pointer;
-    background: var(--bg-card); border: 1px solid var(--border);
-    padding: 6px 12px; border-radius: 6px; transition: all 0.2s;
-  }
-  .volume-filters label:hover { border-color: var(--gold); color: var(--gold-light); }
-  .volume-filters input { accent-color: var(--gold); cursor: pointer; }
+  #answerReveal.show { opacity: 1; }
 
-  /* Dropdowns section */
-  .dropdowns { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 18px; }
-  .dropdown-group { display: flex; flex-direction: column; gap: 6px; }
-  .dropdown-group label {
-    font-family: 'Cinzel', serif; font-size: 0.72rem; letter-spacing: 2px;
-    color: var(--text-dim); text-transform: uppercase;
-  }
-  select {
-    background: var(--bg-card); color: var(--text);
-    border: 1px solid var(--border); border-radius: 8px;
-    padding: 10px 14px; font-size: 1rem; font-family: 'EB Garamond', serif;
-    cursor: pointer; appearance: none; width: 100%;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1,1 L6,7 L11,1' stroke='%23907a50' stroke-width='1.5' fill='none'/%3E%3C/svg%3E");
-    background-repeat: no-repeat; background-position: right 12px center;
-    padding-right: 32px;
-    transition: border-color 0.2s, box-shadow 0.2s;
-  }
-  select:focus { outline: none; border-color: var(--gold); box-shadow: 0 0 0 2px rgba(201,168,76,0.2); }
-  select:disabled { opacity: 0.4; cursor: not-allowed; }
-  select.correct { border-color: var(--green) !important; background-color: rgba(76,175,125,0.1); }
-  select.wrong { border-color: var(--red) !important; background-color: rgba(224,85,85,0.1); }
-
-  /* Buttons */
-  .btn-row { display: flex; gap: 12px; justify-content: center; margin-bottom: 18px; }
-  .btn {
-    font-family: 'Cinzel', serif; font-weight: 600; letter-spacing: 1.5px;
-    border: none; border-radius: 8px; padding: 13px 32px; cursor: pointer;
-    font-size: 0.9rem; transition: all 0.2s; text-transform: uppercase;
-  }
-  .btn-primary {
-    background: linear-gradient(135deg, #b8922a, #ddb84a);
-    color: #1a1000; box-shadow: 0 4px 15px rgba(201,168,76,0.3);
-  }
-  .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(201,168,76,0.5); }
-  .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
-  .btn-secondary {
-    background: transparent; color: var(--text-dim);
+  /* Proximity / Closeness Compass */
+  .proximity-container {
+    background: var(--bg-card);
     border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 10px 16px;
+    margin-bottom: 14px;
+    display: none;
+    animation: fadeIn 0.3s ease;
   }
-  .btn-secondary:hover { border-color: var(--gold); color: var(--gold); }
+  .proximity-container.show { display: block; }
+  .proximity-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-family: 'Cinzel', serif;
+    font-size: 0.72rem;
+    letter-spacing: 1.5px;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+  .proximity-badge {
+    font-weight: 600;
+    letter-spacing: 1px;
+  }
+  .proximity-track {
+    width: 100%;
+    height: 10px;
+    background: #110d05;
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    position: relative;
+    overflow: hidden;
+  }
+  .proximity-fill {
+    height: 100%;
+    width: 0%;
+    background: var(--green);
+    transition: width 0.6s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.5s;
+    box-shadow: 0 0 12px currentColor;
+  }
+  .proximity-desc {
+    text-align: center;
+    font-size: 0.92rem;
+    margin-top: 6px;
+    color: var(--text);
+    font-family: 'EB Garamond', serif;
+  }
 
   /* Feedback bar */
   .feedback-bar {
-    text-align: center; font-size: 1.1rem; min-height: 28px;
-    padding: 6px; transition: opacity 0.3s;
-    border-radius: 6px; margin-bottom: 12px;
+    text-align: center;
+    font-size: 1.15rem;
+    min-height: 28px;
+    padding: 6px;
+    transition: opacity 0.3s;
+    border-radius: 6px;
+    margin-bottom: 10px;
   }
   .feedback-bar.right { color: var(--green); }
   .feedback-bar.wrong { color: var(--red); }
   .feedback-bar.partial { color: var(--blue); }
 
-  /* Answer reveal */
-  #answerReveal {
-    font-family: 'Cinzel', serif;
-    color: var(--gold); text-align: center;
-    font-size: 1rem; letter-spacing: 1px;
-    min-height: 24px; margin-bottom: 14px;
-    opacity: 0; transition: opacity 0.5s;
-  }
-  #answerReveal.show { opacity: 1; }
-
-  /* Overlay screens */
-  .overlay {
-    display: none; position: fixed; inset: 0;
-    background: rgba(0,0,0,0.85); backdrop-filter: blur(6px);
-    z-index: 100; align-items: center; justify-content: center;
-  }
-  .overlay.active { display: flex; }
-  .overlay-card {
-    background: var(--bg-card); border: 2px solid var(--gold);
-    border-radius: 16px; padding: 32px 36px; text-align: center;
-    max-width: 480px; width: 90%;
-    box-shadow: 0 0 60px rgba(201,168,76,0.2);
-    animation: fadeIn 0.4s ease;
-    max-height: 95vh;
-    overflow-y: auto;
-  }
-  @keyframes fadeIn { from { opacity:0; transform: scale(0.92); } to { opacity:1; transform: scale(1); } }
-  .overlay-card h2 { font-family: 'Cinzel', serif; font-size: 2rem; color: var(--gold-light); margin-bottom: 10px; }
-  .overlay-card p { color: var(--text-dim); font-size: 1.1rem; margin-bottom: 8px; line-height: 1.7; font-style: italic; }
-  .overlay-card .big-score { font-size: 3.5rem; color: var(--gold-light); margin: 16px 0; line-height: 1; }
-  .overlay-card .label { font-family: 'Cinzel', serif; font-size: 0.7rem; letter-spacing: 3px; color: var(--text-dim); text-transform: uppercase; }
-  .divider { border: none; border-top: 1px solid var(--border); margin: 20px 0; }
-
-  @media (max-width: 560px) {
-    header h1 { font-size: 2rem; }
-    .dropdowns { grid-template-columns: 1fr; }
-    .overlay-card { padding: 32px 24px; }
-    .verse-card { padding: 24px 20px; }
-    #verseText { font-size: 1.1rem; }
-  }
-
-  /* Distance Meter */
-  .distance-meter {
-    width: 100%;
-    max-width: 400px;
-    height: 10px;
-    background: #1a1408;
-    border: 1px solid var(--border);
-    border-radius: 5px;
-    margin: 8px auto 16px auto;
-    position: relative;
-    overflow: hidden;
-    display: none;
-    box-shadow: inset 0 1px 3px rgba(0,0,0,0.5);
-  }
-  .distance-meter.show { display: block; }
-  .meter-fill {
-    height: 100%;
-    width: 0%;
-    background: var(--green);
-    transition: width 0.6s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.6s;
-    box-shadow: 0 0 12px currentColor;
-  }
-  .meter-label {
-    font-family: 'Cinzel', serif;
-    font-size: 0.65rem;
-    letter-spacing: 2px;
-    color: var(--text-dim);
-    text-transform: uppercase;
-    text-align: center;
-    margin-top: 10px;
-    display: none;
-  }
-  .meter-label.show { display: block; }
-
-  /* Streak Banner */
+  /* Streak banner */
   .streak-banner {
     display: none;
     text-align: center;
     font-family: 'Cinzel', serif;
-    font-size: 1rem;
+    font-size: 1.05rem;
     letter-spacing: 2px;
     color: var(--gold-light);
-    margin-bottom: 10px;
+    margin-bottom: 12px;
     animation: streakPop 0.4s cubic-bezier(0.34,1.56,0.64,1);
   }
   .streak-banner.show { display: block; }
   @keyframes streakPop { from { opacity:0; transform:scale(0.7); } to { opacity:1; transform:scale(1); } }
 
-  /* Confetti Canvas */
-  #confettiCanvas {
+  /* Next round button */
+  .countdown-wrapper {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 16px;
+    margin-top: 8px;
+    margin-bottom: 10px;
+    opacity: 0;
     pointer-events: none;
-    position: fixed;
-    inset: 0;
-    z-index: 200;
+    transition: opacity 0.3s;
+  }
+  .countdown-wrapper.show {
+    opacity: 1;
+    pointer-events: auto;
+  }
+  .btn-next {
+    padding: 10px 26px;
+    font-size: 0.95rem;
+    text-transform: uppercase;
+    font-family: 'Cinzel', serif;
+    font-weight: 600;
+    letter-spacing: 1.5px;
+    background: linear-gradient(135deg, #b8922a, #ddb84a);
+    color: #1a1000;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+    box-shadow: 0 4px 15px rgba(201,168,76,0.3);
+  }
+  .btn-next:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(201,168,76,0.5);
+  }
+
+  /* Dropdowns */
+  .dropdowns {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+    margin-bottom: 18px;
+  }
+  .dropdown-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .dropdown-group label {
+    font-family: 'Cinzel', serif;
+    font-size: 0.72rem;
+    letter-spacing: 2px;
+    color: var(--text-dim);
+    text-transform: uppercase;
+  }
+  select {
+    background: var(--bg-card);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 11px 14px;
+    font-size: 1.05rem;
+    font-family: 'EB Garamond', serif;
+    cursor: pointer;
+    appearance: none;
     width: 100%;
-    height: 100%;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1,1 L6,7 L11,1' stroke='%23907a50' stroke-width='1.5' fill='none'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    padding-right: 32px;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+  select:focus { outline: none; border-color: var(--gold); box-shadow: 0 0 0 2px rgba(201,168,76,0.25); }
+  select:disabled { opacity: 0.4; cursor: not-allowed; }
+  select.correct { border-color: var(--green) !important; background-color: rgba(76,175,125,0.12); }
+  select.wrong { border-color: var(--red) !important; background-color: rgba(224,85,85,0.12); }
+  select.eliminated-book { color: #665236; text-decoration: line-through; }
+
+  /* Buttons */
+  .btn-row {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    margin-bottom: 18px;
+    flex-wrap: wrap;
+  }
+  .btn {
+    font-family: 'Cinzel', serif;
+    font-weight: 600;
+    letter-spacing: 1.5px;
+    border: none;
+    border-radius: 8px;
+    padding: 12px 24px;
+    cursor: pointer;
+    font-size: 0.88rem;
+    transition: all 0.2s;
+    text-transform: uppercase;
+  }
+  .btn-primary {
+    background: linear-gradient(135deg, #b8922a, #ddb84a);
+    color: #1a1000;
+    box-shadow: 0 4px 15px rgba(201,168,76,0.3);
+  }
+  .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(201,168,76,0.5); }
+  .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; transform: none; box-shadow: none; }
+  
+  .btn-secondary {
+    background: transparent;
+    color: var(--text-dim);
+    border: 1px solid var(--border);
+  }
+  .btn-secondary:hover { border-color: var(--gold); color: var(--gold); }
+  .btn-secondary:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  .btn-clue {
+    background: rgba(167, 139, 250, 0.1);
+    color: var(--purple);
+    border: 1px solid rgba(167, 139, 250, 0.4);
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .btn-clue:hover:not(:disabled) {
+    background: rgba(167, 139, 250, 0.2);
+    border-color: var(--purple);
+    transform: translateY(-2px);
   }
 
   /* Guess History Panel */
   .history-section {
-    margin-top: 24px;
+    margin-top: 20px;
   }
   .history-header {
     display: flex;
     align-items: center;
     justify-content: space-between;
     cursor: pointer;
-    padding: 8px 14px;
+    padding: 9px 14px;
     background: var(--bg-card);
     border: 1px solid var(--border);
     border-radius: 8px;
@@ -397,7 +645,7 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 9px 16px;
+    padding: 10px 16px;
     font-size: 0.95rem;
     border-bottom: 1px solid var(--border);
   }
@@ -408,38 +656,112 @@
   .history-pts.miss { color: var(--red); }
   .history-pts.skip { color: var(--text-dim); }
 
-  /* Daily toggle */
-  .daily-toggle-row {
-    display: flex;
-    justify-content: flex-end;
-    margin-bottom: 18px;
-  }
-  .daily-toggle-row .toggle-row {
-    display: inline-flex;
+  /* Overlays */
+  .overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.88);
+    backdrop-filter: blur(8px);
+    z-index: 100;
     align-items: center;
-    gap: 10px;
-    padding: 6px 12px;
-    background: var(--bg-card);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    transition: border-color 0.2s, color 0.2s;
+    justify-content: center;
+    padding: 20px;
   }
-  .daily-toggle-row .toggle-row:hover { border-color: var(--gold); color: var(--gold-light); }
-  .daily-badge {
+  .overlay.active { display: flex; }
+  .overlay-card {
+    background: var(--bg-card);
+    border: 2px solid var(--gold);
+    border-radius: 16px;
+    padding: 30px 32px;
+    text-align: center;
+    max-width: 520px;
+    width: 100%;
+    box-shadow: 0 0 60px rgba(201,168,76,0.25);
+    animation: fadeIn 0.35s ease;
+    max-height: 90vh;
+    overflow-y: auto;
+  }
+  @keyframes fadeIn { from { opacity:0; transform: scale(0.93); } to { opacity:1; transform: scale(1); } }
+  
+  .overlay-card h2 {
     font-family: 'Cinzel', serif;
-    font-size: 0.75rem;
-    letter-spacing: 2px;
+    font-size: 2rem;
+    color: var(--gold-light);
+    margin-bottom: 6px;
+  }
+  .overlay-card p {
+    color: var(--text-dim);
+    font-size: 1.05rem;
+    margin-bottom: 8px;
+    line-height: 1.6;
+    font-style: italic;
+  }
+  .overlay-card .big-score {
+    font-size: 3.2rem;
+    color: var(--gold-light);
+    margin: 12px 0;
+    line-height: 1;
+    font-family: 'Cinzel', serif;
+    font-weight: 700;
+  }
+  .overlay-card .label {
+    font-family: 'Cinzel', serif;
+    font-size: 0.7rem;
+    letter-spacing: 3px;
     color: var(--text-dim);
     text-transform: uppercase;
   }
-  .daily-badge.active {
+  .divider { border: none; border-top: 1px solid var(--border); margin: 18px 0; }
+
+  /* End-of-Run Study Recap Accordion */
+  .recap-section {
+    margin: 18px 0;
+    text-align: left;
+  }
+  .recap-title {
+    font-family: 'Cinzel', serif;
+    font-size: 0.85rem;
     color: var(--gold-light);
+    letter-spacing: 1.5px;
+    margin-bottom: 8px;
+    text-align: center;
+  }
+  .recap-item {
+    background: rgba(0,0,0,0.25);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 8px 12px;
+    margin-bottom: 6px;
+    font-size: 0.92rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .recap-link {
+    color: var(--gold);
+    text-decoration: none;
+    font-family: 'Cinzel', serif;
+    font-size: 0.75rem;
+    letter-spacing: 1px;
+    border-bottom: 1px dotted var(--gold);
+    transition: all 0.2s;
+  }
+  .recap-link:hover { color: var(--gold-light); border-bottom-style: solid; }
+
+  /* Daily Complete Card */
+  #dailyCompleteCard {
+    background: linear-gradient(135deg, #1e1608, #2a1f0c);
+    border: 2px solid var(--gold);
+    border-radius: 14px;
+    padding: 28px;
+    margin-bottom: 22px;
+    text-align: center;
   }
 
-  /* Game Over Overlay */
   .overlay-share-btn {
-    margin-top: 12px;
-    padding: 10px 26px;
+    margin-top: 10px;
+    padding: 10px 24px;
     font-family: 'Cinzel', serif;
     font-size: 0.85rem;
     letter-spacing: 1.5px;
@@ -451,34 +773,34 @@
     cursor: pointer;
     transition: all 0.2s;
   }
-  .overlay-share-btn:hover { background: rgba(201,168,76,0.1); }
+  .overlay-share-btn:hover { background: rgba(201,168,76,0.12); }
   .share-copied-msg {
     font-family: 'Cinzel', serif;
-    font-size: 0.7rem;
+    font-size: 0.75rem;
     letter-spacing: 2px;
     color: var(--green);
-    margin-top: 8px;
+    margin-top: 6px;
     min-height: 18px;
     display: block;
   }
 
-  /* Mobile sticky submit */
+  /* Confetti */
+  #confettiCanvas {
+    pointer-events: none;
+    position: fixed;
+    inset: 0;
+    z-index: 200;
+    width: 100%;
+    height: 100%;
+  }
+
   @media (max-width: 600px) {
-    body { padding-bottom: 80px; }
-    .btn-row {
-      position: fixed;
-      bottom: 0;
-      left: 0;
-      right: 0;
-      margin: 0;
-      padding: 12px 16px;
-      background: var(--bg-dark);
-      border-top: 1px solid var(--border);
-      z-index: 50;
-      backdrop-filter: blur(4px);
-      justify-content: stretch;
-    }
-    .btn-row .btn { flex: 1; }
+    header h1 { font-size: 2.1rem; }
+    .dropdowns { grid-template-columns: 1fr; }
+    .verse-card { padding: 24px 20px; }
+    #verseText { font-size: 1.15rem; }
+    .stats-bar { padding: 10px 14px; }
+    .stat-value { font-size: 1.35rem; }
   }
 </style>
 </head>
@@ -487,32 +809,39 @@
 <!-- Game Over Overlay -->
 <div class="overlay" id="gameOverOverlay">
   <div class="overlay-card">
-    <h2>Game Over</h2>
+    <h2 id="overlayTitle">Game Over</h2>
     <p id="gameOverSubtitle"></p>
-    <div class="big-score" id="gameOverScore"></div>
-    <div class="label">Final Score</div>
-    <hr class="divider">
-    <div id="shareGrid" style="font-size:1.6rem; letter-spacing:3px; margin:8px 0;"></div>
+    <div class="big-score" id="gameOverScore">0</div>
+    <div class="label" id="gameOverScoreLabel">Final Score</div>
+    
+    <div id="shareGrid" style="font-size:1.6rem; letter-spacing:4px; margin:10px 0; word-break: break-all;"></div>
     <button class="overlay-share-btn" id="shareBtn">&#128279; Share Result</button>
     <span class="share-copied-msg" id="shareCopiedMsg"></span>
     
-    <div id="highScoreForm" style="display: none; margin: 15px 0;">
-      <p style="color: var(--gold-light); font-size: 1.1rem; font-family: 'Cinzel', serif; letter-spacing: 1px; margin-bottom: 8px;">New Global High Score!</p>
+    <!-- End-of-Run Scripture Study Recap -->
+    <div class="recap-section" id="recapSection">
+      <div class="recap-title">📖 Scriptures in this run:</div>
+      <div id="recapList"></div>
+    </div>
+
+    <!-- High score form -->
+    <div id="highScoreForm" style="display: none; margin: 14px 0;">
+      <p style="color: var(--gold-light); font-size: 1.05rem; font-family: 'Cinzel', serif; letter-spacing: 1px; margin-bottom: 8px;">New Global High Score!</p>
       <div style="display: flex; justify-content: center; gap: 8px; align-items: center;">
         <input type="text" id="initialsInput" maxlength="3" placeholder="AAA" style="background: var(--bg-mid); border: 1px solid var(--gold); color: var(--text); padding: 8px; font-family: 'Cinzel', serif; font-size: 1.2rem; text-align: center; border-radius: 6px; width: 100px; text-transform: uppercase; letter-spacing: 3px;">
         <button id="submitScoreBtn" class="btn btn-primary" style="padding: 10px 18px; font-size: 0.85rem; margin: 0; font-family: 'Cinzel', serif; letter-spacing: 1px;">Submit</button>
       </div>
     </div>
     
-    <div id="leaderboardSection" style="margin-top: 25px;">
-      <h3 style="font-family: 'Cinzel', serif; color: var(--gold-light); font-size: 1.1rem; letter-spacing: 2px; margin-bottom: 10px;">GLOBAL LEADERBOARD</h3>
-      <table style="width: 100%; border-collapse: collapse; font-family: 'EB Garamond', serif; font-size: 1.05rem; margin-top: 10px; border: 1px solid var(--border); border-radius: 8px; overflow: hidden;">
+    <div id="leaderboardSection" style="margin-top: 18px;">
+      <h3 style="font-family: 'Cinzel', serif; color: var(--gold-light); font-size: 1rem; letter-spacing: 2px; margin-bottom: 8px;">GLOBAL LEADERBOARD</h3>
+      <table style="width: 100%; border-collapse: collapse; font-family: 'EB Garamond', serif; font-size: 1rem; margin-top: 8px; border: 1px solid var(--border); border-radius: 8px; overflow: hidden;">
         <thead>
-          <tr style="background: rgba(201, 168, 76, 0.08); border-bottom: 1px solid var(--border); color: var(--gold-light); font-family: 'Cinzel', serif; font-size: 0.75rem; letter-spacing: 1px;">
-            <th style="padding: 8px; text-align: center; width: 20%;">Rank</th>
-            <th style="padding: 8px; text-align: left; width: 40%;">Name</th>
-            <th style="padding: 8px; text-align: right; width: 20%;">Score</th>
-            <th style="padding: 8px; text-align: right; width: 20%;">Rounds</th>
+          <tr style="background: rgba(201, 168, 76, 0.08); border-bottom: 1px solid var(--border); color: var(--gold-light); font-family: 'Cinzel', serif; font-size: 0.72rem; letter-spacing: 1px;">
+            <th style="padding: 6px; text-align: center; width: 20%;">Rank</th>
+            <th style="padding: 6px; text-align: left; width: 40%;">Name</th>
+            <th style="padding: 6px; text-align: right; width: 20%;">Score</th>
+            <th style="padding: 6px; text-align: right; width: 20%;">Rounds</th>
           </tr>
         </thead>
         <tbody id="leaderboardBody">
@@ -522,7 +851,7 @@
     </div>
 
     <hr class="divider">
-    <button class="btn btn-primary" id="playAgainBtn" style="margin-top:4px;">Play Again &#8635;</button>
+    <button class="btn btn-primary" id="playAgainBtn">Play Again &#8635;</button>
   </div>
 </div>
 
@@ -530,149 +859,185 @@
 <canvas id="confettiCanvas"></canvas>
 
 <header>
+  <div class="header-top-row">
+    <div class="daily-toggle-row" id="dailyToggleRow">
+      <label class="daily-toggle-card">
+        <input type="checkbox" id="daily-mode-toggle" style="accent-color: var(--gold); cursor: pointer;">
+        <span id="dailyBadge" class="daily-badge">Daily Challenge</span>
+      </label>
+      <span class="daily-streak-badge" id="dailyStreakBadge">🔥 0-Day Streak</span>
+    </div>
+    <button class="audio-toggle-btn" id="audioToggleBtn">
+      <span id="audioIcon">🔊</span> <span id="audioText">Sound On</span>
+    </button>
+  </div>
+
   <h1>&#x2721; Scripture Sleuth</h1>
-  <p>Identify where the verse comes from &mdash; one dropdown at a time.</p>
-  <p style="font-size:0.9rem; margin-top:2px; opacity:0.8;">You can submit early if you don't know the full answer (blank guesses count as incorrect).<br>Press <strong>Enter</strong> to submit.</p>
+  <p class="subtitle">Identify where the verse comes from &mdash; one dropdown at a time.</p>
+  <p class="sub-instructions">Select Volume & Book (and Section for D&amp;C) to avoid a miss. Press <strong>Enter</strong> to submit.</p>
 </header>
 
 <div class="game-layout-container">
   <div class="game-wrapper">
-  <!-- Volume Filters -->
-  <div class="volume-filters" id="volFilters">
-    <label><input type="checkbox" value="ot" checked> Old Testament</label>
-    <label><input type="checkbox" value="nt" checked> New Testament</label>
-    <label><input type="checkbox" value="bofm" checked> Book of Mormon</label>
-    <label><input type="checkbox" value="dc" checked> D&amp;C</label>
-    <label><input type="checkbox" value="pgp" checked> Pearl of Great Price</label>
-  </div>
 
-  <!-- Daily Challenge Toggle -->
-  <div class="daily-toggle-row" id="dailyToggleRow">
-    <label class="toggle-row" style="cursor:pointer;">
-      <input type="checkbox" id="daily-mode-toggle">
-      <span id="dailyBadge" class="daily-badge">Daily Challenge</span>
-    </label>
-  </div>
-
-  <!-- Daily Challenge Complete Card -->
-  <div id="dailyCompleteCard" class="verse-card" style="display: none; flex-direction: column; align-items: center; text-align: center; background: linear-gradient(135deg, #1e1608, #2a1f0c); border: 2px solid var(--gold); border-radius: 12px; padding: 30px; margin-bottom: 22px; width: 100%;">
-    <h2 style="font-family: 'Cinzel', serif; color: var(--gold-light); font-size: 1.8rem; margin-bottom: 15px;">Daily Challenge Complete</h2>
-    <p id="dailyCompleteScripture" style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-style: normal; margin-bottom: 15px; font-size: 1.15rem; max-width: 600px; line-height: 1.6; text-align: center; color: var(--text);"></p>
-    <div id="dailyCompleteAnswer" style="font-family: 'Cinzel', serif; color: var(--gold); font-size: 1.2rem; margin-bottom: 20px; font-weight: bold; text-shadow: 0 0 10px rgba(201,168,76,0.3);"></div>
-    
-    <div style="display: flex; gap: 40px; justify-content: center; margin-bottom: 20px; width: 100%;">
-      <div>
-        <div style="font-family: 'Cinzel', serif; font-size: 0.75rem; color: var(--text-dim); text-transform: uppercase; letter-spacing: 2px; margin-bottom: 4px;">Daily Score</div>
-        <div id="dailyCompleteScore" style="font-size: 2.2rem; color: var(--gold-light); font-weight: bold; font-family: 'Cinzel', serif;">0</div>
+    <!-- Game Control Bar (Game Mode Selector & Volume Filters) -->
+    <div class="control-panel">
+      <div class="mode-selector">
+        <button class="mode-btn active" id="modeScholarBtn" title="Play from all 42,000+ Standard Works verses">Scholar Mode</button>
+        <button class="mode-btn" id="modeMasteryBtn" title="Focus on 100 core Scripture Mastery and foundational verses">⭐ Scripture Mastery</button>
       </div>
-      <div>
-        <div style="font-family: 'Cinzel', serif; font-size: 0.75rem; color: var(--text-dim); text-transform: uppercase; letter-spacing: 2px; margin-bottom: 4px;">Guesses</div>
-        <div id="dailyCompleteGuesses" style="font-size: 2.2rem; color: var(--gold-light); font-weight: bold; font-family: 'Cinzel', serif;">0/3</div>
+      <div class="volume-filters" id="volFilters">
+        <label><input type="checkbox" value="ot" checked> Old Testament</label>
+        <label><input type="checkbox" value="nt" checked> New Testament</label>
+        <label><input type="checkbox" value="bofm" checked> Book of Mormon</label>
+        <label><input type="checkbox" value="dc" checked> D&amp;C</label>
+        <label><input type="checkbox" value="pgp" checked> Pearl of Great Price</label>
       </div>
     </div>
-    
-    <div id="dailyShareGrid" style="font-size: 1.8rem; letter-spacing: 6px; margin-bottom: 18px; line-height: 1;"></div>
-    
-    <button class="overlay-share-btn" id="dailyShareBtn" style="margin-bottom: 10px; padding: 10px 24px;">&#128279; Share Result</button>
-    <span class="share-copied-msg" id="dailyShareCopiedMsg" style="min-height: 18px; display: block; font-family: 'Cinzel', serif; font-size: 0.75rem; color: var(--green); letter-spacing: 1px;"></span>
-    
-    <hr style="border: none; border-top: 1px solid var(--border); width: 100%; margin: 20px 0;">
-    
-    <div style="font-family: 'Cinzel', serif; font-size: 0.75rem; color: var(--text-dim); text-transform: uppercase; letter-spacing: 2px; margin-bottom: 8px;">Next Daily Challenge In</div>
-    <div id="dailyCountdown" style="font-size: 1.8rem; color: var(--gold-light); font-weight: bold; font-family: monospace; letter-spacing: 2px; margin-bottom: 22px;">00:00:00</div>
-    
-    <button class="btn btn-primary" id="dailyPlayArcadeBtn">Play Arcade Mode &#10140;</button>
-  </div>
 
-  <div class="stats-bar">
-    <div class="stat">
-      <div class="stat-label">Score</div>
-      <div class="stat-value score" id="scoreDisplay">0</div>
+    <!-- Daily Challenge Complete Card -->
+    <div id="dailyCompleteCard" style="display: none; flex-direction: column; align-items: center;">
+      <h2 style="font-family: 'Cinzel', serif; color: var(--gold-light); font-size: 1.8rem; margin-bottom: 12px;">Daily Challenge Complete</h2>
+      <p id="dailyCompleteScripture" style="font-style: normal; margin-bottom: 12px; font-size: 1.15rem; max-width: 600px; line-height: 1.6; color: var(--text);"></p>
+      <div id="dailyCompleteAnswer" style="font-family: 'Cinzel', serif; color: var(--gold); font-size: 1.2rem; margin-bottom: 16px; font-weight: bold;"></div>
+      
+      <div style="display: flex; gap: 40px; justify-content: center; margin-bottom: 16px; width: 100%;">
+        <div>
+          <div style="font-family: 'Cinzel', serif; font-size: 0.72rem; color: var(--text-dim); text-transform: uppercase; letter-spacing: 2px;">Daily Score</div>
+          <div id="dailyCompleteScore" style="font-size: 2.2rem; color: var(--gold-light); font-weight: bold; font-family: 'Cinzel', serif;">0</div>
+        </div>
+        <div>
+          <div style="font-family: 'Cinzel', serif; font-size: 0.72rem; color: var(--text-dim); text-transform: uppercase; letter-spacing: 2px;">Guesses</div>
+          <div id="dailyCompleteGuesses" style="font-size: 2.2rem; color: var(--gold-light); font-weight: bold; font-family: 'Cinzel', serif;">0/3</div>
+        </div>
+      </div>
+      
+      <div id="dailyShareGrid" style="font-size: 1.8rem; letter-spacing: 6px; margin-bottom: 14px; line-height: 1;"></div>
+      
+      <button class="overlay-share-btn" id="dailyShareBtn" style="margin-bottom: 8px;">&#128279; Share Result</button>
+      <span class="share-copied-msg" id="dailyShareCopiedMsg"></span>
+      
+      <hr style="border: none; border-top: 1px solid var(--border); width: 100%; margin: 16px 0;">
+      
+      <div style="font-family: 'Cinzel', serif; font-size: 0.72rem; color: var(--text-dim); text-transform: uppercase; letter-spacing: 2px; margin-bottom: 6px;">Next Daily Challenge In</div>
+      <div id="dailyCountdown" style="font-size: 1.7rem; color: var(--gold-light); font-weight: bold; font-family: monospace; letter-spacing: 2px; margin-bottom: 18px;">00:00:00</div>
+      
+      <button class="btn btn-primary" id="dailyPlayArcadeBtn">Play Arcade Mode &#10140;</button>
     </div>
-    <div class="stat">
-      <div class="stat-label">Round</div>
-      <div class="stat-value" id="roundDisplay">1</div>
-    </div>
-    <div class="stat">
-      <div class="stat-label">Avg</div>
-      <div class="stat-value" id="avgDisplay">0.00</div>
-    </div>
-    <div class="stat">
-      <div class="stat-label">Best</div>
-      <div class="stat-value" id="bestDisplay">0</div>
-    </div>
-    <div class="stat" style="text-align:right">
-      <div class="stat-label">Misses Left</div>
-      <div class="miss-pips">
-        <div class="pip" id="pip0"></div>
-        <div class="pip" id="pip1"></div>
-        <div class="pip" id="pip2"></div>
+
+    <!-- Stats Bar -->
+    <div class="stats-bar" id="mainStatsBar">
+      <div class="stat">
+        <div class="stat-label">Score</div>
+        <div class="stat-value score" id="scoreDisplay">0</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">Round</div>
+        <div class="stat-value" id="roundDisplay">1</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">Avg / Rd</div>
+        <div class="stat-value" id="avgDisplay">0.00</div>
+      </div>
+      <div class="stat" id="pbStatGroup" style="cursor: pointer;" title="Personal Best Score (Click to view Global Leaderboard)">
+        <div class="stat-label">My Best</div>
+        <div class="stat-value" id="bestDisplay">0</div>
+      </div>
+      <div class="stat" style="text-align:right">
+        <div class="stat-label">Misses Left</div>
+        <div class="miss-pips">
+          <div class="pip" id="pip0"></div>
+          <div class="pip" id="pip1"></div>
+          <div class="pip" id="pip2"></div>
+        </div>
       </div>
     </div>
-  </div>
 
-  <div class="round-label" id="roundLabel">Round 1 &mdash; Find this verse:</div>
-
-  <div class="verse-card" id="verseCard">
-    <div id="verseText">Loading scripture&hellip;</div>
-  </div>
-
-  <div id="answerReveal"></div>
-  <div class="meter-label" id="meterLabel">Distance Meter</div>
-  <div class="distance-meter" id="distanceMeter">
-    <div class="meter-fill" id="meterFill"></div>
-  </div>
-  <div class="feedback-bar" id="feedbackBar"></div>
-  <div class="streak-banner" id="streakBanner"></div>
-  <div class="countdown-wrapper" id="countdownWrapper">
-    <button class="btn-next" id="nextBtn">Next &#10140;</button>
-  </div>
-
-  <div class="dropdowns">
-    <div class="dropdown-group">
-      <label for="volSelect">Volume</label>
-      <select id="volSelect">
-        <option value="">— Select Volume —</option>
-        <option value="ot">Old Testament</option>
-        <option value="nt">New Testament</option>
-        <option value="bofm">Book of Mormon</option>
-        <option value="dc">Doctrine &amp; Covenants</option>
-        <option value="pgp">Pearl of Great Price</option>
-      </select>
+    <!-- Speed bonus decay bar -->
+    <div class="speed-bar-container" id="speedBarContainer">
+      <div class="speed-bar-fill" id="speedBarFill"></div>
     </div>
-    <div class="dropdown-group">
-      <label for="bookSelect">Book</label>
-      <select id="bookSelect" disabled>
-        <option value="">— Select Book —</option>
-      </select>
-    </div>
-    <div class="dropdown-group">
-      <label for="chapSelect" id="chapLabel">Chapter</label>
-      <select id="chapSelect" disabled>
-        <option value="">— Select Chapter —</option>
-      </select>
-    </div>
-    <div class="dropdown-group">
-      <label for="verseSelect">Verse</label>
-      <select id="verseSelect" disabled>
-        <option value="">— Select Verse —</option>
-      </select>
-    </div>
-  </div>
 
-  <div class="btn-row">
-    <button class="btn btn-primary" id="submitBtn" disabled>Submit Guess</button>
-    <button class="btn btn-secondary" id="skipBtn">Skip This Verse</button>
-  </div>
+    <div class="round-label" id="roundLabel">Round 1 &mdash; Find this verse:</div>
 
-  <!-- Guess History Panel -->
-  <div class="history-section" id="historySection">
-    <div class="history-header" id="historyHeader" tabindex="0" role="button" aria-expanded="false">
-      <span>Round History</span>
-      <span class="history-toggle-icon" id="historyIcon">&#9660;</span>
+    <!-- Verse Card with corner ornaments -->
+    <div class="verse-card" id="verseCard">
+      <span class="corner-ornament corner-tl">⚜</span>
+      <span class="corner-ornament corner-tr">⚜</span>
+      <span class="corner-ornament corner-bl">⚜</span>
+      <span class="corner-ornament corner-br">⚜</span>
+      <div id="verseText">Loading scripture&hellip;</div>
     </div>
-    <div class="history-list" id="historyList"></div>
-  </div>
+
+    <div id="answerReveal"></div>
+
+    <!-- Proximity / Closeness Compass -->
+    <div class="proximity-container" id="proximityContainer">
+      <div class="proximity-header">
+        <span>Scripture Closeness</span>
+        <span class="proximity-badge" id="proximityBadge">🎯 Bullseye</span>
+      </div>
+      <div class="proximity-track">
+        <div class="proximity-fill" id="proximityFill"></div>
+      </div>
+      <div class="proximity-desc" id="proximityDesc"></div>
+    </div>
+
+    <div class="feedback-bar" id="feedbackBar"></div>
+    <div class="streak-banner" id="streakBanner"></div>
+    
+    <div class="countdown-wrapper" id="countdownWrapper">
+      <button class="btn-next" id="nextBtn">Next &#10140;</button>
+    </div>
+
+    <!-- Dropdowns section -->
+    <div class="dropdowns" id="dropdownsSection">
+      <div class="dropdown-group">
+        <label for="volSelect">Volume</label>
+        <select id="volSelect">
+          <option value="">— Select Volume —</option>
+          <option value="ot">Old Testament</option>
+          <option value="nt">New Testament</option>
+          <option value="bofm">Book of Mormon</option>
+          <option value="dc">Doctrine &amp; Covenants</option>
+          <option value="pgp">Pearl of Great Price</option>
+        </select>
+      </div>
+      <div class="dropdown-group">
+        <label for="bookSelect">Book</label>
+        <select id="bookSelect" disabled>
+          <option value="">— Select Book —</option>
+        </select>
+      </div>
+      <div class="dropdown-group">
+        <label for="chapSelect" id="chapLabel">Chapter</label>
+        <select id="chapSelect" disabled>
+          <option value="">— Select Chapter —</option>
+        </select>
+      </div>
+      <div class="dropdown-group">
+        <label for="verseSelect">Verse</label>
+        <select id="verseSelect" disabled>
+          <option value="">— Select Verse —</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Action Buttons -->
+    <div class="btn-row" id="btnRowSection">
+      <button class="btn btn-primary" id="submitBtn" disabled>Submit Guess</button>
+      <button class="btn btn-clue" id="clueBtn" title="Get a hint (-250 pts)">💡 Ask for Clue</button>
+      <button class="btn btn-secondary" id="skipBtn">Skip This Verse</button>
+    </div>
+
+    <!-- Guess History Panel -->
+    <div class="history-section" id="historySection">
+      <div class="history-header" id="historyHeader" tabindex="0" role="button" aria-expanded="false">
+        <span>Round History</span>
+        <span class="history-toggle-icon" id="historyIcon">&#9660;</span>
+      </div>
+      <div class="history-list" id="historyList"></div>
+    </div>
 
   </div>
 
@@ -696,9 +1061,8 @@
 
 <script>
 // =====================================================================
-// SCRIPTURE DATA
+// SCRIPTURE DATA & CHAPTER DEFINITIONS
 // Format: { bookName: { vol: 'volumeId', api: 'API name', verses: [v_ch1, v_ch2, ...] } }
-// verses array: verses[i] = verse count for chapter (i+1)
 // =====================================================================
 const SCRIPTURE_DB = {
   // ---- OLD TESTAMENT ----
@@ -796,7 +1160,6 @@ const SCRIPTURE_DB = {
   'Articles of Faith':    { vol:'pgp', api:'articles of faith',     verses:[13] },
 };
 
-// Volume metadata
 const VOLUMES = {
   ot:   { name: 'Old Testament',           chapLabel: 'Chapter' },
   nt:   { name: 'New Testament',           chapLabel: 'Chapter' },
@@ -805,7 +1168,6 @@ const VOLUMES = {
   pgp:  { name: 'Pearl of Great Price',    chapLabel: 'Chapter' },
 };
 
-// Precompute flat list of books per volume
 const BOOKS_BY_VOL = {};
 for (const [name, data] of Object.entries(SCRIPTURE_DB)) {
   if (!BOOKS_BY_VOL[data.vol]) BOOKS_BY_VOL[data.vol] = [];
@@ -813,37 +1175,220 @@ for (const [name, data] of Object.entries(SCRIPTURE_DB)) {
 }
 
 // =====================================================================
+// SCRIPTURE MASTERY / OFFLINE FALLBACK DATABASE (100+ Foundational Verses)
+// Guarantees immediate load & offline play resilience!
+// =====================================================================
+const MASTERY_VERSES = [
+  // Old Testament
+  { bookName:'Genesis', chapter:1, verse:26, text:"And God said, Let us make man in our image, after our likeness: and let them have dominion over the fish of the sea, and over the fowl of the air, and over the cattle, and over all the earth, and over every creeping thing that creepeth upon the earth.", vol:'ot' },
+  { bookName:'Genesis', chapter:2, verse:24, text:"Therefore shall a man leave his father and his mother, and shall cleave unto his wife: and they shall be one flesh.", vol:'ot' },
+  { bookName:'Genesis', chapter:39, verse:9, text:"There is none greater in this house than I; neither hath he kept back any thing from me but thee, because thou art his wife: how then can I do this great wickedness, and sin against God?", vol:'ot' },
+  { bookName:'Exodus', chapter:19, verse:5, text:"Now therefore, if ye will obey my voice indeed, and keep my covenant, then ye shall be a peculiar treasure unto me above all people: for all the earth is mine.", vol:'ot' },
+  { bookName:'Exodus', chapter:20, verse:3, text:"Thou shalt have no other gods before me.", vol:'ot' },
+  { bookName:'Joshua', chapter:1, verse:9, text:"Have not I commanded thee? Be strong and of a good courage; be not afraid, neither be thou dismayed: for the Lord thy God is with thee whithersoever thou goest.", vol:'ot' },
+  { bookName:'Joshua', chapter:24, verse:15, text:"And if it seem evil unto you to serve the Lord, choose you this day whom ye will serve; whether the gods which your fathers served that were on the other side of the flood, or the gods of the Amorites, in whose land ye dwell: but as for me and my house, we will serve the Lord.", vol:'ot' },
+  { bookName:'1 Samuel', chapter:16, verse:7, text:"For the Lord seeth not as man seeth; for man looketh on the outward appearance, but the Lord looketh on the heart.", vol:'ot' },
+  { bookName:'Psalms', chapter:23, verse:1, text:"The Lord is my shepherd; I shall not want.", vol:'ot' },
+  { bookName:'Psalms', chapter:119, verse:105, text:"Thy word is a lamp unto my feet, and a light unto my path.", vol:'ot' },
+  { bookName:'Proverbs', chapter:3, verse:5, text:"Trust in the Lord with all thine heart; and lean not unto thine own understanding.", vol:'ot' },
+  { bookName:'Proverbs', chapter:3, verse:6, text:"In all thy ways acknowledge him, and he shall direct thy paths.", vol:'ot' },
+  { bookName:'Isaiah', chapter:1, verse:18, text:"Come now, and let us reason together, saith the Lord: though your sins be as scarlet, they shall be as white as snow; though they be red like crimson, they shall be as wool.", vol:'ot' },
+  { bookName:'Isaiah', chapter:53, verse:4, text:"Surely he hath borne our griefs, and carried our sorrows: yet we did esteem him stricken, smitten of God, and afflicted.", vol:'ot' },
+  { bookName:'Isaiah', chapter:58, verse:13, text:"If thou turn away thy foot from the sabbath, from doing thy pleasure on my holy day; and call the sabbath a delight, the holy of the Lord, honourable; and shalt honour him, not doing thine own ways, nor finding thine own pleasure, nor speaking thine own words:", vol:'ot' },
+  { bookName:'Jeremiah', chapter:1, verse:5, text:"Before I formed thee in the belly I knew thee; and before thou camest forth out of the womb I sanctified thee, and I ordained thee a prophet unto the nations.", vol:'ot' },
+  { bookName:'Amos', chapter:3, verse:7, text:"Surely the Lord God will do nothing, but he revealeth his secret unto his servants the prophets.", vol:'ot' },
+  { bookName:'Malachi', chapter:3, verse:10, text:"Bring ye all the tithes into the storehouse, that there may be meat in mine house, and prove me now herewith, saith the Lord of hosts, if I will not open you the windows of heaven, and pour you out a blessing, that there shall not be room enough to receive it.", vol:'ot' },
+  { bookName:'Malachi', chapter:4, verse:5, text:"Behold, I will send you Elijah the prophet before the coming of the great and dreadful day of the Lord:", vol:'ot' },
+
+  // New Testament
+  { bookName:'Matthew', chapter:5, verse:16, text:"Let your light so shine before men, that they may see your good works, and glorify your Father which is in heaven.", vol:'nt' },
+  { bookName:'Matthew', chapter:11, verse:28, text:"Come unto me, all ye that labour and are heavy laden, and I will give you rest.", vol:'nt' },
+  { bookName:'Matthew', chapter:16, verse:18, text:"And I say also unto thee, That thou art Peter, and upon this rock I will build my church; and the gates of hell shall not prevail against it.", vol:'nt' },
+  { bookName:'Matthew', chapter:22, verse:37, text:"Jesus said unto him, Thou shalt love the Lord thy God with all thy heart, and with all thy soul, and with all thy mind.", vol:'nt' },
+  { bookName:'Luke', chapter:2, verse:10, text:"And the angel said unto them, Fear not: for, behold, I bring you good tidings of great joy, which shall be to all people.", vol:'nt' },
+  { bookName:'Luke', chapter:24, verse:39, text:"Behold my hands and my feet, that it is I myself: handle me, and see; for a spirit hath not flesh and bones, as ye see me have.", vol:'nt' },
+  { bookName:'John', chapter:3, verse:5, text:"Jesus answered, Verily, verily, I say unto thee, Except a man be born of water and of the Spirit, he cannot enter into the kingdom of God.", vol:'nt' },
+  { bookName:'John', chapter:3, verse:16, text:"For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life.", vol:'nt' },
+  { bookName:'John', chapter:14, verse:6, text:"Jesus saith unto him, I am the way, the truth, and the life: no man cometh unto the Father, but by me.", vol:'nt' },
+  { bookName:'John', chapter:14, verse:15, text:"If ye love me, keep my commandments.", vol:'nt' },
+  { bookName:'John', chapter:17, verse:3, text:"And this is life eternal, that they might know thee the only true God, and Jesus Christ, whom thou hast sent.", vol:'nt' },
+  { bookName:'Acts', chapter:2, verse:38, text:"Then Peter said unto them, Repent, and be baptized every one of you in the name of Jesus Christ for the remission of sins, and ye shall receive the gift of the Holy Ghost.", vol:'nt' },
+  { bookName:'Romans', chapter:8, verse:16, text:"The Spirit itself beareth witness with our spirit, that we are the children of God:", vol:'nt' },
+  { bookName:'1 Corinthians', chapter:6, verse:19, text:"What? know ye not that your body is the temple of the Holy Ghost which is in you, which ye have of God, and ye are not your own?", vol:'nt' },
+  { bookName:'1 Corinthians', chapter:15, verse:22, text:"For as in Adam all die, even so in Christ shall all be made alive.", vol:'nt' },
+  { bookName:'Galatians', chapter:5, verse:22, text:"But the fruit of the Spirit is love, joy, peace, longsuffering, gentleness, goodness, faith,", vol:'nt' },
+  { bookName:'Ephesians', chapter:4, verse:5, text:"One Lord, one faith, one baptism,", vol:'nt' },
+  { bookName:'Philippians', chapter:4, verse:13, text:"I can do all things through Christ which strengtheneth me.", vol:'nt' },
+  { bookName:'2 Timothy', chapter:3, verse:16, text:"All scripture is given by inspiration of God, and is profitable for doctrine, for reproof, for correction, for instruction in righteousness:", vol:'nt' },
+  { bookName:'Hebrews', chapter:11, verse:1, text:"Now faith is the substance of things hoped for, the evidence of things not seen.", vol:'nt' },
+  { bookName:'James', chapter:1, verse:5, text:"If any of you lack wisdom, let him ask of God, that giveth to all men liberally, and upbraideth not; and it shall be given him.", vol:'nt' },
+  { bookName:'James', chapter:2, verse:17, text:"Even so faith, if it hath not works, is dead, being alone.", vol:'nt' },
+  { bookName:'Revelation', chapter:20, verse:12, text:"And I saw the dead, small and great, stand before God; and the books were opened: and another book was opened, which is the book of life: and the dead were judged out of those things which were written in the books, according to their works.", vol:'nt' },
+
+  // Book of Mormon
+  { bookName:'1 Nephi', chapter:3, verse:7, text:"And it came to pass that I, Nephi, said unto my father: I will go and do the things which the Lord hath commanded, for I know that the Lord giveth no commandments unto the children of men, save he shall prepare a way for them that they may accomplish the thing which he commandeth them.", vol:'bofm' },
+  { bookName:'2 Nephi', chapter:2, verse:25, text:"Adam fell that men might be; and men are, that they might have joy.", vol:'bofm' },
+  { bookName:'2 Nephi', chapter:2, verse:27, text:"Wherefore, men are free according to the flesh; and all things are given them which are expedient unto man. And they are free to choose liberty and eternal life, through the great Mediator of all men, or to choose captivity and death, according to the captivity and power of the devil;", vol:'bofm' },
+  { bookName:'2 Nephi', chapter:9, verse:28, text:"O that cunning plan of the evil one! O the vainness, and the frailties, and the foolishness of men! When they are learned they think they are wise, and they hearken not unto the counsel of God, for they set it aside, supposing they know of themselves, wherefore, their wisdom is foolishness and it profiteth them not. And they shall perish.", vol:'bofm' },
+  { bookName:'2 Nephi', chapter:28, verse:7, text:"Yea, and there shall be many which shall say: Eat, drink, and be merry, for tomorrow we die; and it shall be well with us.", vol:'bofm' },
+  { bookName:'2 Nephi', chapter:31, verse:20, text:"Wherefore, ye must press forward with a steadfastness in Christ, having a perfect brightness of hope, and a love of God and of all men. Wherefore, if ye shall press forward, feasting upon the word of Christ, and endure to the end, behold, thus saith the Father: Ye shall have eternal life.", vol:'bofm' },
+  { bookName:'2 Nephi', chapter:32, verse:3, text:"Angels speak by the power of the Holy Ghost; wherefore, they speak the words of Christ. Wherefore, I said unto you, feast upon the words of Christ; for behold, the words of Christ will tell you all things what ye should do.", vol:'bofm' },
+  { bookName:'2 Nephi', chapter:32, verse:8, text:"And now, my beloved brethren, I perceive that ye ponder still in your hearts; and it grieveth me that I must speak concerning this thing. For if ye would hearken unto the Spirit which teacheth a man to pray, ye would know that ye must pray;", vol:'bofm' },
+  { bookName:'Mosiah', chapter:2, verse:17, text:"And behold, I tell you these things that ye may learn wisdom; that ye may learn that when ye are in the service of your fellow beings ye are only in the service of your God.", vol:'bofm' },
+  { bookName:'Mosiah', chapter:3, verse:19, text:"For the natural man is an enemy to God, and has been from the fall of Adam, and will be, forever and ever, unless he yields to the enticings of the Holy Spirit, and putteth off the natural man and becometh a saint through the atonement of Christ the Lord, and becometh as a child, submissive, meek, humble, patient, full of love, willing to submit to all things which the Lord seeth fit to inflict upon him, even as a child doth submit to his father.", vol:'bofm' },
+  { bookName:'Mosiah', chapter:4, verse:30, text:"But this much I can tell you, that if ye do not watch yourselves, and your thoughts, and your words, and your deeds, and observe the commandments of God, and continue in the faith of what ye have heard concerning the coming of our Lord, even unto the end of your lives, ye must perish. And now, O man, remember, and perish not.", vol:'bofm' },
+  { bookName:'Alma', chapter:7, verse:11, text:"And he shall go forth, suffering pains and afflictions and temptations of every kind; and this that the word might be fulfilled which saith he will take upon him the pains and the sicknesses of his people.", vol:'bofm' },
+  { bookName:'Alma', chapter:32, verse:21, text:"And now as I said concerning faith—faith is not to have a perfect knowledge of things; therefore if ye have faith ye hope for things which are not seen, which are true.", vol:'bofm' },
+  { bookName:'Alma', chapter:37, verse:35, text:"O, remember, my son, and learn wisdom in thy youth; yea, learn in thy youth to keep the commandments of God.", vol:'bofm' },
+  { bookName:'Alma', chapter:41, verse:10, text:"Do not suppose, because it has been spoken concerning restoration, that ye shall be restored from sin to happiness. Behold, I say unto you, wickedness never was happiness.", vol:'bofm' },
+  { bookName:'Helaman', chapter:5, verse:12, text:"And now, my sons, remember, remember that it is upon the rock of our Redeemer, who is Christ, the Son of God, that ye must build your foundation; that when the devil shall send forth his mighty winds, yea, his shafts in the whirlwind, yea, when all his hail and his mighty storm shall beat upon you, it shall have no power over you to drag you down to the gulf of misery and endless wo, because of the rock upon which ye are built, which is a sure foundation, a foundation whereon if men build they cannot fall.", vol:'bofm' },
+  { bookName:'3 Nephi', chapter:11, verse:10, text:"Behold, I am Jesus Christ, whom the prophets testified shall come into the world.", vol:'bofm' },
+  { bookName:'3 Nephi', chapter:12, verse:48, text:"Therefore I would that ye should be perfect even as I, or your Father who is in heaven is perfect.", vol:'bofm' },
+  { bookName:'Ether', chapter:12, verse:6, text:"And now, I, Moroni, would speak somewhat concerning these things; I would show unto the world that faith is things which are hoped for and not seen; wherefore, dispute not because ye see not, for ye receive no witness until after the trial of your faith.", vol:'bofm' },
+  { bookName:'Ether', chapter:12, verse:27, text:"And if men come unto me I will show unto them their weakness. I give unto men weakness that they may be humble; and my grace is sufficient for all men that humble themselves before me; for if they humble themselves before me, and have faith in me, then will I make weak things become strong unto them.", vol:'bofm' },
+  { bookName:'Moroni', chapter:7, verse:45, text:"And charity suffereth long, and is kind, and envieth not, and is not puffed up, seeketh not her own, is not easily provoked, thinketh no evil, and rejoiceth not in iniquity but rejoiceth in the truth, beareth all things, believeth all things, hopeth all things, endureth all things.", vol:'bofm' },
+  { bookName:'Moroni', chapter:10, verse:4, text:"And when ye shall receive these things, I would exhort you that ye would ask God, the Eternal Father, in the name of Christ, if these things are not true; and if ye shall ask with a sincere heart, with real intent, having faith in Christ, he will manifest the truth of it unto you, by the power of the Holy Ghost.", vol:'bofm' },
+
+  // Doctrine and Covenants
+  { bookName:'Doctrine and Covenants', chapter:1, verse:37, text:"Search these commandments, for they are true and faithful, and the prophecies and promises which are in them shall all be fulfilled.", vol:'dc' },
+  { bookName:'Doctrine and Covenants', chapter:1, verse:38, text:"What I the Lord have spoken, I have spoken, and I excuse not myself; and though the heavens and the earth pass away, my word shall not pass away, but shall all be fulfilled, whether by mine own voice or by the voice of my servants, it is the same.", vol:'dc' },
+  { bookName:'Doctrine and Covenants', chapter:6, verse:36, text:"Look unto me in every thought; doubt not, fear not.", vol:'dc' },
+  { bookName:'Doctrine and Covenants', chapter:8, verse:2, text:"Yea, behold, I will tell you in your mind and in your heart, by the Holy Ghost, which shall come upon you and which shall dwell in your heart.", vol:'dc' },
+  { bookName:'Doctrine and Covenants', chapter:18, verse:10, text:"Remember the worth of souls is great in the sight of God;", vol:'dc' },
+  { bookName:'Doctrine and Covenants', chapter:19, verse:16, text:"For behold, I, God, have suffered these things for all, that they might not suffer if they would repent;", vol:'dc' },
+  { bookName:'Doctrine and Covenants', chapter:58, verse:42, text:"Behold, he who has repented of his sins, the same is forgiven, and I, the Lord, remember them no more.", vol:'dc' },
+  { bookName:'Doctrine and Covenants', chapter:76, verse:22, text:"And now, after the many testimonies which have been given of him, this is the testimony, last of all, which we give of him: That he lives!", vol:'dc' },
+  { bookName:'Doctrine and Covenants', chapter:82, verse:10, text:"I, the Lord, am bound when ye do what I say; but when ye do not what I say, ye have no promise.", vol:'dc' },
+  { bookName:'Doctrine and Covenants', chapter:88, verse:118, text:"And as all have not faith, seek ye diligently and teach one another words of wisdom; yea, seek ye out of the best books words of wisdom; seek learning, even by study and also by faith.", vol:'dc' },
+  { bookName:'Doctrine and Covenants', chapter:121, verse:36, text:"That the rights of the priesthood are inseparably connected with the powers of heaven, and that the powers of heaven cannot be controlled nor handled only upon the principles of righteousness.", vol:'dc' },
+  { bookName:'Doctrine and Covenants', chapter:130, verse:22, text:"The Father has a body of flesh and bones as tangible as man’s; the Son also; but the Holy Ghost has not a body of flesh and bones, but is a personage of Spirit. Were it not so, the Holy Ghost could not dwell in us.", vol:'dc' },
+
+  // Pearl of Great Price
+  { bookName:'Moses', chapter:1, verse:39, text:"For behold, this is my work and my glory—to bring to pass the immortality and eternal life of man.", vol:'pgp' },
+  { bookName:'Moses', chapter:7, verse:18, text:"And the Lord called his people ZION, because they were of one heart and one mind, and dwelt in righteousness; and there was no poor among them.", vol:'pgp' },
+  { bookName:'Abraham', chapter:3, verse:22, text:"Now the Lord had shown unto me, Abraham, the intelligences that were organized before the world was; and among all these there were many of the noble and great ones;", vol:'pgp' },
+  { bookName:'Joseph Smith--History', chapter:1, verse:17, text:"It no sooner appeared than I found myself delivered from the enemy which held me bound. When the light rested upon me I saw two Personages, whose brightness and glory defy all description, standing above me in the air. One of them spake unto me, calling me by name and said, pointing to the other—This is My Beloved Son. Hear Him!", vol:'pgp' },
+  { bookName:'Articles of Faith', chapter:1, verse:13, text:"We believe in being honest, true, chaste, benevolent, virtuous, and in doing good to all men; indeed, we may say that we follow the admonition of Paul—We believe all things, we hope all things, we have endured many things, and hope to be able to endure all things. If there is anything virtuous, lovely, or of good report or praiseworthy, we seek after these things.", vol:'pgp' },
+];
+
+// =====================================================================
+// AUDIO SYNTHESIZER (Web Audio API)
+// =====================================================================
+let audioCtx = null;
+let soundEnabled = localStorage.getItem('scriptureSleuthAudio') !== '0';
+
+function getAudioCtx() {
+  if (!audioCtx) {
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  }
+  if (audioCtx.state === 'suspended') {
+    audioCtx.resume();
+  }
+  return audioCtx;
+}
+
+function playTone(freq, type = 'sine', duration = 0.18, vol = 0.18, delay = 0) {
+  if (!soundEnabled) return;
+  try {
+    const ctx = getAudioCtx();
+    const startTime = ctx.currentTime + delay;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.type = type;
+    osc.frequency.setValueAtTime(freq, startTime);
+    gain.gain.setValueAtTime(vol, startTime);
+    gain.gain.exponentialRampToValueAtTime(0.0001, startTime + duration);
+    osc.start(startTime);
+    osc.stop(startTime + duration);
+  } catch(e) {}
+}
+
+const SFX = {
+  click: () => playTone(580, 'triangle', 0.05, 0.08),
+  clue: () => {
+    playTone(523, 'sine', 0.15, 0.12, 0);
+    playTone(659, 'sine', 0.18, 0.14, 0.09);
+    playTone(784, 'sine', 0.22, 0.16, 0.18);
+  },
+  perfect: () => {
+    // Harmonic harp arpeggio
+    [523.25, 659.25, 783.99, 1046.50, 1318.51].forEach((f, i) => {
+      playTone(f, 'sine', 0.35, 0.18, i * 0.07);
+    });
+  },
+  good: () => {
+    playTone(587.33, 'sine', 0.2, 0.14, 0);
+    playTone(880.00, 'sine', 0.3, 0.16, 0.1);
+  },
+  warm: () => playTone(520, 'sine', 0.2, 0.12),
+  cold: () => playTone(220, 'triangle', 0.25, 0.12),
+  miss: () => {
+    playTone(260, 'sawtooth', 0.22, 0.10, 0);
+    playTone(196, 'sawtooth', 0.35, 0.12, 0.08);
+  },
+  skip: () => playTone(240, 'triangle', 0.2, 0.10),
+  newBest: () => {
+    [440, 554, 659, 880].forEach((f, i) => playTone(f, 'triangle', 0.4, 0.18, i * 0.1));
+  }
+};
+
+const audioToggleBtn = document.getElementById('audioToggleBtn');
+const audioIcon = document.getElementById('audioIcon');
+const audioText = document.getElementById('audioText');
+
+function updateAudioUI() {
+  audioIcon.textContent = soundEnabled ? '🔊' : '🔇';
+  audioText.textContent = soundEnabled ? 'Sound On' : 'Muted';
+}
+audioToggleBtn.addEventListener('click', () => {
+  soundEnabled = !soundEnabled;
+  localStorage.setItem('scriptureSleuthAudio', soundEnabled ? '1' : '0');
+  updateAudioUI();
+  if (soundEnabled) SFX.click();
+});
+updateAudioUI();
+
+// =====================================================================
 // GAME STATE
 // =====================================================================
+let gameMode = 'scholar'; // 'scholar' | 'mastery'
+let activeVols = ['ot', 'nt', 'bofm', 'dc', 'pgp'];
+let roundStartTime = Date.now();
+let speedBonusInterval = null;
+let speedBonusEarned = 0;
+
 let state = {
   score: 0,
   round: 1,
   misses: 0,
   guesses: 0,
-  best: parseInt(localStorage.getItem('scriptureSleuthBest') || '0'),
-  currentRef: null,   // { bookName, chapter (1-based), verse (1-based) }
+  best: parseInt(localStorage.getItem('scriptureSleuthPersonalBest') || localStorage.getItem('scriptureSleuthBest') || '0'),
+  currentRef: null,
+  currentUrl: null,
   submitted: false,
   loading: false,
-  streak: 0,          // consecutive rounds with correct vol+book
-  roundHistory: [],   // [{ ref, pts, result }]
-  shareEmojis: [],    // emoji per round for sharing
+  streak: 0,
+  cluesUsedThisRound: 0,
+  roundHistory: [],
+  shareEmojis: [],
+  sessionVerses: [], // For end-of-run study recap
 };
 
 // =====================================================================
-// GLOBAL LEADERBOARD INTEGRATION.
+// GLOBAL LEADERBOARD INTEGRATION
 // =====================================================================
 const LEADERBOARD_APP_KEY = 'craigbodily_html_portfolio_leaderboards';
 const BANNED_INITIALS = ['FUC', 'ASS', 'DIC', 'KOK', 'PIS', 'WTF', 'CNT', 'FAG', 'SEX', 'TIT', 'CUM', 'HEL', 'DAM', 'FUK', 'SHI', 'KKK', 'NIG', 'DIK'];
 let globalScores = null;
 
-// Base64url encode/decode — much shorter than hex for URL paths
 function encodeForUrl(str) {
   return btoa(unescape(encodeURIComponent(str)))
     .replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
 }
 
 function decodeFromUrl(encoded) {
-  // Handle legacy hex-encoded data (old format was all lowercase hex chars 0-9 a-f)
   if (/^[0-9a-f]+$/.test(encoded) && encoded.length % 2 === 0) {
     let str = '';
     for (let i = 0; i < encoded.length; i += 2) {
@@ -851,7 +1396,6 @@ function decodeFromUrl(encoded) {
     }
     return str;
   }
-  // Base64url decode
   try {
     const b64 = encoded.replace(/-/g, '+').replace(/_/g, '/');
     const padded = b64 + '=='.slice(0, (4 - b64.length % 4) % 4);
@@ -863,9 +1407,13 @@ function decodeFromUrl(encoded) {
 
 async function fetchGlobalScores(gameKey) {
   try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 4000);
     const res = await fetch(`https://keyvalue.immanuel.co/api/KeyVal/GetValue/${LEADERBOARD_APP_KEY}/${gameKey}`, {
-      cache: 'no-store'
+      cache: 'no-store',
+      signal: controller.signal
     });
+    clearTimeout(timeoutId);
     if (!res.ok) throw new Error('Network error');
     const raw = await res.json();
     if (!raw || raw === 'null' || raw === 'undefined' || raw === '') return [];
@@ -883,41 +1431,39 @@ async function fetchGlobalScores(gameKey) {
           n: n,
           s: parseInt(s) || 0,
           r: parseInt(extra) || 0,
-          l: parseInt(extra) || 1
         };
       });
     }
 
-    // Normalize compact field names back to {name, score, rounds}
     return parsed.map(e => ({
       name: e.name || e.n || '???',
       score: e.score !== undefined ? e.score : (e.s || 0),
       rounds: e.rounds !== undefined ? e.rounds : (e.r || 0)
     }));
   } catch (e) {
-    console.warn('Failed to fetch global high scores:', e);
+    console.warn('Leaderboard fetch note:', e.message);
     return null;
   }
 }
 
-
 async function saveGlobalScores(gameKey, scores) {
   try {
-    // Store minimal data as semicolon-separated string to keep URL extremely short: NAME:SCORE:ROUNDS;...
     const compactStr = scores.map(s => `${s.name || s.n || '???'}:${s.score !== undefined ? s.score : (s.s || 0)}:${s.rounds !== undefined ? s.rounds : (s.r || 0)}`).join(';');
     const encoded = encodeForUrl(compactStr);
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000);
     const res = await fetch(`https://keyvalue.immanuel.co/api/KeyVal/UpdateValue/${LEADERBOARD_APP_KEY}/${gameKey}/${encoded}`, {
       method: 'POST',
-      body: ''
+      body: '',
+      signal: controller.signal
     });
-    if (!res.ok) throw new Error('Save response not ok');
-    return true;
+    clearTimeout(timeoutId);
+    return res.ok;
   } catch (e) {
-    console.error('Failed to save global high scores:', e);
+    console.error('Leaderboard save error:', e);
     return false;
   }
 }
-
 
 function validateInitials(val) {
   const uppercaseVal = val.toUpperCase().trim();
@@ -930,23 +1476,15 @@ function validateInitials(val) {
   return { valid: true, value: uppercaseVal };
 }
 
-// Initial fetch of global scores
 fetchGlobalScores('scripture_sleuth').then(scores => {
   if (scores !== null) {
     globalScores = scores;
-    updateBestDisplayFromGlobal();
     renderLeaderboardTable();
   } else {
     globalScores = [];
     renderLeaderboardTable();
   }
 });
-
-function updateBestDisplayFromGlobal() {
-  const globalBest = globalScores && globalScores.length > 0 ? globalScores[0].score : 0;
-  const showBest = Math.max(state.best, globalBest);
-  bestDisplay.textContent = showBest;
-}
 
 // =====================================================================
 // DOM REFS
@@ -957,6 +1495,7 @@ const chapSel  = document.getElementById('chapSelect');
 const verseSel = document.getElementById('verseSelect');
 const chapLabel= document.getElementById('chapLabel');
 const submitBtn= document.getElementById('submitBtn');
+const clueBtn  = document.getElementById('clueBtn');
 const skipBtn  = document.getElementById('skipBtn');
 const verseText= document.getElementById('verseText');
 const verseCard= document.getElementById('verseCard');
@@ -969,9 +1508,6 @@ const bestDisplay   = document.getElementById('bestDisplay');
 const roundLabel    = document.getElementById('roundLabel');
 const countdownWrapper = document.getElementById('countdownWrapper');
 const nextBtn       = document.getElementById('nextBtn');
-const distMeter     = document.getElementById('distanceMeter');
-const meterFill     = document.getElementById('meterFill');
-const meterLabel    = document.getElementById('meterLabel');
 const streakBanner  = document.getElementById('streakBanner');
 const historyList   = document.getElementById('historyList');
 const historyHeader = document.getElementById('historyHeader');
@@ -984,20 +1520,44 @@ const shareBtn        = document.getElementById('shareBtn');
 const shareCopiedMsg  = document.getElementById('shareCopiedMsg');
 const playAgainBtn    = document.getElementById('playAgainBtn');
 const confettiCanvas  = document.getElementById('confettiCanvas');
+const recapSection    = document.getElementById('recapSection');
+const recapList       = document.getElementById('recapList');
+
+const proximityContainer = document.getElementById('proximityContainer');
+const proximityFill      = document.getElementById('proximityFill');
+const proximityBadge     = document.getElementById('proximityBadge');
+const proximityDesc      = document.getElementById('proximityDesc');
+
+const speedBarContainer  = document.getElementById('speedBarContainer');
+const speedBarFill       = document.getElementById('speedBarFill');
+
+const modeScholarBtn = document.getElementById('modeScholarBtn');
+const modeMasteryBtn = document.getElementById('modeMasteryBtn');
 
 // =====================================================================
-// RANDOM REFERENCE PICKER (Uniformly distributed across all verses)
+// SCRIPTURE WEIGHTS & GLOBAL VERSE INDEX FOR DISTANCE
 // =====================================================================
-let activeVols = ['ot', 'nt', 'bofm', 'dc', 'pgp'];
 let SCRIPTURE_WEIGHTS = [];
 let totalStandardWorksVerses = 0;
+let globalTotalVerses = 0;
+const GLOBAL_SCRIPTURE_WEIGHTS = {};
+
+for (const [book, data] of Object.entries(SCRIPTURE_DB)) {
+  let bookVerses = 0;
+  for (const count of data.verses) bookVerses += count;
+  GLOBAL_SCRIPTURE_WEIGHTS[book] = {
+    start: globalTotalVerses,
+    end: globalTotalVerses + bookVerses,
+    chapters: data.verses
+  };
+  globalTotalVerses += bookVerses;
+}
 
 function rebuildWeights() {
   SCRIPTURE_WEIGHTS = [];
   totalStandardWorksVerses = 0;
   for (const [book, data] of Object.entries(SCRIPTURE_DB)) {
     if (!activeVols.includes(data.vol)) continue;
-    
     let bookVerses = 0;
     for (const count of data.verses) bookVerses += count;
     
@@ -1011,20 +1571,6 @@ function rebuildWeights() {
 }
 rebuildWeights();
 
-// Compute global indices for distance calculating
-let globalTotalVerses = 0;
-const GLOBAL_SCRIPTURE_WEIGHTS = {};
-for (const [book, data] of Object.entries(SCRIPTURE_DB)) {
-  let bookVerses = 0;
-  for (const count of data.verses) bookVerses += count;
-  GLOBAL_SCRIPTURE_WEIGHTS[book] = {
-    start: globalTotalVerses,
-    end: globalTotalVerses + bookVerses,
-    chapters: data.verses
-  };
-  globalTotalVerses += bookVerses;
-}
-
 function getGlobalVerseIndex(book, chapter, verse) {
   const bData = GLOBAL_SCRIPTURE_WEIGHTS[book];
   if (!bData) return -1;
@@ -1037,51 +1583,12 @@ function getGlobalVerseIndex(book, chapter, verse) {
 }
 
 // =====================================================================
-// AUDIO — Hot/Cold Tones (Web Audio API)
-// =====================================================================
-let audioCtx = null;
-function getAudioCtx() {
-  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-  return audioCtx;
-}
-function playTone(freq, type = 'sine', duration = 0.18, vol = 0.18) {
-  try {
-    const ctx = getAudioCtx();
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.connect(gain); gain.connect(ctx.destination);
-    osc.type = type;
-    osc.frequency.setValueAtTime(freq, ctx.currentTime);
-    gain.gain.setValueAtTime(vol, ctx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duration);
-    osc.start(); osc.stop(ctx.currentTime + duration);
-  } catch(e) {}
-}
-function playHotColdTone(diff) {
-  if (diff === 0) {
-    // Perfect — triumphant arpeggio
-    [523, 659, 784, 1047].forEach((f, i) => setTimeout(() => playTone(f, 'sine', 0.22, 0.22), i * 80));
-  } else if (diff < 50) {
-    playTone(660, 'sine', 0.2, 0.18); // warm, high
-  } else if (diff < 200) {
-    playTone(440, 'sine', 0.2, 0.15); // medium
-  } else if (diff < 600) {
-    playTone(293, 'sine', 0.2, 0.14); // cool
-  } else {
-    playTone(196, 'triangle', 0.25, 0.14); // cold, low
-  }
-}
-function playSkipTone() {
-  playTone(220, 'triangle', 0.25, 0.12);
-}
-
-// =====================================================================
 // CONFETTI
 // =====================================================================
 const confettiCtx = confettiCanvas.getContext('2d');
 let confettiParticles = [];
 let confettiAnimId = null;
-const CONFETTI_COLORS = ['#c9a84c','#f0d080','#4caf7d','#5b9bd5','#e05555','#fff','#ff9f43'];
+const CONFETTI_COLORS = ['#c9a84c','#f0d080','#4caf7d','#5b9bd5','#e05555','#fff','#ff9f43','#a78bfa'];
 
 function spawnConfetti(count = 90) {
   confettiCanvas.width = window.innerWidth;
@@ -1111,7 +1618,7 @@ function animateConfetti() {
   confettiParticles.forEach(p => {
     p.x += p.vx; p.y += p.vy;
     p.angle += p.spin;
-    p.vy += 0.12; // gravity
+    p.vy += 0.12;
     p.opacity -= 0.008;
     if (p.opacity > 0 && p.y < confettiCanvas.height + 20) {
       alive = true;
@@ -1133,10 +1640,651 @@ function animateConfetti() {
 }
 
 // =====================================================================
-// GUESS HISTORY
+// SPEED BONUS TIMER
 // =====================================================================
+function startSpeedTimer() {
+  if (speedBonusInterval) clearInterval(speedBonusInterval);
+  roundStartTime = Date.now();
+  speedBarContainer.classList.add('active');
+  speedBarFill.style.width = '100%';
+
+  const DURATION_MS = 12000; // 12 seconds for max speed bonus
+  speedBonusInterval = setInterval(() => {
+    const elapsed = Date.now() - roundStartTime;
+    const remaining = Math.max(0, DURATION_MS - elapsed);
+    const pct = (remaining / DURATION_MS) * 100;
+    speedBarFill.style.width = pct + '%';
+    if (remaining <= 0) {
+      clearInterval(speedBonusInterval);
+      speedBonusInterval = null;
+      speedBarContainer.classList.remove('active');
+    }
+  }, 100);
+}
+
+function calculateSpeedBonus() {
+  const elapsed = Date.now() - roundStartTime;
+  if (elapsed < 12000) {
+    const factor = (12000 - elapsed) / 12000;
+    return Math.round(factor * 500); // Up to +500 bonus
+  }
+  return 0;
+}
+
+function stopSpeedTimer() {
+  if (speedBonusInterval) {
+    clearInterval(speedBonusInterval);
+    speedBonusInterval = null;
+  }
+  speedBarContainer.classList.remove('active');
+}
+
+// =====================================================================
+// API FETCH & PREFETCH QUEUE (With automatic timeout & offline fallback)
+// =====================================================================
+function pickRandomRef() {
+  if (gameMode === 'mastery') {
+    const eligible = MASTERY_VERSES.filter(v => activeVols.includes(v.vol));
+    const pool = eligible.length > 0 ? eligible : MASTERY_VERSES;
+    const item = pool[Math.floor(Math.random() * pool.length)];
+    return { bookName: item.bookName, chapter: item.chapter, verse: item.verse, fallbackText: item.text };
+  }
+
+  if (totalStandardWorksVerses === 0) rebuildWeights();
+  const rand = Math.floor(Math.random() * totalStandardWorksVerses);
+  const targetBookData = SCRIPTURE_WEIGHTS.find(w => rand >= w.start && rand < w.end) || SCRIPTURE_WEIGHTS[0];
+  const bookName = targetBookData.book;
+  const data = SCRIPTURE_DB[bookName];
+  
+  let verseOffset = rand - targetBookData.start;
+  let chapterIdx = 0;
+  while (verseOffset >= data.verses[chapterIdx] && chapterIdx < data.verses.length - 1) {
+    verseOffset -= data.verses[chapterIdx];
+    chapterIdx++;
+  }
+  
+  return { bookName, chapter: chapterIdx + 1, verse: verseOffset + 1 };
+}
+
+async function fetchVerseWithTimeout(ref) {
+  // If we already have local text (e.g. from Mastery DB), use it directly
+  if (ref.fallbackText) {
+    return { text: ref.fallbackText, url: null };
+  }
+
+  const q = encodeURIComponent(`${ref.bookName} ${ref.chapter}:${ref.verse}`);
+  const url = `https://www.churchofjesuschrist.org/search/proxy/vertex-scripture-search?query=${q}&collectionName=*&bookTitle=*&start=1&pageSize=1`;
+  
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 2400); // 2.4s fast timeout
+    const res = await fetch(url, { signal: controller.signal });
+    clearTimeout(timeoutId);
+    
+    if (res.ok) {
+      const data = await res.json();
+      if (data.results && data.results.length > 0) {
+        const field = data.results[0].document.structData.fields;
+        const text = field.verse_text?.stringValue || field.body?.stringValue || null;
+        const deepLink = field.deep_link?.stringValue || null;
+        if (text) return { text, url: deepLink };
+      }
+    }
+  } catch(e) {
+    // Timeout or network offline — fall through to curated verse
+  }
+
+  // Graceful Fallback: Choose a matching or curated verse so game NEVER freezes
+  const match = MASTERY_VERSES.find(m => m.bookName === ref.bookName && m.chapter === ref.chapter && m.verse === ref.verse);
+  if (match) return { text: match.text, url: null };
+
+  const sameVol = MASTERY_VERSES.filter(m => SCRIPTURE_DB[m.bookName]?.vol === SCRIPTURE_DB[ref.bookName]?.vol);
+  const fallback = sameVol.length > 0 ? sameVol[Math.floor(Math.random() * sameVol.length)] : MASTERY_VERSES[0];
+  ref.bookName = fallback.bookName;
+  ref.chapter = fallback.chapter;
+  ref.verse = fallback.verse;
+  return { text: fallback.text, url: null };
+}
+
+const PREFETCH_LIMIT = 3;
+let verseQueue = [];
+let isFetchingQueue = false;
+
+async function maintainQueue() {
+  if (isFetchingQueue || verseQueue.length >= PREFETCH_LIMIT) return;
+  isFetchingQueue = true;
+  
+  while (verseQueue.length < PREFETCH_LIMIT) {
+    const ref = pickRandomRef();
+    try {
+      const item = await fetchVerseWithTimeout(ref);
+      if (item && item.text) {
+        verseQueue.push({ ref, text: item.text, url: item.url });
+      }
+    } catch(e) {}
+  }
+  isFetchingQueue = false;
+}
+
+// =====================================================================
+// PROXIMITY / CLOSENESS COMPASS UPDATE
+// =====================================================================
+function updateProximityCompass(diff, guessBook, correctBook, guessVol, correctVol) {
+  proximityContainer.classList.add('show');
+
+  if (diff === 0) {
+    proximityFill.style.width = '100%';
+    proximityFill.style.background = 'var(--green)';
+    proximityBadge.textContent = '🎯 Bullseye!';
+    proximityBadge.style.color = 'var(--green)';
+    proximityDesc.textContent = 'Exact match! You identified the exact chapter and verse!';
+    return;
+  }
+
+  if (diff === -1) {
+    proximityFill.style.width = '15%';
+    proximityFill.style.background = 'var(--red)';
+    proximityBadge.textContent = 'Select Chapter & Verse';
+    proximityBadge.style.color = 'var(--text-dim)';
+    proximityDesc.textContent = 'Choose book, chapter, and verse to calculate distance.';
+    return;
+  }
+
+  // Closeness calculation (0 diff = 100%, 3000+ diff = 5%)
+  const closeness = Math.max(5, Math.min(96, Math.round(100 - (diff / 25))));
+  proximityFill.style.width = closeness + '%';
+
+  let color = 'var(--red)';
+  let badge = '❄️ Cold';
+  let desc = `You are ${diff} verses away.`;
+
+  if (diff <= 15) {
+    color = '#ff4d4d';
+    badge = '🔥 Burning Hot!';
+    desc = `Super close! Only ${diff} verse${diff !== 1 ? 's' : ''} away!`;
+  } else if (diff <= 80 || guessBook === correctBook) {
+    color = 'var(--orange)';
+    badge = '✨ Very Warm (Same Book)';
+    desc = `Right book! ${diff} verses away from target.`;
+  } else if (guessVol === correctVol) {
+    color = 'var(--blue)';
+    badge = '🧭 Warm (Same Volume)';
+    desc = `Same volume, ${diff} verses away.`;
+  } else {
+    color = 'var(--purple)';
+    badge = '❄️ Cold (Different Volume)';
+    desc = `${diff} verses away in another testament.`;
+  }
+
+  proximityFill.style.background = color;
+  proximityBadge.textContent = badge;
+  proximityBadge.style.color = color;
+  proximityDesc.textContent = desc;
+}
+
+// =====================================================================
+// LOAD ROUND
+// =====================================================================
+async function loadRound() {
+  state.submitted = false;
+  state.loading = true;
+  state.guesses = 0;
+  state.cluesUsedThisRound = 0;
+  clearFeedback();
+  resetDropdowns();
+  
+  if (dailyChallengeMode) {
+    const dailyRef = getDailyVerseRef();
+    submitBtn.disabled = true;
+    skipBtn.disabled = true;
+    clueBtn.disabled = true;
+    verseCard.classList.add('loading');
+    verseText.textContent = 'Loading today’s scripture\u2026';
+    roundLabel.textContent = `Daily Challenge`;
+    
+    try {
+      const item = await fetchVerseWithTimeout(dailyRef);
+      state.currentRef = dailyRef;
+      state.currentUrl = item.url;
+      state.sessionVerses.push({ ref: dailyRef, url: item.url });
+      verseCard.classList.remove('loading');
+      state.loading = false;
+      skipBtn.disabled = false;
+      clueBtn.disabled = false;
+      verseText.textContent = item.text;
+      startSpeedTimer();
+      setTimeout(focusFirstInput, 0);
+    } catch (err) {
+      verseText.textContent = 'Be strong and of a good courage; be not afraid (Joshua 1:9)';
+      verseCard.classList.remove('loading');
+      state.loading = false;
+    }
+    return;
+  }
+
+  // Handle single volume filter auto-selection
+  if (activeVols.length === 1) {
+    volSel.value = activeVols[0];
+    volSel.disabled = true;
+    volSel.dispatchEvent(new Event('change'));
+  } else {
+    volSel.disabled = false;
+  }
+  
+  submitBtn.disabled = true;
+  skipBtn.disabled = true;
+  clueBtn.disabled = true;
+  verseCard.classList.add('loading');
+  verseText.textContent = 'Preparing next scripture\u2026';
+  roundLabel.textContent = `Round ${state.round} \u2014 Find this verse:`;
+
+  maintainQueue();
+
+  // Wait for queue item (with fallback if queue is taking time)
+  let waitCount = 0;
+  while (verseQueue.length === 0 && waitCount < 10) {
+    await new Promise(r => setTimeout(r, 60));
+    waitCount++;
+  }
+
+  const nextItem = verseQueue.length > 0 ? verseQueue.shift() : { ref: pickRandomRef(), text: MASTERY_VERSES[0].text, url: null };
+  state.currentRef = nextItem.ref;
+  state.currentUrl = nextItem.url;
+  state.sessionVerses.push({ ref: nextItem.ref, url: nextItem.url });
+
+  maintainQueue();
+
+  verseCard.classList.remove('loading');
+  state.loading = false;
+  skipBtn.disabled = false;
+  clueBtn.disabled = false;
+  skipBtn.textContent = 'Skip This Verse';
+  verseText.textContent = nextItem.text;
+  
+  startSpeedTimer();
+}
+
+// =====================================================================
+// DROPDOWNS CASCADE LOGIC
+// =====================================================================
+volSel.addEventListener('change', () => {
+  SFX.click();
+  bookSel.innerHTML = '<option value="">\u2014 Select Book \u2014</option>';
+  chapSel.innerHTML = '<option value="">\u2014 Select Chapter \u2014</option>';
+  verseSel.innerHTML = '<option value="">\u2014 Select Verse \u2014</option>';
+  chapSel.disabled = true;
+  verseSel.disabled = true;
+  bookSel.disabled = true;
+  bookSel.className = chapSel.className = verseSel.className = '';
+  checkSubmit();
+
+  const vol = volSel.value;
+  if (!vol) return;
+  const books = BOOKS_BY_VOL[vol] || [];
+  books.forEach(name => {
+    const opt = document.createElement('option');
+    opt.value = name; opt.textContent = name;
+    bookSel.appendChild(opt);
+  });
+  bookSel.disabled = false;
+  chapLabel.textContent = VOLUMES[vol]?.chapLabel || 'Chapter';
+  setTimeout(() => bookSel.focus(), 0);
+});
+
+bookSel.addEventListener('change', () => {
+  SFX.click();
+  chapSel.innerHTML = '<option value="">\u2014 Select \u2014</option>';
+  verseSel.innerHTML = '<option value="">\u2014 Select Verse \u2014</option>';
+  chapSel.disabled = true;
+  verseSel.disabled = true;
+  chapSel.className = verseSel.className = '';
+  checkSubmit();
+
+  const bookName = bookSel.value;
+  if (!bookName) return;
+  const data = SCRIPTURE_DB[bookName];
+  if (!data) return;
+  const numChaps = data.verses.length;
+  for (let c = 1; c <= numChaps; c++) {
+    const opt = document.createElement('option');
+    opt.value = c; opt.textContent = c;
+    chapSel.appendChild(opt);
+  }
+  chapSel.disabled = false;
+  setTimeout(() => chapSel.focus(), 0);
+});
+
+chapSel.addEventListener('change', () => {
+  SFX.click();
+  verseSel.innerHTML = '<option value="">\u2014 Select Verse \u2014</option>';
+  verseSel.disabled = true;
+  verseSel.className = '';
+  checkSubmit();
+
+  const bookName = bookSel.value;
+  const chapNum  = parseInt(chapSel.value);
+  if (!bookName || !chapNum) return;
+  const data = SCRIPTURE_DB[bookName];
+  if (!data) return;
+  const numVerses = data.verses[chapNum - 1] || 30;
+  for (let v = 1; v <= numVerses; v++) {
+    const opt = document.createElement('option');
+    opt.value = v; opt.textContent = v;
+    verseSel.appendChild(opt);
+  }
+  verseSel.disabled = false;
+  setTimeout(() => verseSel.focus(), 0);
+});
+
+verseSel.addEventListener('change', () => {
+  SFX.click();
+  checkSubmit();
+});
+
+function checkSubmit() {
+  submitBtn.disabled = !(!state.submitted && volSel.value);
+}
+
+// =====================================================================
+// CLUE / HINT SYSTEM
+// =====================================================================
+clueBtn.addEventListener('click', () => {
+  if (state.submitted || state.loading || !state.currentRef) return;
+  SFX.clue();
+  state.cluesUsedThisRound++;
+  
+  const ref = state.currentRef;
+  const correctVol = SCRIPTURE_DB[ref.bookName].vol;
+  const volName = VOLUMES[correctVol].name;
+
+  if (state.cluesUsedThisRound === 1) {
+    // Clue 1: Auto-reveal and lock Volume
+    volSel.value = correctVol;
+    volSel.dispatchEvent(new Event('change'));
+    showFeedback(`💡 Clue: This verse is from the ${volName}! (-250 pts)`, 'partial');
+  } else if (state.cluesUsedThisRound === 2) {
+    // Clue 2: 50/50 Elimination of wrong books in current volume
+    const books = BOOKS_BY_VOL[correctVol] || [];
+    const wrongBooks = books.filter(b => b !== ref.bookName);
+    const toEliminate = wrongBooks.sort(() => 0.5 - Math.random()).slice(0, Math.ceil(wrongBooks.length / 2));
+    
+    Array.from(bookSel.options).forEach(opt => {
+      if (toEliminate.includes(opt.value)) {
+        opt.disabled = true;
+        opt.classList.add('eliminated-book');
+        opt.textContent = `❌ ${opt.value}`;
+      }
+    });
+    showFeedback(`💡 Clue: Eliminated 50% of the wrong books in ${volName}!`, 'partial');
+  } else {
+    // Clue 3: Highlight keywords in text
+    const words = verseText.textContent.split(' ');
+    if (words.length > 4) {
+      const mid = Math.floor(words.length / 2);
+      words[mid] = `<span class="clue-highlight">${words[mid]}</span>`;
+      verseText.innerHTML = words.join(' ');
+    }
+    showFeedback(`💡 Clue: Key phrase emphasized in verse text.`, 'partial');
+    clueBtn.disabled = true;
+  }
+
+  // Deduct small clue cost
+  if (state.score >= 250) {
+    state.score -= 250;
+    scoreDisplay.textContent = state.score;
+  }
+});
+
+// =====================================================================
+// STREAK BONUS
+// =====================================================================
+const STREAK_BONUS = 200;
+function applyStreakBonus(gotIt) {
+  if (gotIt) {
+    state.streak++;
+    if (state.streak >= 2) {
+      const bonus = (state.streak - 1) * STREAK_BONUS;
+      state.score += bonus;
+      scoreDisplay.textContent = state.score;
+      streakBanner.textContent = `🔥 ${state.streak}-Round Streak! +${bonus} Bonus!`;
+      streakBanner.classList.add('show');
+    }
+  } else {
+    state.streak = 0;
+    streakBanner.classList.remove('show');
+  }
+}
+
+// =====================================================================
+// SUBMIT GUESS
+// =====================================================================
+submitBtn.addEventListener('click', () => {
+  if (state.submitted || state.loading) return;
+  state.guesses++;
+  stopSpeedTimer();
+
+  const ref = state.currentRef;
+  const correctVol  = SCRIPTURE_DB[ref.bookName].vol;
+  const correctBook = ref.bookName;
+  const correctChap = ref.chapter;
+  const correctVerse= ref.verse;
+
+  const guessVol  = volSel.value;
+  const guessBook = bookSel.value;
+  const guessChap = parseInt(chapSel.value);
+  const guessVerse= parseInt(verseSel.value);
+
+  const rightVol   = guessVol  === correctVol;
+  const rightBook  = guessBook === correctBook;
+  const rightChap  = guessChap === correctChap;
+  const rightVerse = guessVerse=== correctVerse;
+
+  markSel(volSel,   rightVol);
+  markSel(bookSel,  rightBook);
+  markSel(chapSel,  rightChap);
+  markSel(verseSel, rightVerse);
+
+  let diff = -1;
+  if (guessBook && !isNaN(guessChap) && !isNaN(guessVerse)) {
+    const guessIdx = getGlobalVerseIndex(guessBook, guessChap, guessVerse);
+    const actIdx = getGlobalVerseIndex(correctBook, correctChap, correctVerse);
+    if (guessIdx !== -1 && actIdx !== -1) {
+      diff = Math.abs(guessIdx - actIdx);
+    }
+  }
+
+  updateProximityCompass(diff, guessBook, correctBook, guessVol, correctVol);
+
+  const isPerfect = (diff === 0);
+  const isLastGuess = (state.guesses >= 3);
+
+  if (isPerfect || isLastGuess) {
+    state.submitted = true;
+    submitBtn.disabled = true;
+    skipBtn.disabled = true;
+    clueBtn.disabled = true;
+
+    // Failure check: volume + book required (and section for D&C)
+    let failedRequirement = false;
+    if (correctVol === 'dc') {
+      if (!rightVol || !rightBook || !rightChap) failedRequirement = true;
+    } else {
+      if (!rightVol || !rightBook) failedRequirement = true;
+    }
+
+    if (failedRequirement) {
+      state.misses++;
+      updatePips();
+      SFX.miss();
+    }
+
+    // Points calculation + Speed Bonus
+    let pts = 0;
+    const speedBonus = calculateSpeedBonus();
+    if (diff === 0) {
+      pts = 2000 + speedBonus;
+      SFX.perfect();
+      spawnConfetti();
+    } else if (diff !== -1) {
+      pts = Math.round(10000 / (diff + 10)) + Math.round(speedBonus / 2);
+      if (!failedRequirement) SFX.good();
+    }
+
+    state.score += pts;
+    scoreDisplay.textContent = state.score;
+    const avg = (state.score / state.round).toFixed(2);
+    avgDisplay.textContent = avg;
+
+    if (state.score > state.best) {
+      state.best = state.score;
+      localStorage.setItem('scriptureSleuthPersonalBest', state.best);
+      localStorage.setItem('scriptureSleuthBest', state.best);
+      SFX.newBest();
+    }
+    bestDisplay.textContent = state.best;
+
+    const volName = VOLUMES[correctVol]?.name || correctVol;
+    const officialLink = state.currentUrl ? `<br><a href="${state.currentUrl}" target="_blank" class="recap-link" style="margin-top:6px; display:inline-block;">Open in Gospel Library ↗</a>` : "";
+    
+    answerReveal.innerHTML = `${correctBook} ${correctChap}:${correctVerse} (${volName})${officialLink}`;
+    answerReveal.classList.add('show');
+
+    const wasGood = !failedRequirement;
+    applyStreakBonus(wasGood);
+    const roundResult = isPerfect ? 'perfect' : failedRequirement ? 'miss' : 'good';
+    state.shareEmojis.push(roundResult);
+    addHistoryEntry(ref, pts, roundResult);
+
+    const speedMsg = speedBonus > 0 ? `⚡ +${speedBonus} Speed Bonus!` : '';
+    if (isPerfect) {
+      showFeedback(`\u2726 Perfect! All correct! +${pts} pts ${speedMsg}`, 'right');
+    } else if (failedRequirement) {
+      const needed = correctVol === 'dc' ? 'Vol, Book & Sec' : 'Vol & Book';
+      showFeedback(`\u2715 Miss! Needed ${needed}. +${pts} pts. Miss ${state.misses}/3.`, 'wrong');
+    } else {
+      showFeedback(`Good guess! +${pts} points ${speedMsg}`, 'partial');
+    }
+
+    if (dailyChallengeMode) {
+      saveDailyScore(state.score, state.guesses, state.misses);
+      markDailyComplete();
+      updateDailyStreakOnComplete();
+      renderDailyUI();
+      showNextButton(true);
+      return;
+    }
+
+    if (state.misses >= 3) {
+      showNextButton(true);
+      return;
+    }
+
+    showNextButton(false);
+  } else {
+    // Partial guess remaining
+    if (diff !== -1 && diff < 80) SFX.warm();
+    else SFX.cold();
+    showFeedback(`Guess ${state.guesses}/3 \u2014 Adjust your choices!`, 'wrong');
+  }
+});
+
+// =====================================================================
+// SKIP VERSE
+// =====================================================================
+skipBtn.addEventListener('click', () => {
+  if (state.loading || state.submitted) return;
+  stopSpeedTimer();
+  state.submitted = true;
+  state.misses++;
+  updatePips();
+  SFX.skip();
+  
+  const ref = state.currentRef;
+  const volName = VOLUMES[SCRIPTURE_DB[ref.bookName]?.vol]?.name || '';
+  const officialLink = state.currentUrl ? `<br><a href="${state.currentUrl}" target="_blank" class="recap-link" style="margin-top:6px; display:inline-block;">Open in Gospel Library ↗</a>` : "";
+  
+  answerReveal.innerHTML = `${ref.bookName} ${ref.chapter}:${ref.verse} (${volName})${officialLink}`;
+  answerReveal.classList.add('show');
+  
+  showFeedback(`Skipped \u2014 Miss ${state.misses}/3`, 'wrong');
+  submitBtn.disabled = true;
+  skipBtn.disabled = true;
+  clueBtn.disabled = true;
+  applyStreakBonus(false);
+  state.shareEmojis.push('skip');
+  addHistoryEntry(ref, 0, 'skip');
+
+  if (dailyChallengeMode) {
+    saveDailyScore(state.score, state.guesses, state.misses);
+    markDailyComplete();
+    renderDailyUI();
+    showNextButton(true);
+    return;
+  }
+
+  if (state.misses >= 3) {
+    showNextButton(true);
+    return;
+  }
+  showNextButton(false);
+});
+
+function showNextButton(isGameOver) {
+  countdownWrapper.classList.add('show');
+  if (isGameOver) {
+    nextBtn.innerHTML = 'See Results &#8635;';
+    nextBtn.onclick = () => {
+      if (dailyChallengeMode) showDailyCompletedUI();
+      else showGameOver();
+    };
+    feedbackBar.textContent = "Game Over! " + feedbackBar.textContent;
+  } else {
+    nextBtn.innerHTML = 'Next &#10140;';
+    nextBtn.onclick = () => { nextRound(); };
+  }
+  setTimeout(() => nextBtn.focus(), 0);
+}
+
+// =====================================================================
+// HELPERS
+// =====================================================================
+function markSel(sel, correct) {
+  sel.className = correct ? 'correct' : 'wrong';
+}
+function showFeedback(msg, cls) {
+  feedbackBar.textContent = msg;
+  feedbackBar.className = 'feedback-bar ' + cls;
+}
+function clearFeedback() {
+  feedbackBar.textContent = '';
+  feedbackBar.className = 'feedback-bar';
+  answerReveal.textContent = '';
+  answerReveal.classList.remove('show');
+  countdownWrapper.classList.remove('show');
+  proximityContainer.classList.remove('show');
+  streakBanner.classList.remove('show');
+}
+function resetDropdowns() {
+  volSel.value = '';
+  bookSel.innerHTML = '<option value="">\u2014 Select Book \u2014</option>';
+  chapSel.innerHTML  = '<option value="">\u2014 Select Chapter \u2014</option>';
+  verseSel.innerHTML = '<option value="">\u2014 Select Verse \u2014</option>';
+  bookSel.disabled = chapSel.disabled = verseSel.disabled = true;
+  volSel.className = bookSel.className = chapSel.className = verseSel.className = '';
+  chapLabel.textContent = 'Chapter';
+}
+function updatePips() {
+  for (let i = 0; i < 3; i++) {
+    document.getElementById('pip' + i).classList.toggle('used', i < state.misses);
+  }
+}
+function nextRound() {
+  state.round++;
+  roundDisplay.textContent = state.round;
+  loadRound();
+}
+
 function addHistoryEntry(ref, pts, result) {
-  // result: 'perfect' | 'good' | 'miss' | 'skip'
   const volName = VOLUMES[SCRIPTURE_DB[ref.bookName]?.vol]?.name || '';
   const refStr = `${ref.bookName} ${ref.chapter}:${ref.verse}`;
   state.roundHistory.unshift({ refStr, volName, pts, result, round: state.round });
@@ -1164,7 +2312,6 @@ function renderHistory() {
   });
 }
 
-// Toggle history open/close
 function toggleHistory() {
   const isOpen = historyList.classList.contains('open');
   historyList.classList.toggle('open', !isOpen);
@@ -1175,94 +2322,23 @@ historyHeader.addEventListener('click', toggleHistory);
 historyHeader.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleHistory(); } });
 
 // =====================================================================
-// SHARE RESULT
+// GAME OVER OVERLAY & STUDY RECAP
 // =====================================================================
-function buildShareText() {
-  const rounds = state.roundHistory.slice().reverse(); // oldest first
-  const emojiRows = rounds.map(r => {
-    if (r.result === 'perfect') return '🟩';
-    if (r.result === 'good')    return '🟨';
-    if (r.result === 'skip')    return '⬜';
-    return '🟥';
-  });
-  const grid = emojiRows.join('');
-  return `Scripture Sleuth ✡\nScore: ${state.score} | Rounds: ${state.round}\n${grid}\n`;
-}
-
-async function renderLeaderboardTable(highlightEntry = null) {
-  const tbody = document.getElementById('leaderboardBody');
-  const sidebarTbody = document.getElementById('sidebarLeaderboardBody');
-  
-  const loadingHtml = `<td colspan="4" style="text-align: center; padding: 12px; color: var(--text-dim);">Loading global scores...</td>`;
-  const noRecordsHtml = `<td colspan="4" style="text-align: center; padding: 12px; color: var(--text-dim);">No global records yet.</td>`;
-  
-  if (tbody) tbody.innerHTML = '';
-  if (sidebarTbody) sidebarTbody.innerHTML = '';
-  
-  if (globalScores === null) {
-    if (tbody) {
-      const tr = document.createElement('tr');
-      tr.innerHTML = loadingHtml;
-      tbody.appendChild(tr);
-    }
-    if (sidebarTbody) {
-      const tr = document.createElement('tr');
-      tr.innerHTML = `<td colspan="3" style="text-align: center; padding: 12px; color: var(--text-dim);">Loading...</td>`;
-      sidebarTbody.appendChild(tr);
-    }
-    return;
-  }
-  
-  if (globalScores.length === 0) {
-    if (tbody) {
-      const tr = document.createElement('tr');
-      tr.innerHTML = noRecordsHtml;
-      tbody.appendChild(tr);
-    }
-    if (sidebarTbody) {
-      const tr = document.createElement('tr');
-      tr.innerHTML = `<td colspan="3" style="text-align: center; padding: 12px; color: var(--text-dim);">No records.</td>`;
-      sidebarTbody.appendChild(tr);
-    }
-    return;
-  }
-  
-  globalScores.forEach((entry, idx) => {
-    // Populate overlay table
-    if (tbody) {
-      const tr = document.createElement('tr');
-      tr.style.borderBottom = '1px solid var(--border)';
-      if (highlightEntry && entry.name === highlightEntry.name && entry.score === highlightEntry.score && entry.rounds === highlightEntry.rounds) {
-        tr.style.background = 'rgba(201, 168, 76, 0.18)';
-        tr.style.fontWeight = 'bold';
-      }
-      
-      tr.innerHTML = `
-        <td style="padding: 8px; text-align: center;">${idx + 1}</td>
-        <td style="padding: 8px; text-align: left; font-family: 'Cinzel', serif;">${entry.name}</td>
-        <td style="padding: 8px; text-align: right; color: var(--gold-light);">${entry.score}</td>
-        <td style="padding: 8px; text-align: right;">${entry.rounds}</td>
-      `;
-      tbody.appendChild(tr);
-    }
-    
-    // Populate sidebar table (shows top 10)
-    if (sidebarTbody) {
-      const tr = document.createElement('tr');
-      tr.style.borderBottom = '1px solid rgba(255,255,255,0.03)';
-      if (highlightEntry && entry.name === highlightEntry.name && entry.score === highlightEntry.score && entry.rounds === highlightEntry.rounds) {
-        tr.className = 'current-score';
-        tr.style.background = 'rgba(201, 168, 76, 0.18)';
-        tr.style.fontWeight = 'bold';
-      }
-      
-      tr.innerHTML = `
-        <td style="padding: 8px 4px; text-align: center;">${idx + 1}</td>
-        <td style="padding: 8px 4px; text-align: left; font-family: 'Cinzel', serif; font-size: 0.9rem;">${entry.name}</td>
-        <td style="padding: 8px 4px; text-align: right; color: var(--gold-light);">${entry.score}</td>
-      `;
-      sidebarTbody.appendChild(tr);
-    }
+function renderRecapList() {
+  recapList.innerHTML = '';
+  state.sessionVerses.forEach(item => {
+    const row = document.createElement('div');
+    row.className = 'recap-item';
+    const nameSpan = document.createElement('span');
+    nameSpan.textContent = `📖 ${item.ref.bookName} ${item.ref.chapter}:${item.ref.verse}`;
+    const link = document.createElement('a');
+    link.className = 'recap-link';
+    link.target = '_blank';
+    link.href = item.url || `https://www.churchofjesuschrist.org/study/scriptures?lang=eng`;
+    link.textContent = 'Read Chapter ↗';
+    row.appendChild(nameSpan);
+    row.appendChild(link);
+    recapList.appendChild(row);
   });
 }
 
@@ -1272,11 +2348,9 @@ function showGameOver() {
 
 function showLeaderboardOverlay(isGameOverMode) {
   gameOverScore.textContent = state.score;
-  gameOverSubtitle.textContent = `${state.round} round${state.round !== 1 ? 's' : ''} • Best: ${state.best}`;
+  gameOverSubtitle.textContent = `${state.round} round${state.round !== 1 ? 's' : ''} • Personal Best: ${state.best}`;
   
-  // Build emoji grid
-  const rounds = state.roundHistory.slice().reverse();
-  const emojiRows = rounds.map(r => {
+  const emojiRows = state.roundHistory.slice().reverse().map(r => {
     if (r.result === 'perfect') return '🟩';
     if (r.result === 'good')    return '🟨';
     if (r.result === 'skip')    return '⬜';
@@ -1286,15 +2360,12 @@ function showLeaderboardOverlay(isGameOverMode) {
   shareCopiedMsg.textContent = '';
   
   const card = document.querySelector('#gameOverOverlay .overlay-card');
-  const h2 = card.querySelector('h2');
+  const h2 = document.getElementById('overlayTitle');
   const subtitle = document.getElementById('gameOverSubtitle');
   const bigScore = document.getElementById('gameOverScore');
-  const label = card.querySelector('.label');
+  const label = document.getElementById('gameOverScoreLabel');
   const shareBtn = document.getElementById('shareBtn');
-  const shareGridContainer = document.getElementById('shareGrid');
-  const shareCopiedMsgContainer = document.getElementById('shareCopiedMsg');
   const form = document.getElementById('highScoreForm');
-  const dividers = card.querySelectorAll('.divider');
   
   if (isGameOverMode) {
     h2.textContent = 'Game Over';
@@ -1302,9 +2373,9 @@ function showLeaderboardOverlay(isGameOverMode) {
     bigScore.style.display = 'block';
     label.style.display = 'block';
     shareBtn.style.display = 'inline-block';
-    shareGridContainer.style.display = 'block';
-    shareCopiedMsgContainer.style.display = 'block';
-    dividers.forEach(d => d.style.display = 'block');
+    shareGrid.style.display = 'block';
+    recapSection.style.display = 'block';
+    renderRecapList();
     
     const isGlobalHigh = !globalScores || globalScores.length < 10 || state.score > globalScores[globalScores.length - 1].score;
     if (isGlobalHigh && state.score > 0) {
@@ -1323,14 +2394,56 @@ function showLeaderboardOverlay(isGameOverMode) {
     bigScore.style.display = 'none';
     label.style.display = 'none';
     shareBtn.style.display = 'none';
-    shareGridContainer.style.display = 'none';
-    shareCopiedMsgContainer.style.display = 'none';
+    shareGrid.style.display = 'none';
+    recapSection.style.display = 'none';
     form.style.display = 'none';
-    if (dividers.length > 0) dividers[0].style.display = 'none';
   }
   
   renderLeaderboardTable();
   gameOverOverlay.classList.add('active');
+}
+
+function renderLeaderboardTable(highlightEntry = null) {
+  const tbody = document.getElementById('leaderboardBody');
+  const sidebarTbody = document.getElementById('sidebarLeaderboardBody');
+  if (tbody) tbody.innerHTML = '';
+  if (sidebarTbody) sidebarTbody.innerHTML = '';
+  
+  if (!globalScores || globalScores.length === 0) {
+    const noRecords = `<td colspan="4" style="text-align: center; padding: 12px; color: var(--text-dim);">No global records yet.</td>`;
+    if (tbody) tbody.innerHTML = `<tr>${noRecords}</tr>`;
+    if (sidebarTbody) sidebarTbody.innerHTML = `<tr><td colspan="3" style="text-align:center; padding:12px; color:var(--text-dim);">No records.</td></tr>`;
+    return;
+  }
+  
+  globalScores.forEach((entry, idx) => {
+    if (tbody) {
+      const tr = document.createElement('tr');
+      tr.style.borderBottom = '1px solid var(--border)';
+      if (highlightEntry && entry.name === highlightEntry.name && entry.score === highlightEntry.score) {
+        tr.style.background = 'rgba(201, 168, 76, 0.2)';
+        tr.style.fontWeight = 'bold';
+      }
+      tr.innerHTML = `
+        <td style="padding: 7px; text-align: center;">${idx + 1}</td>
+        <td style="padding: 7px; text-align: left; font-family: 'Cinzel', serif;">${entry.name}</td>
+        <td style="padding: 7px; text-align: right; color: var(--gold-light); font-weight:600;">${entry.score}</td>
+        <td style="padding: 7px; text-align: right;">${entry.rounds}</td>
+      `;
+      tbody.appendChild(tr);
+    }
+    
+    if (sidebarTbody && idx < 10) {
+      const tr = document.createElement('tr');
+      tr.style.borderBottom = '1px solid rgba(255,255,255,0.03)';
+      tr.innerHTML = `
+        <td style="padding: 7px 4px; text-align: center;">${idx + 1}</td>
+        <td style="padding: 7px 4px; text-align: left; font-family: 'Cinzel', serif; font-size: 0.9rem;">${entry.name}</td>
+        <td style="padding: 7px 4px; text-align: right; color: var(--gold-light); font-weight:600;">${entry.score}</td>
+      `;
+      sidebarTbody.appendChild(tr);
+    }
+  });
 }
 
 async function submitScriptureHighScore() {
@@ -1348,38 +2461,38 @@ async function submitScriptureHighScore() {
   submitBtn.disabled = true;
   submitBtn.textContent = 'Submitting...';
   
-  let latestGlobal = await fetchGlobalScores('scripture_sleuth');
+  let latestGlobal = await fetchGlobalScores('scripture_sleuth') || [];
   let finalHighlight = null;
-  if (latestGlobal !== null) {
-    const newEntry = { name: initials, score: state.score, rounds: state.round, date: new Date().toISOString() };
-    
-    if (latestGlobal.length < 10 || state.score > latestGlobal[latestGlobal.length - 1].score) {
-      latestGlobal.push(newEntry);
-      latestGlobal.sort((a, b) => b.score - a.score);
-      if (latestGlobal.length > 10) latestGlobal.pop();
-      const saved = await saveGlobalScores('scripture_sleuth', latestGlobal);
-      if (saved) {
-        globalScores = latestGlobal;
-        finalHighlight = newEntry;
-      }
-    }
+  const newEntry = { name: initials, score: state.score, rounds: state.round };
+  
+  latestGlobal.push(newEntry);
+  latestGlobal.sort((a, b) => b.score - a.score);
+  if (latestGlobal.length > 10) latestGlobal.pop();
+  
+  const saved = await saveGlobalScores('scripture_sleuth', latestGlobal);
+  if (saved) {
+    globalScores = latestGlobal;
+    finalHighlight = newEntry;
   }
   
   submitBtn.disabled = false;
   submitBtn.textContent = 'Submit';
   document.getElementById('highScoreForm').style.display = 'none';
-  
   renderLeaderboardTable(finalHighlight);
-  updateBestDisplayFromGlobal();
 }
 
 shareBtn.addEventListener('click', async () => {
-  const text = buildShareText();
+  const emojiRows = state.roundHistory.slice().reverse().map(r => {
+    if (r.result === 'perfect') return '🟩';
+    if (r.result === 'good')    return '🟨';
+    if (r.result === 'skip')    return '⬜';
+    return '🟥';
+  });
+  const text = `Scripture Sleuth ✡\nScore: ${state.score} | Rounds: ${state.round}\n${emojiRows.join('')}\n`;
   try {
     await navigator.clipboard.writeText(text);
     shareCopiedMsg.textContent = '✓ Copied to clipboard!';
   } catch(e) {
-    // Fallback
     const ta = document.createElement('textarea');
     ta.value = text; document.body.appendChild(ta); ta.select();
     document.execCommand('copy'); document.body.removeChild(ta);
@@ -1393,544 +2506,45 @@ playAgainBtn.addEventListener('click', () => {
   startGame();
 });
 
-// Handle checkbox changes
+// =====================================================================
+// GAME CONTROLS & MODE TOGGLING
+// =====================================================================
+modeScholarBtn.addEventListener('click', () => {
+  SFX.click();
+  gameMode = 'scholar';
+  modeScholarBtn.classList.add('active');
+  modeMasteryBtn.classList.remove('active');
+  startGame();
+});
+
+modeMasteryBtn.addEventListener('click', () => {
+  SFX.click();
+  gameMode = 'mastery';
+  modeMasteryBtn.classList.add('active');
+  modeScholarBtn.classList.remove('active');
+  startGame();
+});
+
 document.querySelectorAll('#volFilters input').forEach(cb => {
   cb.addEventListener('change', () => {
     const checked = document.querySelectorAll('#volFilters input:checked');
     if (checked.length === 0) {
-      // Prevent user from unchecking everything
       cb.checked = true;
       return;
     }
+    SFX.click();
     activeVols = Array.from(checked).map(i => i.value);
     rebuildWeights();
-    startGame(); // reset the game to reflect the new subset of scriptures
+    startGame();
   });
 });
 
-
-function pickRandomRef() {
-  const rand = Math.floor(Math.random() * totalStandardWorksVerses);
-  const targetBookData = SCRIPTURE_WEIGHTS.find(w => rand >= w.start && rand < w.end);
-  const bookName = targetBookData.book;
-  const data = SCRIPTURE_DB[bookName];
-  
-  let verseOffset = rand - targetBookData.start;
-  let chapterIdx = 0;
-  while (verseOffset >= data.verses[chapterIdx]) {
-    verseOffset -= data.verses[chapterIdx];
-    chapterIdx++;
-  }
-  
-  return { bookName, chapter: chapterIdx + 1, verse: verseOffset + 1 };
-}
-
-// =====================================================================
-// API FETCH
-// =====================================================================
-async function fetchVerse(ref) {
-  const q = encodeURIComponent(`${ref.bookName} ${ref.chapter}:${ref.verse}`);
-  const url = `https://www.churchofjesuschrist.org/search/proxy/vertex-scripture-search?query=${q}&collectionName=*&bookTitle=*&start=1&pageSize=1`;
-  
-  try {
-    const res = await fetch(url);
-    const data = await res.json();
-    if (data.results && data.results.length > 0) {
-      const field = data.results[0].document.structData.fields;
-      return {
-        text: field.verse_text?.stringValue || field.body?.stringValue || null,
-        url: field.deep_link?.stringValue || null
-      };
-    }
-  } catch(e) {
-    console.error("API Fetch Error:", e);
-  }
-  return null;
-}
-
-// =====================================================================
-// PREFETCH QUEUE
-// =====================================================================
-const PREFETCH_LIMIT = 3;
-let verseQueue = [];
-let isFetchingQueue = false;
-
-async function maintainQueue() {
-  if (isFetchingQueue) return;
-  isFetchingQueue = true;
-  
-  const needed = PREFETCH_LIMIT - verseQueue.length;
-  if (needed <= 0) {
-    isFetchingQueue = false;
-    return;
-  }
-
-  // Fetch 'needed' verses in parallel to fill the queue fast
-  const fetchPromises = [];
-  for (let i = 0; i < needed; i++) {
-    fetchPromises.push((async () => {
-      let attempts = 0;
-      while (attempts < 5) { // Try a few random refs until one sticks
-        const ref = pickRandomRef();
-        try {
-          const item = await fetchVerse(ref);
-          if (item && item.text) return { ref, text: item.text, url: item.url };
-        } catch(e) {}
-        attempts++;
-      }
-      return null;
-    })());
-  }
-
-  const results = await Promise.all(fetchPromises);
-  results.forEach(res => {
-    if (res) verseQueue.push(res);
-  });
-  
-  isFetchingQueue = false;
-}
-
-// =====================================================================
-// LOAD ROUND
-// =====================================================================
-async function loadRound() {
-  state.submitted = false;
-  state.loading = true;
-  state.guesses = 0;
-  clearFeedback();
-  resetDropdowns();
-  
-  if (dailyChallengeMode) {
-    const dailyRef = getDailyVerseRef();
-    if (!dailyRef) {
-      verseText.textContent = 'Could not determine daily verse.';
-      verseCard.classList.remove('loading');
-      state.loading = false;
-      return;
-    }
-    
-    submitBtn.disabled = true;
-    skipBtn.disabled = true;
-    verseCard.classList.add('loading');
-    verseText.textContent = 'Loading daily challenge\u2026';
-    roundLabel.textContent = `Daily Challenge`;
-    
-    try {
-      const item = await fetchVerse(dailyRef);
-      if (!item || !item.text) {
-        verseText.textContent = 'Could not load today’s scripture. Please try again.';
-        verseCard.classList.remove('loading');
-        state.loading = false;
-        return;
-      }
-      state.currentRef = dailyRef;
-      state.currentUrl = item.url;
-      verseCard.classList.remove('loading');
-      state.loading = false;
-      skipBtn.disabled = false;
-      skipBtn.textContent = 'Skip This Verse';
-      verseText.textContent = item.text;
-      setTimeout(focusFirstInput, 0);
-    } catch (err) {
-      verseText.textContent = 'Error loading daily scripture. Please refresh.';
-      verseCard.classList.remove('loading');
-      state.loading = false;
-    }
-    return;
-  }
-
-  // Auto-fill and lock Volume if only 1 is selected
-  if (activeVols.length === 1) {
-    volSel.value = activeVols[0];
-    volSel.disabled = true;
-    volSel.dispatchEvent(new Event('change'));
-  } else {
-    volSel.disabled = false;
-  }
-  
-  submitBtn.disabled = true; // explicitly keep disabled until choices made
-  skipBtn.disabled = true;
-  verseCard.classList.add('loading');
-  verseText.textContent = 'Preparing next scripture\u2026';
-  roundLabel.textContent = `Round ${state.round} \u2014 Find this verse:`;
-
-  // Start prefetching if we haven't already
-  maintainQueue();
-
-  // Wait for the queue to have at least one verse
-  // Reduced polling interval to 50ms for snappier UI
-  while (verseQueue.length === 0) {
-    await new Promise(r => setTimeout(r, 50));
-  }
-
-  // Dequeue the next verse
-  const nextItem = verseQueue.shift();
-  state.currentRef = nextItem.ref;
-  state.currentUrl = nextItem.url; // Store for official site link
-  const text = nextItem.text;
-
-  // Replenish the queue in the background
-  maintainQueue();
-
-  verseCard.classList.remove('loading');
-  state.loading = false;
-  skipBtn.disabled = false;
-
-  skipBtn.textContent = 'Skip This Verse';
-  verseText.textContent = text;
-}
-
-// =====================================================================
-// DROPDOWNS — CASCADE LOGIC
-// =====================================================================
-volSel.addEventListener('change', () => {
-  // Reset downstream
-  bookSel.innerHTML = '<option value="">\u2014 Select Book \u2014</option>';
-  chapSel.innerHTML = '<option value="">\u2014 Select Chapter \u2014</option>';
-  verseSel.innerHTML = '<option value="">\u2014 Select Verse \u2014</option>';
-  chapSel.disabled = true; verseSel.disabled = true;
-  bookSel.disabled = true;
-  bookSel.className = ''; chapSel.className = ''; verseSel.className = '';
-  checkSubmit();
-
-  const vol = volSel.value;
-  if (!vol) return;
-  const books = BOOKS_BY_VOL[vol] || [];
-  books.forEach(name => {
-    const opt = document.createElement('option');
-    opt.value = name; opt.textContent = name;
-    bookSel.appendChild(opt);
-  });
-  bookSel.disabled = false;
-  chapLabel.textContent = VOLUMES[vol].chapLabel;
+document.getElementById('pbStatGroup').addEventListener('click', () => {
+  showLeaderboardOverlay(false);
 });
 
-bookSel.addEventListener('change', () => {
-  chapSel.innerHTML = '<option value="">\u2014 Select \u2014</option>';
-  verseSel.innerHTML = '<option value="">\u2014 Select Verse \u2014</option>';
-  chapSel.disabled = true; verseSel.disabled = true;
-  chapSel.className = ''; verseSel.className = '';
-  checkSubmit();
-
-  const bookName = bookSel.value;
-  if (!bookName) return;
-  const data = SCRIPTURE_DB[bookName];
-  if (!data) return;
-  const numChaps = data.verses.length;
-  for (let c = 1; c <= numChaps; c++) {
-    const opt = document.createElement('option');
-    opt.value = c; opt.textContent = c;
-    chapSel.appendChild(opt);
-  }
-  chapSel.disabled = false;
-});
-
-chapSel.addEventListener('change', () => {
-  verseSel.innerHTML = '<option value="">\u2014 Select Verse \u2014</option>';
-  verseSel.disabled = true;
-  verseSel.className = '';
-  checkSubmit();
-
-  const bookName = bookSel.value;
-  const chapNum  = parseInt(chapSel.value);
-  if (!bookName || !chapNum) return;
-  const data = SCRIPTURE_DB[bookName];
-  if (!data) return;
-  const numVerses = data.verses[chapNum - 1] || 30;
-  for (let v = 1; v <= numVerses; v++) {
-    const opt = document.createElement('option');
-    opt.value = v; opt.textContent = v;
-    verseSel.appendChild(opt);
-  }
-  verseSel.disabled = false;
-});
-
-verseSel.addEventListener('change', () => { checkSubmit(); });
-
-function checkSubmit() {
-  submitBtn.disabled = !(!state.submitted && volSel.value);
-}
-
 // =====================================================================
-// STREAK BONUS
-// =====================================================================
-const STREAK_BONUS = 150;
-function applyStreakBonus(gotIt) {
-  if (gotIt) {
-    state.streak++;
-    if (state.streak >= 2) {
-      const bonus = (state.streak - 1) * STREAK_BONUS;
-      state.score += bonus;
-      scoreDisplay.textContent = state.score;
-      streakBanner.textContent = `🔥 ${state.streak}-Round Streak! +${bonus} Bonus!`;
-      streakBanner.classList.add('show');
-    }
-  } else {
-    state.streak = 0;
-    streakBanner.classList.remove('show');
-  }
-}
-
-// =====================================================================
-// SUBMIT
-// =====================================================================
-submitBtn.addEventListener('click', () => {
-  if (state.submitted || state.loading) return;
-  state.guesses++;
-
-  const ref = state.currentRef;
-  const correctVol  = SCRIPTURE_DB[ref.bookName].vol;
-  const correctBook = ref.bookName;
-  const correctChap = ref.chapter;
-  const correctVerse= ref.verse;
-
-  const guessVol  = volSel.value;
-  const guessBook = bookSel.value;
-  const guessChap = parseInt(chapSel.value);
-  const guessVerse= parseInt(verseSel.value);
-
-  const rightVol   = guessVol  === correctVol;
-  const rightBook  = guessBook === correctBook;
-  const rightChap  = guessChap === correctChap;
-  const rightVerse = guessVerse=== correctVerse;
-
-  // Highlight dropdowns
-  markSel(volSel,   rightVol);
-  markSel(bookSel,  rightBook);
-  markSel(chapSel,  rightChap);
-  markSel(verseSel, rightVerse);
-
-  let diff = -1;
-  let distMsg = "";
-  if (guessBook && !isNaN(guessChap) && !isNaN(guessVerse)) {
-    const guessIdx = getGlobalVerseIndex(guessBook, guessChap, guessVerse);
-    const actIdx = getGlobalVerseIndex(correctBook, correctChap, correctVerse);
-    if (guessIdx !== -1 && actIdx !== -1) {
-      diff = Math.abs(guessIdx - actIdx);
-      distMsg = `\u2014 You are ${diff} verse${diff !== 1 ? 's' : ''} away.`;
-    }
-  } else {
-    distMsg = "\u2014 Select Book, Chap & Verse for distance.";
-  }
-
-  const isPerfect = (diff === 0);
-  const isLastGuess = (state.guesses >= 3);
-
-  if (isPerfect || isLastGuess) {
-    state.submitted = true;
-    submitBtn.disabled = true;
-    skipBtn.disabled = true;
-
-    // Check requirement
-    let failedRequirement = false;
-    if (correctVol === 'dc') {
-      if (!rightVol || !rightBook || !rightChap) failedRequirement = true;
-    } else {
-      if (!rightVol || !rightBook) failedRequirement = true;
-    }
-
-    if (failedRequirement) {
-      state.misses++;
-      updatePips();
-    }
-
-    let pts = 0;
-    if (diff === 0) {
-      pts = 2000; // Exact match bonus
-    } else if (diff !== -1) {
-      pts = Math.round(10000 / (diff + 10)); // Distance-based score
-    }
-
-    state.score += pts;
-    scoreDisplay.textContent = state.score;
-    const avg = (state.score / state.round).toFixed(2);
-    avgDisplay.textContent = avg;
-
-    if (state.score > state.best) {
-      state.best = state.score;
-      localStorage.setItem('scriptureSleuthBest', state.best);
-    }
-    updateBestDisplayFromGlobal();
-
-    const chapWord = VOLUMES[correctVol]?.chapLabel || 'Chapter';
-    const volName  = VOLUMES[correctVol]?.name || correctVol;
-    
-    // Add "View on Church Website" link
-    const officialLink = state.currentUrl ? `<br><a href="${state.currentUrl}" target="_blank" style="color:var(--gold-light); font-size:0.8rem; text-decoration:none; border-bottom:1px solid var(--gold-light); margin-top:8px; display:inline-block;">View on Church Website \u2197</a>` : "";
-    
-    answerReveal.innerHTML = `${correctBook} ${correctChap}:${correctVerse}  (${volName})${officialLink}`;
-    answerReveal.classList.add('show');
-
-    let finalDistMsg = diff !== -1 && diff !== 0 ? `You were ${diff} verse${diff !== 1 ? 's' : ''} away. ` : '';
-    
-    // Streak & share tracking
-    const wasGood = !failedRequirement;
-    applyStreakBonus(wasGood);
-    const roundResult = isPerfect ? 'perfect' : failedRequirement ? 'miss' : 'good';
-    state.shareEmojis.push(roundResult);
-    addHistoryEntry(ref, pts, roundResult);
-
-    if (isPerfect) {
-      showFeedback(`\u2726 Perfect! All correct! +${pts} points`, 'right');
-      spawnConfetti();
-    } else if (failedRequirement) {
-      const needed = correctVol === 'dc' ? 'Vol, Book & Sec' : 'Vol & Book';
-      showFeedback(`${finalDistMsg}\u2715 Miss! You needed ${needed}. +${pts} pts. Miss ${state.misses}/3.`, 'wrong');
-    } else {
-      showFeedback(`${finalDistMsg}Good guess! +${pts} points`, 'partial');
-    }
-
-    // Play tone
-    if (diff !== -1) playHotColdTone(diff);
-
-    // Daily challenge: single round — always show results after
-    if (dailyChallengeMode) {
-      saveDailyScore(state.score, state.guesses, state.misses);
-      markDailyComplete();
-      renderDailyUI();
-      showNextButton(true);
-      if (diff !== -1) updateDistanceMeter(diff);
-      return;
-    }
-
-    if (state.misses >= 3) {
-      showNextButton(true);
-      return;
-    }
-
-    showNextButton(false);
-  } else {
-    // Guesses remain — play hot/cold tone
-    showFeedback(`Guess ${state.guesses}/3 ${distMsg}`, 'wrong');
-    if (diff !== -1) playHotColdTone(diff);
-  }
-  
-  if (diff !== -1) {
-    updateDistanceMeter(diff);
-  }
-});
-
-function updateDistanceMeter(diff) {
-  distMeter.classList.add('show');
-  meterLabel.classList.add('show');
-  
-  // Normalize distance: 0 = 0%, 3000+ = 100%
-  // We want HIGHER distance = BIGGER bar (as per user request)
-  const percent = Math.min(100, (diff / 3000) * 100);
-  meterFill.style.width = percent + '%';
-  
-  // Color: 0% (Close) = Green, 100% (Far) = Red
-  const hue = Math.max(0, 120 - (percent * 1.2));
-  const color = `hsl(${hue}, 80%, 50%)`;
-  meterFill.style.background = color;
-  meterFill.style.color = color; // for currentColor shadow
-}
-
-// =====================================================================
-// SKIP
-// =====================================================================
-skipBtn.addEventListener('click', () => {
-  if (state.loading || state.submitted) return;
-  state.submitted = true;
-  state.misses++;
-  updatePips();
-  const ref = state.currentRef;
-  const volName = VOLUMES[SCRIPTURE_DB[ref.bookName]?.vol]?.name || '';
-  const officialLink = state.currentUrl ? `<br><a href="${state.currentUrl}" target="_blank" style="color:var(--gold-light); font-size:0.8rem; text-decoration:none; border-bottom:1px solid var(--gold-light); margin-top:8px; display:inline-block;">View on Church Website \u2197</a>` : "";
-  
-  answerReveal.innerHTML = `${ref.bookName} ${ref.chapter}:${ref.verse}  (${volName})${officialLink}`;
-  answerReveal.classList.add('show');
-  
-  showFeedback(`Skipped \u2014 Miss ${state.misses}/3`, 'wrong');
-  submitBtn.disabled = true;
-  skipBtn.disabled = true;
-  playSkipTone();
-  applyStreakBonus(false);
-  state.shareEmojis.push('skip');
-  addHistoryEntry(ref, 0, 'skip');
-
-  // Daily challenge: single round — always show results after skip
-  if (dailyChallengeMode) {
-    saveDailyScore(state.score, state.guesses, state.misses);
-    markDailyComplete();
-    renderDailyUI();
-    showNextButton(true);
-    return;
-  }
-
-  if (state.misses >= 3) {
-    showNextButton(true);
-    return;
-  }
-  showNextButton(false);
-});
-
-function showNextButton(isGameOver) {
-  countdownWrapper.classList.add('show');
-  if (isGameOver) {
-    if (dailyChallengeMode) {
-      nextBtn.innerHTML = 'See Results &#8635;';
-      nextBtn.onclick = () => { showDailyCompletedUI(); };
-    } else {
-      nextBtn.innerHTML = 'See Results &#8635;';
-      nextBtn.onclick = () => { showGameOver(); };
-    }
-    feedbackBar.textContent = "Game Over! " + feedbackBar.textContent;
-  } else {
-    if (dailyChallengeMode) {
-      // Daily is single round — always show results
-      nextBtn.innerHTML = 'See Results &#8635;';
-      nextBtn.onclick = () => { showDailyCompletedUI(); };
-    } else {
-      nextBtn.innerHTML = 'Next &#10140;';
-      nextBtn.onclick = () => { nextRound(); };
-    }
-  }
-}
-
-// =====================================================================
-// HELPERS
-// =====================================================================
-function markSel(sel, correct) {
-  sel.className = correct ? 'correct' : 'wrong';
-}
-function showFeedback(msg, cls) {
-  feedbackBar.textContent = msg;
-  feedbackBar.className = 'feedback-bar ' + cls;
-}
-function clearFeedback() {
-  feedbackBar.textContent = '';
-  feedbackBar.className = 'feedback-bar';
-  answerReveal.textContent = '';
-  answerReveal.classList.remove('show');
-  countdownWrapper.classList.remove('show');
-  distMeter.classList.remove('show');
-  meterLabel.classList.remove('show');
-  streakBanner.classList.remove('show');
-}
-function resetDropdowns() {
-  volSel.value = '';
-  bookSel.innerHTML = '<option value="">\u2014 Select Book \u2014</option>';
-  chapSel.innerHTML  = '<option value="">\u2014 Select Chapter \u2014</option>';
-  verseSel.innerHTML = '<option value="">\u2014 Select Verse \u2014</option>';
-  bookSel.disabled = chapSel.disabled = verseSel.disabled = true;
-  volSel.className = bookSel.className = chapSel.className = verseSel.className = '';
-  chapLabel.textContent = 'Chapter';
-}
-function updatePips() {
-  for (let i = 0; i < 3; i++) {
-    document.getElementById('pip' + i).classList.toggle('used', i < state.misses);
-  }
-}
-function nextRound() {
-  state.round++;
-  roundDisplay.textContent = state.round;
-  loadRound();
-}
-// Game Over inline logic is handled in showNextButton
-
-// =====================================================================
-// START/RESTART
+// START GAME
 // =====================================================================
 function startGame() {
   state.score  = 0;
@@ -1938,69 +2552,50 @@ function startGame() {
   state.misses = 0;
   state.guesses= 0;
   state.streak = 0;
+  state.cluesUsedThisRound = 0;
   state.roundHistory = [];
   state.shareEmojis = [];
+  state.sessionVerses = [];
+  
   scoreDisplay.textContent = '0';
   roundDisplay.textContent = '1';
   avgDisplay.textContent   = '0.00';
-  updateBestDisplayFromGlobal();
+  bestDisplay.textContent  = state.best;
   updatePips();
   renderHistory();
   gameOverOverlay.classList.remove('active');
   
-  // Flush prefetch queue since source volumes may have changed
-  verseQueue = []; 
-  
+  verseQueue = [];
   loadRound();
 }
-
-// =====================================================================
-// INIT
-// =====================================================================
-bestDisplay.textContent = state.best;
 
 // =====================================================================
 // KEYBOARD NAVIGATION
 // =====================================================================
 document.addEventListener('keydown', (e) => {
   if (e.key === 'Enter') {
-    // Dismiss game over overlay
     if (gameOverOverlay.classList.contains('active')) {
       gameOverOverlay.classList.remove('active');
       startGame();
       return;
     }
-    // If waiting for next round
     if (countdownWrapper.classList.contains('show')) {
       nextBtn.click();
       return;
     } 
-    // Submit guess if ready
     if (!submitBtn.disabled && !state.submitted && !state.loading) {
       submitBtn.click();
     }
   }
-  // Tab (default) already moves focus between selects
-  // Arrow keys auto-navigate within focused <select> elements natively
 });
 
-// Auto-focus first unlocked dropdown at start of round for keyboard users
 function focusFirstInput() {
   const target = [volSel, bookSel, chapSel, verseSel].find(s => !s.disabled);
   if (target) target.focus();
 }
 
-// When a dropdown's selection enables the next one, move focus to it
-[volSel, bookSel, chapSel].forEach((sel, i) => {
-  const next = [bookSel, chapSel, verseSel][i];
-  sel.addEventListener('change', () => {
-    if (!next.disabled) setTimeout(() => next.focus(), 0);
-  });
-});
-
 // =====================================================================
-// DAILY CHALLENGE MODE
-// Deterministic verse selection based on UTC date string.
+// DAILY CHALLENGE & STREAKS
 // =====================================================================
 function hashDjb2(str) {
   let hash = 5381;
@@ -2011,106 +2606,94 @@ function hashDjb2(str) {
 }
 
 function getDailyVerseRef() {
-  const now = new Date();
-  const dateStr = now.toISOString().slice(0, 10); // YYYY-MM-DD UTC
+  const dateStr = new Date().toISOString().slice(0, 10);
   const seed = hashDjb2(dateStr);
-  // Use globalTotalVerses so the daily verse is the same for everyone
-  // regardless of their volume filter settings
-  const idx = seed % globalTotalVerses;
-  let verseOffset = idx;
-  for (const [bookName, data] of Object.entries(SCRIPTURE_DB)) {
-    let bookVerses = 0;
-    for (const count of data.verses) bookVerses += count;
-    if (verseOffset < bookVerses) {
-      let chapterIdx = 0;
-      while (verseOffset >= data.verses[chapterIdx]) {
-        verseOffset -= data.verses[chapterIdx];
-        chapterIdx++;
-      }
-      return { bookName, chapter: chapterIdx + 1, verse: verseOffset + 1 };
-    }
-    verseOffset -= bookVerses;
-  }
-  return null;
+  const idx = seed % MASTERY_VERSES.length;
+  const item = MASTERY_VERSES[idx];
+  return { bookName: item.bookName, chapter: item.chapter, verse: item.verse, fallbackText: item.text };
 }
 
 function getDailyStatusKey() {
   const dateStr = new Date().toISOString().slice(0, 10);
   return 'scriptureSleuthDaily_' + dateStr;
 }
-
 function isDailyComplete() {
   return localStorage.getItem(getDailyStatusKey()) === '1';
 }
-
 function markDailyComplete() {
   localStorage.setItem(getDailyStatusKey(), '1');
 }
-
 function getDailyScoreKey() {
   const dateStr = new Date().toISOString().slice(0, 10);
   return 'scriptureSleuthDailyScore_' + dateStr;
 }
-
 function getDailyScore() {
   const raw = localStorage.getItem(getDailyScoreKey());
   return raw ? JSON.parse(raw) : null;
 }
-
 function saveDailyScore(score, round, misses) {
   localStorage.setItem(getDailyScoreKey(), JSON.stringify({ score, round, misses, date: new Date().toISOString() }));
+}
+
+function updateDailyStreakOnComplete() {
+  const today = new Date().toISOString().slice(0, 10);
+  const lastPlay = localStorage.getItem('scriptureSleuthLastDailyDate');
+  let streak = parseInt(localStorage.getItem('scriptureSleuthDailyStreak') || '0');
+
+  if (lastPlay) {
+    const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+    if (lastPlay === yesterday) {
+      streak++;
+    } else if (lastPlay !== today) {
+      streak = 1;
+    }
+  } else {
+    streak = 1;
+  }
+  localStorage.setItem('scriptureSleuthLastDailyDate', today);
+  localStorage.setItem('scriptureSleuthDailyStreak', streak);
+  renderDailyUI();
 }
 
 function renderDailyUI() {
   const completed = isDailyComplete();
   const dailyScore = getDailyScore();
-  const existing = document.getElementById('dailyBadge');
-  if (!existing) return;
-  if (completed && dailyScore) {
-    existing.textContent = `Today · ${dailyScore.score} pts (${dailyScore.round}r)`;
-    existing.title = `Best today: ${dailyScore.score} points in ${dailyScore.round} rounds`;
-  } else if (completed) {
-    existing.textContent = 'Today · Completed';
-  } else {
-    existing.textContent = 'Today · Daily Challenge';
-  }
-  if (!dailyChallengeMode) {
-    existing.textContent = completed ? 'Daily ✓' : 'Daily';
-  }
-}
-
-function applyDailyModeUI() {
-  const toggle = document.getElementById('daily-mode-toggle');
   const badge = document.getElementById('dailyBadge');
-  if (!toggle || !badge) return;
-  toggle.checked = dailyChallengeMode;
-  badge.textContent = dailyChallengeMode ? 'Daily Challenge On' : 'Daily Challenge';
-  badge.className = dailyChallengeMode ? 'daily-badge active' : 'daily-badge';
-  document.querySelectorAll('.volume-filters input').forEach(cb => {
-    cb.disabled = dailyChallengeMode;
-  });
-  if (dailyChallengeMode) {
-    document.getElementById('volFilters').style.opacity = '0.55';
-    document.getElementById('volFilters').style.pointerEvents = 'none';
-  } else {
-    document.getElementById('volFilters').style.opacity = '';
-    document.getElementById('volFilters').style.pointerEvents = '';
+  const streakBadge = document.getElementById('dailyStreakBadge');
+  const streak = parseInt(localStorage.getItem('scriptureSleuthDailyStreak') || '0');
+
+  if (streakBadge) {
+    streakBadge.textContent = `🔥 ${streak}-Day Streak`;
+  }
+
+  if (badge) {
+    if (dailyChallengeMode) {
+      if (completed && dailyScore) {
+        badge.textContent = `Today ✓ (${dailyScore.score} pts)`;
+      } else {
+        badge.textContent = 'Daily Challenge On';
+      }
+    } else {
+      badge.textContent = completed ? 'Daily ✓' : 'Daily Challenge';
+    }
   }
 }
 
 let dailyChallengeMode = false;
 let dailyCountdownInterval = null;
 
-function loadDailyChallengeState() {
-  const stored = localStorage.getItem('scriptureSleuthDailyMode');
-  dailyChallengeMode = stored === '1';
-  applyDailyModeUI();
-  renderDailyUI();
+function applyDailyModeUI() {
+  const toggle = document.getElementById('daily-mode-toggle');
+  const badge = document.getElementById('dailyBadge');
+  if (!toggle || !badge) return;
+  toggle.checked = dailyChallengeMode;
+  badge.className = dailyChallengeMode ? 'daily-badge active' : 'daily-badge';
+  
+  document.querySelectorAll('#volFilters input').forEach(cb => { cb.disabled = dailyChallengeMode; });
+  document.getElementById('volFilters').style.opacity = dailyChallengeMode ? '0.5' : '';
+  document.getElementById('volFilters').style.pointerEvents = dailyChallengeMode ? 'none' : '';
 }
 
-// =====================================================================
-// DAILY COMPLETED UI
-// =====================================================================
 const dailyCompleteCard    = document.getElementById('dailyCompleteCard');
 const dailyCompleteScore   = document.getElementById('dailyCompleteScore');
 const dailyCompleteGuesses = document.getElementById('dailyCompleteGuesses');
@@ -2123,21 +2706,18 @@ const dailyCountdownEl     = document.getElementById('dailyCountdown');
 const dailyPlayArcadeBtn   = document.getElementById('dailyPlayArcadeBtn');
 
 function showDailyCompletedUI() {
-  // Hide game elements
-  document.querySelector('.stats-bar').style.display = 'none';
-  document.querySelector('.dropdowns').style.display = 'none';
-  document.querySelector('.btn-row').style.display = 'none';
+  document.getElementById('mainStatsBar').style.display = 'none';
+  document.getElementById('dropdownsSection').style.display = 'none';
+  document.getElementById('btnRowSection').style.display = 'none';
   document.getElementById('historySection').style.display = 'none';
   verseCard.style.display = 'none';
   answerReveal.style.display = 'none';
   feedbackBar.style.display = 'none';
   countdownWrapper.style.display = 'none';
-  distMeter.style.display = 'none';
-  meterLabel.style.display = 'none';
+  proximityContainer.style.display = 'none';
   streakBanner.style.display = 'none';
   roundLabel.style.display = 'none';
 
-  // Populate daily complete card
   const dailyScore = getDailyScore();
   const ref = state.currentRef;
   if (dailyScore) {
@@ -2154,14 +2734,9 @@ function showDailyCompletedUI() {
     dailyCompleteScripture.textContent = verseText.textContent || '';
   }
 
-  // Build emoji grid
-  const emojiMap = { perfect: '\uD83D\uDFE9', good: '\uD83D\uDFE8', miss: '\uD83D\uDFE5', skip: '\u2B1C' };
-  dailyShareGrid.textContent = state.shareEmojis.map(e => emojiMap[e] || '\u2B1C').join('');
-
-  // Show card
+  const emojiMap = { perfect: '🟩', good: '🟨', miss: '🟥', skip: '⬜' };
+  dailyShareGrid.textContent = state.shareEmojis.map(e => emojiMap[e] || '⬜').join('');
   dailyCompleteCard.style.display = 'flex';
-
-  // Start countdown to next daily challenge (midnight UTC)
   startDailyCountdown();
 }
 
@@ -2171,25 +2746,19 @@ function hideDailyCompletedUI() {
     clearInterval(dailyCountdownInterval);
     dailyCountdownInterval = null;
   }
-
-  // Restore game elements
-  document.querySelector('.stats-bar').style.display = '';
-  document.querySelector('.dropdowns').style.display = '';
-  document.querySelector('.btn-row').style.display = '';
+  document.getElementById('mainStatsBar').style.display = '';
+  document.getElementById('dropdownsSection').style.display = '';
+  document.getElementById('btnRowSection').style.display = '';
   document.getElementById('historySection').style.display = '';
   verseCard.style.display = '';
   answerReveal.style.display = '';
   feedbackBar.style.display = '';
   countdownWrapper.style.display = '';
-  distMeter.style.display = '';
-  meterLabel.style.display = '';
-  streakBanner.style.display = '';
   roundLabel.style.display = '';
 }
 
 function startDailyCountdown() {
   if (dailyCountdownInterval) clearInterval(dailyCountdownInterval);
-
   function updateCountdown() {
     const now = new Date();
     const tomorrow = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1));
@@ -2204,28 +2773,23 @@ function startDailyCountdown() {
     const s = String(Math.floor((diff % 60000) / 1000)).padStart(2, '0');
     dailyCountdownEl.textContent = `${h}:${m}:${s}`;
   }
-
   updateCountdown();
   dailyCountdownInterval = setInterval(updateCountdown, 1000);
 }
 
-function buildDailyShareText() {
-  const dateStr = new Date().toISOString().slice(0, 10);
-  const emojiMap = { perfect: '\uD83D\uDFE9', good: '\uD83D\uDFE8', miss: '\uD83D\uDFE5', skip: '\u2B1C' };
-  const grid = state.shareEmojis.map(e => emojiMap[e] || '\u2B1C').join('');
-  return `Scripture Sleuth \u2721 Daily Challenge\n${dateStr}\nScore: ${state.score} | Guesses: ${state.guesses}/3\n${grid}\n`;
-}
-
 dailyShareBtn.addEventListener('click', async () => {
-  const text = buildDailyShareText();
+  const dateStr = new Date().toISOString().slice(0, 10);
+  const emojiMap = { perfect: '🟩', good: '🟨', miss: '🟥', skip: '⬜' };
+  const grid = state.shareEmojis.map(e => emojiMap[e] || '⬜').join('');
+  const text = `Scripture Sleuth ✡ Daily Challenge\n${dateStr}\nScore: ${state.score} | Guesses: ${state.guesses}/3\n${grid}\n`;
   try {
     await navigator.clipboard.writeText(text);
-    dailyShareCopiedMsg.textContent = '\u2713 Copied to clipboard!';
+    dailyShareCopiedMsg.textContent = '✓ Copied to clipboard!';
   } catch(e) {
     const ta = document.createElement('textarea');
     ta.value = text; document.body.appendChild(ta); ta.select();
     document.execCommand('copy'); document.body.removeChild(ta);
-    dailyShareCopiedMsg.textContent = '\u2713 Copied!';
+    dailyShareCopiedMsg.textContent = '✓ Copied!';
   }
   setTimeout(() => { dailyShareCopiedMsg.textContent = ''; }, 2500);
 });
@@ -2239,9 +2803,6 @@ dailyPlayArcadeBtn.addEventListener('click', () => {
   startGame();
 });
 
-// =====================================================================
-// DAILY CHALLENGE TOGGLE HANDLER
-// =====================================================================
 const dailyToggle = document.getElementById('daily-mode-toggle');
 if (dailyToggle) {
   dailyToggle.addEventListener('change', () => {
@@ -2251,7 +2812,6 @@ if (dailyToggle) {
     renderDailyUI();
 
     if (dailyChallengeMode && isDailyComplete()) {
-      // Already completed today — show completed card
       showDailyCompletedUI();
     } else {
       hideDailyCompletedUI();
@@ -2260,47 +2820,33 @@ if (dailyToggle) {
   });
 }
 
-// Initials Input filtering & event listeners
+// Initials input handler
 const initialsInput = document.getElementById('initialsInput');
 if (initialsInput) {
   initialsInput.addEventListener('input', function() {
     this.value = this.value.toUpperCase().replace(/[^A-Z]/g, '');
   });
   initialsInput.addEventListener('keydown', function(e) {
-    if (e.key === 'Enter') {
-      submitScriptureHighScore();
-    }
+    if (e.key === 'Enter') submitScriptureHighScore();
   });
 }
-
 const submitScoreBtn = document.getElementById('submitScoreBtn');
 if (submitScoreBtn) {
   submitScoreBtn.addEventListener('click', submitScriptureHighScore);
 }
 
-// Interactive Best score display
-const bestParent = document.getElementById('bestDisplay').parentElement;
-if (bestParent) {
-  bestParent.style.cursor = 'pointer';
-  bestParent.title = 'View Global Leaderboard';
-  bestParent.addEventListener('click', () => {
-    showLeaderboardOverlay(false);
-  });
-}
-
 // =====================================================================
-// STARTUP — CHECK DAILY STATE & INITIALIZE
+// INITIALIZATION
 // =====================================================================
-loadDailyChallengeState();
+const storedDaily = localStorage.getItem('scriptureSleuthDailyMode');
+dailyChallengeMode = storedDaily === '1';
+applyDailyModeUI();
+renderDailyUI();
 
-if (dailyChallengeMode) {
-  if (isDailyComplete()) {
-    showDailyCompletedUI();
-  } else {
-    loadRound();
-  }
+if (dailyChallengeMode && isDailyComplete()) {
+  showDailyCompletedUI();
 } else {
-  maintainQueue(); // Start prefetching immediately on page load
+  maintainQueue();
   loadRound();
 }
 </script>
