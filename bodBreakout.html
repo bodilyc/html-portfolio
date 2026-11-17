@@ -499,7 +499,7 @@
                         <li>You start with <span class="highlight">3 lives</span>. Earn +1 life every 10,000 points!</li>
                         <li>Levels are <span class="highlight">unlimited</span>. How far can you go?</li>
                     </ul>
-                    <p style="margin-top: 20px; font-size: 0.95rem; color: #ccc; text-align: center;">Press SPACE to launch ball and bullets. Use Arrows or mouse to move.</p>
+                    <p style="margin-top: 20px; font-size: 0.95rem; color: #ccc; text-align: center;">Press SPACE or CLICK to launch and fire. Use Arrows / A / D or mouse to move.</p>
                 </div>
                 
                 <div class="start-high-scores">
@@ -674,6 +674,7 @@
             immortalActive: false,
             immortalTimer: 0,
             isBossLevel: false,
+            winDelayTimer: 0,
             soundMuted: localStorage.getItem('breakout_muted') === 'true'
         };
 
@@ -1346,10 +1347,12 @@
                     for (let c = 0; c < brickColumns; c++) {
                         // Start sparse (10%) and scale up slowly
                         const moveChance = 0.10 + Math.min(0.15, (GameState.level - 4) * 0.02);
-                        if (bricks[r][c].visible && Math.random() < moveChance) {
+                        const leftFree = (c === 0) || !bricks[r][c-1] || !bricks[r][c-1].visible;
+                        const rightFree = (c === brickColumns - 1) || !bricks[r][c+1] || !bricks[r][c+1].visible;
+                        if (bricks[r][c].visible && (leftFree || rightFree) && Math.random() < moveChance) {
                             const driftSpeed = 0.3 + Math.random() * 0.5;
                             bricks[r][c].speed = driftSpeed;
-                            bricks[r][c].dx = (Math.random() > 0.5 ? 1 : -1) * driftSpeed;
+                            bricks[r][c].dx = (leftFree && !rightFree ? -1 : (rightFree && !leftFree ? 1 : (Math.random() > 0.5 ? 1 : -1))) * driftSpeed;
                         }
                     }
                 }
@@ -1502,6 +1505,7 @@
                 livesElement.classList.remove('extra-life-anim');
                 void livesElement.offsetWidth; // trigger reflow
                 livesElement.classList.add('extra-life-anim');
+                playSound('extraLife');
             }
             
             levelElement.textContent = GameState.level;
@@ -1538,6 +1542,7 @@
             floatingScores = [];
             muzzleFlashes = [];
             freezeFrameTimer = 0;
+            GameState.winDelayTimer = 0;
             GameState.shieldActive = false;
             GameState.isBossLevel = false;
             boss = null;
@@ -2093,7 +2098,20 @@
                     const dy = rock.y - ball.y;
                     const dist = Math.sqrt(dx * dx + dy * dy);
                     
-                    if (dist < rock.radius && dist > rock.coreRadius) {
+                    if (dist <= rock.coreRadius + ball.radius) {
+                        // Solid Bouncy Asteroid Core Pinball Collision
+                        const normalX = (ball.x - rock.x) / (dist || 1);
+                        const normalY = (ball.y - rock.y) / (dist || 1);
+                        const dot = ball.dx * normalX + ball.dy * normalY;
+                        if (dot < 0) {
+                            ball.dx -= 2 * dot * normalX;
+                            ball.dy -= 2 * dot * normalY;
+                            ball.x = rock.x + normalX * (rock.coreRadius + ball.radius + 1);
+                            ball.y = rock.y + normalY * (rock.coreRadius + ball.radius + 1);
+                            createExplosion(ball.x, ball.y, rock.type === 'blackhole' ? '#ba55d3' : '#00fa9a', 10);
+                            playSound('wallBounce');
+                        }
+                    } else if (dist < rock.radius && dist > rock.coreRadius) {
                         // Track entrapment time for this ball inside this rock
                         if (!ball.gravityEntrapTime) ball.gravityEntrapTime = {};
                         ball.gravityEntrapTime[rockIdx] = (ball.gravityEntrapTime[rockIdx] || 0) + FIXED_TIME_STEP * timeScale;
@@ -2198,6 +2216,7 @@
                         spaceshipHitCount++;
                         createExplosion(spaceship.x + spaceship.width / 2, spaceship.y + spaceship.height / 2, '#00ffcc', 35);
                         spawnFloatingScore(spaceship.x + spaceship.width / 2, spaceship.y, `+${points}!`, '#00ffff', 20);
+                        playSound('powerUp');
                         updateUI();
                     }
                 }
@@ -2229,9 +2248,9 @@
                     playSound('shield');
                 }
 
-                // Bottom wall - remove ball (or bounce if immortal)
+                // Bottom wall - remove ball (or bounce if immortal / win delay)
                 if (ball.y + ball.radius > canvas.height) {
-                    if (GameState.immortalActive) {
+                    if (GameState.immortalActive || GameState.winDelayTimer > 0) {
                         ball.dy = -Math.abs(ball.dy);
                         ball.y = canvas.height - ball.radius;
                         playSound('shield');
@@ -2253,22 +2272,36 @@
                 // Paddle collision
                 if (
                     !inGap &&
-                    ball.y + ball.radius > paddle.y &&
-                    ball.x > paddle.x &&
-                    ball.x < paddle.x + paddle.width
+                    ball.dy > 0 &&
+                    ball.y + ball.radius >= paddle.y &&
+                    ball.y - ball.radius <= paddle.y + paddle.height &&
+                    ball.x + ball.radius >= paddle.x &&
+                    ball.x - ball.radius <= paddle.x + paddle.width
                 ) {
+                    // Clamp position to paddle surface
+                    ball.y = paddle.y - ball.radius;
+
                     // Calculate bounce angle FIRST for Sticky Ball storage
                     let hitPosition = (ball.x - (paddle.x + paddle.width / 2)) / (paddle.width / 2);
+                    hitPosition = Math.max(-0.95, Math.min(0.95, hitPosition));
 
-                    // Clamp hitPosition to avoid excessive angles
-                    if (hitPosition > 0.95) hitPosition = 0.95;
-                    if (hitPosition < -0.95) hitPosition = -0.95;               
-           
                     const maxAngle = Math.PI / 3; 
-                    const angle = hitPosition * maxAngle;
+                    // Paddle English / slicing momentum transfer:
+                    const paddleEnglish = (paddle.dx / 16) * (Math.PI / 10);
+                    let angle = Math.max(-maxAngle, Math.min(maxAngle, hitPosition * maxAngle + paddleEnglish));
+                    
+                    // Prevent dead-vertical lock
+                    if (Math.abs(angle) < 0.05) {
+                        angle = (angle >= 0 ? 0.08 : -0.08);
+                    }
                     
                     const newDx = ball.speed * Math.sin(angle);
                     const newDy = -ball.speed * Math.cos(angle);
+
+                    // Extend combo timer on paddle return so rallies can continue!
+                    if (GameState.comboCount > 0) {
+                        GameState.comboTimer = 2200;
+                    }
 
                     // Handle Sticky Ball
                     if (ball.sticky) {
@@ -2370,7 +2403,7 @@
                                     
                                     if (GameState.activeBricksCount <= 0) {
                                         freezeFrameTimer = 140; // Dramatic hit freeze
-                                        levelComplete();
+                                        triggerLevelWinSequence(false);
                                         return;
                                     }
                                 } else {
@@ -2462,7 +2495,7 @@
                                 playSound('explosion');
                                 triggerScreenShake(12);
                                 updateUI();
-                                levelComplete();
+                                triggerLevelWinSequence(true);
                                 return;
                             }
                         } else {
@@ -2749,6 +2782,8 @@
                             spawnFloatingScore(item.x, item.y, '+50', '#ff9900', 16);
                             updateUI();
                             createExplosion(item.x, item.y, '#FF4500', 25); // Orange/Red explosion
+                            playSound('explosion');
+                            triggerScreenShake(2);
                             break;
                         }
                     }
@@ -2811,6 +2846,7 @@
                         updateUI();
                         // Visual fanfare
                         createExplosion(paddle.x + paddle.width/2, paddle.y, '#00CED1');
+                        playSound('extraLife');
                     } else if (item.type === 'star') {
                         // Star — grant immortality
                         activatePowerUp('star');
@@ -2823,11 +2859,13 @@
                         createExplosion(paddle.x + paddle.width/2, paddle.y, 'white');
                         playSound('powerUp');
                     }
-                    GameState.score += 25;
-                    spawnFloatingScore(paddle.x + paddle.width / 2, paddle.y - 12, '+25', '#00ffcc', 14);
-                    updateUI();
+                    if (item.type !== 'bomb' && item.type !== 'brickBullet') {
+                        GameState.score += 25;
+                        spawnFloatingScore(paddle.x + paddle.width / 2, paddle.y - 12, '+25', '#00ffcc', 14);
+                        updateUI();
+                    }
                     item.active = false;
-                    return; 
+                    continue; 
                 }
             }
             fallingItems = fallingItems.filter(item => item.active);
@@ -2909,18 +2947,21 @@
         let lightningBolts = [];
 
         function fireLightningBolt(ball) {
-            // Collect all visible bricks
             let targets = [];
-            for (let r = 0; r < brickRows; r++) {
-                for (let c = 0; c < brickColumns; c++) {
-                    if (bricks[r][c].visible) {
-                        targets.push(bricks[r][c]);
+            if (GameState.isBossLevel && boss && boss.hp > 0) {
+                targets.push(boss);
+            } else {
+                for (let r = 0; r < brickRows; r++) {
+                    for (let c = 0; c < brickColumns; c++) {
+                        if (bricks[r][c].visible) {
+                            targets.push(bricks[r][c]);
+                        }
                     }
                 }
             }
             if (targets.length === 0) return;
 
-            // Pick a random target brick
+            // Pick a random target
             const target = targets[Math.floor(Math.random() * targets.length)];
             const tx = target.x + target.width / 2;
             const ty = target.y + target.height / 2;
@@ -2938,20 +2979,43 @@
             }
             lightningBolts.push({ segs, alpha: 1.0, timer: 180 }); // ~3 frames visible
 
-            // Damage the brick
-            target.hits--;
-            if (target.hits <= 0) {
-                target.visible = false;
-                if (GameState.activeBricksCount > 0) GameState.activeBricksCount--;
-                registerBrickHit(target.x + target.width / 2, target.y + target.height / 2, target.r);
-                if (target.powerUp) spawnFallingItem(target.x + target.width / 2, target.y + target.height / 2, target.powerUp);
-                createExplosion(tx, ty, '#00FFFF');
+            if (target === boss) {
+                boss.hp--;
+                GameState.score += 20;
+                createExplosion(tx, ty, '#00FFFF', 15);
+                spawnFloatingScore(tx, ty - 5, '+20', '#00ffff', 14);
+                playSound('bossHit');
                 updateUI();
-                if (GameState.activeBricksCount <= 0 && !GameState.isBossLevel) {
-                    levelComplete();
+                if (boss.hp <= 0) {
+                    GameState.score += 500;
+                    createExplosion(boss.x + boss.width / 2, boss.y + boss.height / 2, '#ff0044', 50);
+                    createExplosion(boss.x + boss.width / 2, boss.y + boss.height / 2, '#ffd700', 40);
+                    spawnFloatingScore(boss.x + boss.width / 2, boss.y - 15, '+500 BOSS DESTROYED!', '#ff0055', 22);
+                    freezeFrameTimer = 220;
+                    const bossRewards = ['star', 'rain', 'shield', 'multiball'];
+                    const reward = bossRewards[Math.floor(Math.random() * bossRewards.length)];
+                    spawnFallingItem(boss.x + boss.width/2, boss.y + boss.height/2, reward);
+                    playSound('explosion');
+                    triggerScreenShake(12);
+                    updateUI();
+                    triggerLevelWinSequence(true);
                 }
             } else {
-                createExplosion(tx, ty, '#88FFFF');
+                // Damage the brick
+                target.hits--;
+                if (target.hits <= 0) {
+                    target.visible = false;
+                    if (GameState.activeBricksCount > 0) GameState.activeBricksCount--;
+                    registerBrickHit(target.x + target.width / 2, target.y + target.height / 2, target.r);
+                    if (target.powerUp) spawnFallingItem(target.x + target.width / 2, target.y + target.height / 2, target.powerUp);
+                    createExplosion(tx, ty, '#00FFFF');
+                    updateUI();
+                    if (GameState.activeBricksCount <= 0 && !GameState.isBossLevel) {
+                        triggerLevelWinSequence(false);
+                    }
+                } else {
+                    createExplosion(tx, ty, '#88FFFF');
+                }
             }
             playSound('lightning');
         }
@@ -3004,10 +3068,19 @@
             return true;
         }
         
+        // Level victory sequence (delay showing win screen to celebrate and catch boss drops)
+        function triggerLevelWinSequence(isBoss = false) {
+            if (GameState.isTransitioningLevel || GameState.winDelayTimer > 0) return;
+            playSound('levelWin');
+            // Give the player time to collect boss drops or falling items before the modal halts play
+            GameState.winDelayTimer = isBoss ? 2400 : (fallingItems.length > 0 ? 1600 : 800);
+        }
+
         // Level complete
         function levelComplete() {
             if (GameState.isTransitioningLevel) return;
             GameState.gameRunning = false;
+            GameState.winDelayTimer = 0;
             completedLevelElement.textContent = GameState.level;
             gameWinScreen.style.display = 'block';
         }
@@ -3015,6 +3088,7 @@
         // Game over
         function handleGameOver() {
             GameState.gameRunning = false;
+            playSound('gameOver');
             
             // Check for high GameState.score
             if (checkHighScore(GameState.score)) {
@@ -3030,6 +3104,7 @@
         }
 
         function checkHighScore(newScore) {
+            if (newScore <= 0) return false;
             const isLocalHigh = myScores.length < 10 || newScore > myScores[myScores.length - 1].score;
             const isGlobalHigh = !globalScores || globalScores.length < 10 || newScore > globalScores[globalScores.length - 1].score;
             return isLocalHigh || isGlobalHigh;
@@ -3160,6 +3235,8 @@
             if (GameState.isTransitioningLevel) return;
             GameState.isTransitioningLevel = true;
             gameWinScreen.style.display = 'none';
+            freezeFrameTimer = 0;
+            GameState.winDelayTimer = 0;
 
             GameState.level++;
             // Increase ball speed logic: cap at 9 (scaled slower)
@@ -3168,6 +3245,7 @@
             }
             
             resetPowerUps(); 
+            resetBalls();
             
             // Pick a new theme for this level
             pickTheme();
@@ -3570,11 +3648,12 @@
             const now = audioCtx.currentTime;
 
             // Throttle rapidly repeating sounds
-            if (lastSoundTime[type] && now - lastSoundTime[type] < 0.05) {
+            if (lastSoundTime[type] && now - lastSoundTime[type] < 0.04) {
                 return;
             }
             lastSoundTime[type] = now;
 
+            const themeMult = (currentTheme && currentTheme.pitchMult) ? currentTheme.pitchMult : 1.0;
             const osc = audioCtx.createOscillator();
             const gain = audioCtx.createGain();
             // Apply theme oscillator type as the default; individual cases may still override
@@ -3584,92 +3663,127 @@
             switch(type) {
                 case 'laser':
                     osc.type = 'sawtooth';
-                    osc.frequency.setValueAtTime(880, now);
-                    osc.frequency.exponentialRampToValueAtTime(180, now + 0.08);
+                    osc.frequency.setValueAtTime(880 * themeMult, now);
+                    osc.frequency.exponentialRampToValueAtTime(180 * themeMult, now + 0.08);
                     gain.gain.setValueAtTime(0.14, now);
                     gain.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
                     osc.start(now); osc.stop(now + 0.08); break;
                 case 'bossWarning':
                     osc.type = 'sawtooth';
-                    osc.frequency.setValueAtTime(160, now);
-                    osc.frequency.setValueAtTime(220, now + 0.15);
-                    osc.frequency.setValueAtTime(160, now + 0.3);
+                    osc.frequency.setValueAtTime(160 * themeMult, now);
+                    osc.frequency.setValueAtTime(220 * themeMult, now + 0.15);
+                    osc.frequency.setValueAtTime(160 * themeMult, now + 0.3);
                     gain.gain.setValueAtTime(0.2, now);
                     gain.gain.exponentialRampToValueAtTime(0.01, now + 0.45);
                     osc.start(now); osc.stop(now + 0.45); break;
                 case 'paddleHit':
-                    osc.frequency.setValueAtTime(300, now);
-                    osc.frequency.exponentialRampToValueAtTime(200, now + 0.1);
+                    osc.frequency.setValueAtTime(300 * themeMult, now);
+                    osc.frequency.exponentialRampToValueAtTime(200 * themeMult, now + 0.1);
                     gain.gain.setValueAtTime(0.15, now);
                     gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
                     osc.start(now); osc.stop(now + 0.1); break;
-                case 'brickBreak':
-                    osc.frequency.setValueAtTime(600, now);
-                    osc.frequency.exponentialRampToValueAtTime(800, now + 0.08);
-                    gain.gain.setValueAtTime(0.12, now);
+                case 'brickBreak': {
+                    // Musical ascending pentatonic combo scale
+                    const scaleNotes = [261.6, 293.7, 329.6, 392.0, 440.0, 523.3, 587.3, 659.3, 784.0, 880.0, 1046.5];
+                    const comboIdx = Math.min(scaleNotes.length - 1, Math.max(0, (GameState.comboCount || 1) - 1));
+                    const baseFreq = scaleNotes[comboIdx] * themeMult;
+                    osc.frequency.setValueAtTime(baseFreq, now);
+                    osc.frequency.exponentialRampToValueAtTime(baseFreq * 1.3, now + 0.08);
+                    gain.gain.setValueAtTime(0.13, now);
                     gain.gain.exponentialRampToValueAtTime(0.01, now + 0.08);
-                    osc.start(now); osc.stop(now + 0.08); break;
+                    osc.start(now); osc.stop(now + 0.08);
+                    break;
+                }
                 case 'wallBounce':
                     osc.type = 'square';
-                    osc.frequency.setValueAtTime(150, now);
+                    osc.frequency.setValueAtTime(150 * themeMult, now);
                     gain.gain.setValueAtTime(0.08, now);
                     gain.gain.exponentialRampToValueAtTime(0.01, now + 0.05);
                     osc.start(now); osc.stop(now + 0.05); break;
                 case 'powerUp':
-                    osc.frequency.setValueAtTime(400, now);
-                    osc.frequency.exponentialRampToValueAtTime(800, now + 0.15);
-                    osc.frequency.exponentialRampToValueAtTime(1200, now + 0.25);
+                    osc.frequency.setValueAtTime(400 * themeMult, now);
+                    osc.frequency.exponentialRampToValueAtTime(800 * themeMult, now + 0.15);
+                    osc.frequency.exponentialRampToValueAtTime(1200 * themeMult, now + 0.25);
                     gain.gain.setValueAtTime(0.15, now);
                     gain.gain.exponentialRampToValueAtTime(0.01, now + 0.25);
                     osc.start(now); osc.stop(now + 0.25); break;
+                case 'extraLife':
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(330 * themeMult, now);
+                    osc.frequency.setValueAtTime(392 * themeMult, now + 0.08);
+                    osc.frequency.setValueAtTime(659 * themeMult, now + 0.16);
+                    osc.frequency.setValueAtTime(523 * themeMult, now + 0.24);
+                    osc.frequency.setValueAtTime(587 * themeMult, now + 0.32);
+                    osc.frequency.setValueAtTime(784 * themeMult, now + 0.40);
+                    gain.gain.setValueAtTime(0.18, now);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.55);
+                    osc.start(now); osc.stop(now + 0.55); break;
+                case 'levelWin':
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(523.25 * themeMult, now); // C5
+                    osc.frequency.setValueAtTime(659.25 * themeMult, now + 0.12); // E5
+                    osc.frequency.setValueAtTime(783.99 * themeMult, now + 0.24); // G5
+                    osc.frequency.setValueAtTime(1046.5 * themeMult, now + 0.36); // C6
+                    gain.gain.setValueAtTime(0.2, now);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.7);
+                    osc.start(now); osc.stop(now + 0.7); break;
+                case 'gameOver':
+                    osc.type = 'sawtooth';
+                    osc.frequency.setValueAtTime(392 * themeMult, now); // G4
+                    osc.frequency.setValueAtTime(311.13 * themeMult, now + 0.18); // Eb4
+                    osc.frequency.setValueAtTime(261.63 * themeMult, now + 0.36); // C4
+                    osc.frequency.setValueAtTime(196 * themeMult, now + 0.54); // G3
+                    gain.gain.setValueAtTime(0.2, now);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.85);
+                    osc.start(now); osc.stop(now + 0.85); break;
                 case 'explosion':
                     osc.type = 'sawtooth';
-                    osc.frequency.setValueAtTime(200, now);
-                    osc.frequency.exponentialRampToValueAtTime(50, now + 0.3);
+                    osc.frequency.setValueAtTime(200 * themeMult, now);
+                    osc.frequency.exponentialRampToValueAtTime(50 * themeMult, now + 0.3);
                     gain.gain.setValueAtTime(0.2, now);
                     gain.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
                     osc.start(now); osc.stop(now + 0.3); break;
                 case 'lifeLoss':
-                    osc.frequency.setValueAtTime(400, now);
-                    osc.frequency.exponentialRampToValueAtTime(100, now + 0.5);
+                    osc.frequency.setValueAtTime(400 * themeMult, now);
+                    osc.frequency.exponentialRampToValueAtTime(100 * themeMult, now + 0.5);
                     gain.gain.setValueAtTime(0.2, now);
                     gain.gain.exponentialRampToValueAtTime(0.01, now + 0.5);
                     osc.start(now); osc.stop(now + 0.5); break;
                 case 'combo':
                     osc.type = 'sine';
-                    osc.frequency.setValueAtTime(800, now);
-                    osc.frequency.setValueAtTime(1000, now + 0.08);
-                    osc.frequency.setValueAtTime(1200, now + 0.16);
+                    osc.frequency.setValueAtTime(800 * themeMult, now);
+                    osc.frequency.setValueAtTime(1000 * themeMult, now + 0.08);
+                    osc.frequency.setValueAtTime(1200 * themeMult, now + 0.16);
                     gain.gain.setValueAtTime(0.15, now);
                     gain.gain.exponentialRampToValueAtTime(0.01, now + 0.24);
                     osc.start(now); osc.stop(now + 0.24); break;
                 case 'portal':
                     osc.type = 'sine';
-                    osc.frequency.setValueAtTime(300, now);
-                    osc.frequency.exponentialRampToValueAtTime(1500, now + 0.2);
-                    osc.frequency.exponentialRampToValueAtTime(300, now + 0.4);
+                    osc.frequency.setValueAtTime(300 * themeMult, now);
+                    osc.frequency.exponentialRampToValueAtTime(1500 * themeMult, now + 0.2);
+                    osc.frequency.exponentialRampToValueAtTime(300 * themeMult, now + 0.4);
                     gain.gain.setValueAtTime(0.12, now);
                     gain.gain.exponentialRampToValueAtTime(0.01, now + 0.4);
                     osc.start(now); osc.stop(now + 0.4); break;
                 case 'shield':
                     osc.type = 'triangle';
-                    osc.frequency.setValueAtTime(500, now);
-                    osc.frequency.exponentialRampToValueAtTime(300, now + 0.2);
+                    osc.frequency.setValueAtTime(500 * themeMult, now);
+                    osc.frequency.exponentialRampToValueAtTime(300 * themeMult, now + 0.2);
                     gain.gain.setValueAtTime(0.15, now);
                     gain.gain.exponentialRampToValueAtTime(0.01, now + 0.2);
                     osc.start(now); osc.stop(now + 0.2); break;
                 case 'bossHit':
                     osc.type = 'square';
-                    osc.frequency.setValueAtTime(100, now);
-                    osc.frequency.exponentialRampToValueAtTime(200, now + 0.15);
+                    osc.frequency.setValueAtTime(100 * themeMult, now);
+                    osc.frequency.exponentialRampToValueAtTime(200 * themeMult, now + 0.15);
                     gain.gain.setValueAtTime(0.18, now);
                     gain.gain.exponentialRampToValueAtTime(0.01, now + 0.15);
                     osc.start(now); osc.stop(now + 0.15); break;
                 case 'lightning': {
                     // Sharp electric crackle: noise burst via sawtooth + fast decay
                     osc.type = 'sawtooth';
-                    osc.frequency.setValueAtTime(800 + Math.random() * 400, now);
-                    osc.frequency.exponentialRampToValueAtTime(200, now + 0.12);
+                    osc.frequency.setValueAtTime((800 + Math.random() * 400) * themeMult, now);
+                    osc.frequency.exponentialRampToValueAtTime(200 * themeMult, now + 0.12);
                     gain.gain.setValueAtTime(0.15, now);
                     gain.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
                     osc.start(now); osc.stop(now + 0.12); break;
@@ -3733,7 +3847,7 @@
 
         function registerBrickHit(brickX, brickY, row) {
             GameState.comboCount++;
-            GameState.comboTimer = 1500;
+            GameState.comboTimer = 2200;
             const rowPoints = 10 + Math.floor((1 - (row || 0) / Math.max(1, brickRows - 1)) * 20); // 30 down to 10 based on row
             const points = rowPoints * Math.max(1, GameState.comboCount);
             GameState.score += points;
@@ -3741,7 +3855,10 @@
                 comboTexts.push({ x: brickX, y: brickY, text: `x${GameState.comboCount}!`, alpha: 1 });
             }
             spawnFloatingScore(brickX, brickY, `+${points}`, GameState.comboCount >= 3 ? '#ffea00' : '#ffffff', GameState.comboCount >= 3 ? 18 : 14);
-            if (GameState.comboCount === 5 || GameState.comboCount === 10) playSound('combo');
+            if (GameState.comboCount === 5 || GameState.comboCount === 10) {
+                playSound('combo');
+                triggerScreenShake(3);
+            }
             playSound('brickBreak');
         }
 
@@ -3780,47 +3897,55 @@
 
         function moveBoss(timeScale) {
             if (!GameState.isBossLevel || !boss) return;
-            boss.x += boss.dx * timeScale;
+            const isEnraged = boss.hp <= boss.maxHp * 0.3;
+            const speedMultiplier = isEnraged ? 1.35 : 1.0;
+            boss.x += boss.dx * speedMultiplier * timeScale;
             if (boss.x <= 0) { boss.x = 0; boss.dx = Math.abs(boss.dx); }
             else if (boss.x + boss.width >= canvas.width) { boss.x = canvas.width - boss.width; boss.dx = -Math.abs(boss.dx); }
             boss.shootTimer -= FIXED_TIME_STEP * timeScale;
             if (boss.shootTimer <= 0) {
-                boss.shootTimer = Math.max(1000, 2500 - GameState.level * 50);
+                const baseCooldown = Math.max(1000, 2500 - GameState.level * 50);
+                boss.shootTimer = isEnraged ? baseCooldown * 0.75 : baseCooldown;
                 spawnFallingItem(boss.x + boss.width / 2, boss.y + boss.height, 'bomb');
+                if (isEnraged) {
+                    spawnFallingItem(boss.x + boss.width * 0.15, boss.y + boss.height, 'brickBullet');
+                    spawnFallingItem(boss.x + boss.width * 0.85, boss.y + boss.height, 'brickBullet');
+                }
             }
         }
 
         function drawBoss() {
             if (!GameState.isBossLevel || !boss) return;
             
+            const isEnraged = boss.hp <= boss.maxHp * 0.3;
             ctx.save();
-            boss.glowPhase = (boss.glowPhase || 0) + 0.05;
+            boss.glowPhase = (boss.glowPhase || 0) + (isEnraged ? 0.14 : 0.05);
             const pulse = 0.5 + 0.5 * Math.sin(boss.glowPhase);
 
             // Glowing boss shadow
-            ctx.shadowColor = '#ff0044';
-            ctx.shadowBlur = 12 + pulse * 6;
+            ctx.shadowColor = isEnraged ? '#ff0000' : '#ff0044';
+            ctx.shadowBlur = isEnraged ? 20 + pulse * 10 : 12 + pulse * 6;
 
             // Boss Body - Metallic Sci-Fi Gradient
             const bGrad = ctx.createLinearGradient(boss.x, boss.y, boss.x, boss.y + boss.height);
-            bGrad.addColorStop(0, '#ff3366');
-            bGrad.addColorStop(0.5, '#990022');
+            bGrad.addColorStop(0, isEnraged ? '#ff2200' : '#ff3366');
+            bGrad.addColorStop(0.5, isEnraged ? '#aa0000' : '#990022');
             bGrad.addColorStop(1, '#33000d');
             ctx.fillStyle = bGrad;
             roundedRectPath(ctx, boss.x, boss.y, boss.width, boss.height, 8);
             ctx.fill();
 
             // High-tech cyber border on boss
-            ctx.strokeStyle = `rgba(255, 255, 255, ${0.4 + 0.3 * pulse})`;
-            ctx.lineWidth = 2;
+            ctx.strokeStyle = isEnraged ? `rgba(255, 60, 60, ${0.7 + 0.3 * pulse})` : `rgba(255, 255, 255, ${0.4 + 0.3 * pulse})`;
+            ctx.lineWidth = isEnraged ? 3 : 2;
             ctx.stroke();
 
             // Glowing Core in Center
             ctx.beginPath();
-            ctx.arc(boss.x + boss.width / 2, boss.y + boss.height / 2, 10 + pulse * 3, 0, Math.PI * 2);
-            ctx.fillStyle = `rgba(255, 255, 0, ${0.7 + 0.3 * pulse})`;
-            ctx.shadowColor = '#ffff00';
-            ctx.shadowBlur = 15;
+            ctx.arc(boss.x + boss.width / 2, boss.y + boss.height / 2, (isEnraged ? 12 : 10) + pulse * 3, 0, Math.PI * 2);
+            ctx.fillStyle = isEnraged ? `rgba(255, 50, 0, ${0.8 + 0.2 * pulse})` : `rgba(255, 255, 0, ${0.7 + 0.3 * pulse})`;
+            ctx.shadowColor = isEnraged ? '#ff2200' : '#ffff00';
+            ctx.shadowBlur = isEnraged ? 22 : 15;
             ctx.fill();
 
             ctx.restore();
@@ -3828,12 +3953,13 @@
             // Boss Name Label above health bar
             ctx.save();
             ctx.font = 'bold 11px Arial';
-            ctx.fillStyle = '#ffcc00';
+            ctx.fillStyle = isEnraged ? '#ff3333' : '#ffcc00';
             ctx.textAlign = 'center';
             ctx.textBaseline = 'bottom';
-            ctx.shadowColor = '#ff6600';
+            ctx.shadowColor = isEnraged ? '#ff0000' : '#ff6600';
             ctx.shadowBlur = 8;
-            ctx.fillText(boss.name || 'BOSS', boss.x + boss.width / 2, boss.y - 18);
+            const bossTitle = isEnraged ? `⚠️ ${boss.name || 'BOSS'} [CRITICAL] ⚠️` : (boss.name || 'BOSS');
+            ctx.fillText(bossTitle, boss.x + boss.width / 2, boss.y - 18);
 
             // HP Bar background
             const barWidth = boss.width + 20;
@@ -3967,6 +4093,7 @@
                         spaceshipHitCount++;
                         createExplosion(spaceship.x + spaceship.width / 2, spaceship.y + spaceship.height / 2, '#00ffcc', 35);
                         spawnFloatingScore(spaceship.x + spaceship.width / 2, spaceship.y, `+${points}!`, '#00ffff', 20);
+                        playSound('powerUp');
                         updateUI();
                         b.active = false;
                         continue;
@@ -3980,7 +4107,9 @@
                 }
                 
                 // Brick collision
+                let bulletHitBrick = false;
                 for (let r = 0; r < brickRows; r++) {
+                    if (bulletHitBrick) break;
                     for (let c = 0; c < brickColumns; c++) {
                         const brick = bricks[r][c];
                         if (brick.visible) {
@@ -4003,21 +4132,24 @@
                                     
                                     updateUI();
                                     b.active = false;
+                                    bulletHitBrick = true;
                                     
                                     if (GameState.activeBricksCount === 1) {
                                         activateLastBlockMovement();
                                     }
                                     
-                                    if (GameState.activeBricksCount === 0) {
+                                    if (GameState.activeBricksCount <= 0) {
                                         freezeFrameTimer = 140;
-                                        levelComplete();
+                                        triggerLevelWinSequence(false);
                                         return;
                                     }
                                 } else {
                                     b.active = false;
+                                    bulletHitBrick = true;
                                     createExplosion(b.x, b.y, brick.color, 8);
                                     playSound('wallBounce');
                                 }
+                                break;
                             }
                         }
                     }
@@ -4040,10 +4172,13 @@
                             createExplosion(boss.x + boss.width / 2, boss.y + boss.height / 2, '#ffd700', 40);
                             spawnFloatingScore(boss.x + boss.width / 2, boss.y - 15, '+500 BOSS DESTROYED!', '#ff0055', 22);
                             freezeFrameTimer = 220;
+                            const bossRewards = ['star', 'rain', 'shield', 'multiball'];
+                            const reward = bossRewards[Math.floor(Math.random() * bossRewards.length)];
+                            spawnFallingItem(boss.x + boss.width/2, boss.y + boss.height/2, reward);
                             playSound('explosion');
                             triggerScreenShake(12);
                             updateUI();
-                            levelComplete();
+                            triggerLevelWinSequence(true);
                             return;
                         }
                     }
@@ -4090,7 +4225,7 @@
                             }
                         }
 
-                        // Prevent brick overlap with other moving bricks
+                        // Prevent brick overlap with other moving bricks without jitter
                         for (let r2 = 0; r2 < brickRows; r2++) {
                             for (let c2 = 0; c2 < brickColumns; c2++) {
                                 if (r2 === r && c2 === c) continue;
@@ -4100,9 +4235,13 @@
                                     brick.x + brick.width > other.x &&
                                     brick.y < other.y + other.height &&
                                     brick.y + brick.height > other.y) {
-                                    // Reverse direction on collision
-                                    brick.dx = -brick.dx;
-                                    brick.x += brick.dx * timeScale * 2; // Push out of overlap
+                                    if (brick.x < other.x && brick.dx > 0) {
+                                        brick.dx = -Math.abs(brick.dx);
+                                        brick.x = other.x - brick.width;
+                                    } else if (brick.x > other.x && brick.dx < 0) {
+                                        brick.dx = Math.abs(brick.dx);
+                                        brick.x = other.x + other.width;
+                                    }
                                 }
                             }
                         }
@@ -4160,6 +4299,14 @@
                     updateFloatingScores(1);
                     applyScreenShake();
                     moveParticles(1);
+                    // Win Delay countdown (lets player catch boss reward / celebration drops)
+                    if (GameState.winDelayTimer > 0) {
+                        GameState.winDelayTimer -= FIXED_TIME_STEP;
+                        if (GameState.winDelayTimer <= 0) {
+                            GameState.winDelayTimer = 0;
+                            levelComplete();
+                        }
+                    }
                     // Immortality countdown
                     if (GameState.immortalActive) {
                         GameState.immortalTimer -= FIXED_TIME_STEP;
@@ -4193,20 +4340,7 @@
             }
         });
 
-        // Event listeners
-        canvas.addEventListener('mousemove', (e) => {
-            const rect = canvas.getBoundingClientRect();
-            const scaleX = canvas.width / rect.width;
-            const relativeX = (e.clientX - rect.left) * scaleX;
-            if (relativeX > 0 && relativeX < canvas.width) {
-                paddle.x = relativeX - paddle.width / 2;
-                paddle.dx = 0; // Kill keyboard velocity so it doesn't fight mouse position
-                // Clamp paddle to canvas bounds
-                if (paddle.x < 0) paddle.x = 0;
-                else if (paddle.x + paddle.width > canvas.width) paddle.x = canvas.width - paddle.width;
-            }
-        });
-        
+        // Touch event listeners
         canvas.addEventListener('touchstart', (e) => {
             e.preventDefault();
             const rect = canvas.getBoundingClientRect();
@@ -4218,7 +4352,10 @@
                  if (paddle.x < 0) paddle.x = 0;
                  else if (paddle.x + paddle.width > canvas.width) paddle.x = canvas.width - paddle.width;
             }
-            launchBall();
+            const launched = launchBall();
+            if (!launched && GameState.canShoot) {
+                shoot();
+            }
         });
 
         canvas.addEventListener('touchmove', (e) => {
@@ -4235,16 +4372,26 @@
             }
         });
 
-        // Keyboard controls
+        // Keyboard controls (Arrow keys + WASD support)
         document.addEventListener('keydown', (e) => {
-            if (e.key === 'Right' || e.key === 'ArrowRight') {
+            if (e.key === 'Right' || e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') {
                 e.preventDefault(); // Prevent page scrolling
                 rightPressed = true;
-            } else if (e.key === 'Left' || e.key === 'ArrowLeft') {
+            } else if (e.key === 'Left' || e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') {
                 e.preventDefault(); // Prevent page scrolling
                 leftPressed = true;
             } else if (e.key === ' ' || e.key === 'Spacebar') {
                 e.preventDefault(); // Prevent scrolling or button clicking
+                if (gameWinScreen.style.display === 'block') {
+                    nextLevelBtn.click();
+                    return;
+                } else if (gameOverScreen.style.display === 'block') {
+                    restartBtn.click();
+                    return;
+                } else if (leaderboard.style.display === 'block') {
+                    closeLeaderboardBtn.click();
+                    return;
+                }
                 if (GameState.gamePaused) {
                     pauseBtn.click();
                     return;
@@ -4265,18 +4412,23 @@
         });
 
         document.addEventListener('keyup', (e) => {
-            if (e.key === 'Right' || e.key === 'ArrowRight') {
+            if (e.key === 'Right' || e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') {
                 e.preventDefault();
                 rightPressed = false;
-            } else if (e.key === 'Left' || e.key === 'ArrowLeft') {
+            } else if (e.key === 'Left' || e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') {
                 e.preventDefault();
                 leftPressed = false;
             }
         });
         
-        // Launch on click too
-        canvas.addEventListener('mousedown', () => {
-             launchBall();
+        // Launch or shoot on click too
+        canvas.addEventListener('mousedown', (e) => {
+            if (e.button === 0) {
+                const launched = launchBall();
+                if (!launched && GameState.canShoot) {
+                    shoot();
+                }
+            }
         });
         
         startBtn.addEventListener('click', function() {
