@@ -1842,9 +1842,11 @@ function animateConfetti() {
 }
 
 // =====================================================================
-// SPEED BONUS TIMER
+// SPEED BONUS TIMER (60 Seconds / 1 Minute)
 // =====================================================================
+const SPEED_TIMER_DURATION_MS = 60000; // 60 seconds (1 minute) for speed bonus
 let lastTickSecond = -1;
+
 function startSpeedTimer() {
   if (speedBonusInterval) clearInterval(speedBonusInterval);
   roundStartTime = Date.now();
@@ -1853,15 +1855,14 @@ function startSpeedTimer() {
   speedBarContainer.classList.remove('low-time');
   speedBarFill.style.width = '100%';
 
-  const DURATION_MS = 12000; // 12 seconds for max speed bonus
   speedBonusInterval = setInterval(() => {
     const elapsed = Date.now() - roundStartTime;
-    const remaining = Math.max(0, DURATION_MS - elapsed);
-    const pct = (remaining / DURATION_MS) * 100;
+    const remaining = Math.max(0, SPEED_TIMER_DURATION_MS - elapsed);
+    const pct = (remaining / SPEED_TIMER_DURATION_MS) * 100;
     speedBarFill.style.width = pct + '%';
 
-    // Audio & visual urgency when under 3.5 seconds
-    if (remaining <= 3500 && remaining > 0) {
+    // Audio & visual urgency when under 10 seconds remaining
+    if (remaining <= 10000 && remaining > 0) {
       speedBarContainer.classList.add('low-time');
       const sec = Math.ceil(remaining / 1000);
       if (sec !== lastTickSecond) {
@@ -1882,8 +1883,8 @@ function startSpeedTimer() {
 
 function calculateSpeedBonus() {
   const elapsed = Date.now() - roundStartTime;
-  if (elapsed < 12000) {
-    const factor = (12000 - elapsed) / 12000;
+  if (elapsed < SPEED_TIMER_DURATION_MS) {
+    const factor = (SPEED_TIMER_DURATION_MS - elapsed) / SPEED_TIMER_DURATION_MS;
     return Math.round(factor * 500); // Up to +500 bonus
   }
   return 0;
