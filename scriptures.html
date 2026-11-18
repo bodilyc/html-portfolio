@@ -802,6 +802,164 @@
     .stats-bar { padding: 10px 14px; }
     .stat-value { font-size: 1.35rem; }
   }
+
+  /* Quick Book Filter */
+  .dropdown-label-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 4px;
+  }
+  .book-search-input {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: 'Cinzel', serif;
+    font-size: 0.68rem;
+    padding: 2px 6px;
+    border-radius: 4px;
+    width: 95px;
+    outline: none;
+    transition: all 0.2s;
+    letter-spacing: 0.5px;
+  }
+  .book-search-input:focus {
+    border-color: var(--gold);
+    box-shadow: 0 0 8px rgba(201, 168, 76, 0.35);
+    width: 125px;
+  }
+  .book-search-input:disabled {
+    opacity: 0.3;
+    pointer-events: none;
+  }
+
+  /* Journal Buttons & Panel */
+  .journal-toggle-btn {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    color: var(--gold);
+    font-family: 'Cinzel', serif;
+    font-size: 0.75rem;
+    padding: 6px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    letter-spacing: 1px;
+  }
+  .journal-toggle-btn:hover {
+    border-color: var(--gold);
+    background: rgba(201,168,76,0.1);
+    color: var(--gold-light);
+  }
+  .journal-btn {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--gold);
+    font-family: 'Cinzel', serif;
+    font-size: 0.72rem;
+    padding: 3px 8px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s;
+    letter-spacing: 0.5px;
+  }
+  .journal-btn:hover, .journal-btn.saved {
+    background: rgba(201,168,76,0.2);
+    border-color: var(--gold);
+    color: var(--gold-light);
+  }
+  .journal-del-btn {
+    background: transparent;
+    border: none;
+    color: var(--red);
+    font-size: 0.9rem;
+    cursor: pointer;
+    padding: 2px 6px;
+    border-radius: 3px;
+    transition: background 0.2s;
+  }
+  .journal-del-btn:hover {
+    background: rgba(224,85,85,0.2);
+  }
+
+  /* Toast Notification */
+  .game-toast {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%) translateY(30px);
+    background: #241a0d;
+    border: 1px solid var(--gold);
+    color: var(--gold-light);
+    font-family: 'Cinzel', serif;
+    font-size: 0.85rem;
+    letter-spacing: 1px;
+    padding: 9px 18px;
+    border-radius: 8px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.6);
+    opacity: 0;
+    pointer-events: none;
+    transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    z-index: 999;
+  }
+  .game-toast.show {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+
+  /* Flame & Streak Animation */
+  @keyframes flamePulse {
+    0% { transform: scale(1); filter: drop-shadow(0 0 3px rgba(245, 158, 11, 0.6)); }
+    50% { transform: scale(1.04); filter: drop-shadow(0 0 12px rgba(239, 68, 68, 0.9)); }
+    100% { transform: scale(1); filter: drop-shadow(0 0 3px rgba(245, 158, 11, 0.6)); }
+  }
+  .streak-banner.streak-pulse {
+    animation: flamePulse 1.2s infinite ease-in-out;
+  }
+  .daily-streak-badge {
+    animation: flamePulse 2s infinite ease-in-out;
+  }
+  .speed-bar-container.low-time .speed-bar-fill {
+    background: linear-gradient(90deg, #f59e0b, #ef4444);
+    box-shadow: 0 0 12px rgba(239, 68, 68, 0.8);
+    animation: pulse 0.5s infinite alternate;
+  }
+
+  /* Volume Mastery Grid */
+  .volume-mastery-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+    gap: 8px;
+    margin-top: 8px;
+  }
+  .volume-mastery-card {
+    background: rgba(0,0,0,0.3);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 8px;
+    text-align: center;
+  }
+  .vol-m-title {
+    font-family: 'Cinzel', serif;
+    font-size: 0.68rem;
+    letter-spacing: 1px;
+    color: var(--text-dim);
+    margin-bottom: 2px;
+  }
+  .vol-m-pct {
+    font-family: 'Cinzel', serif;
+    font-size: 1.15rem;
+    font-weight: bold;
+    line-height: 1.1;
+  }
+  .vol-m-sub {
+    font-size: 0.75rem;
+    color: var(--text-dim);
+    margin-top: 2px;
+  }
 </style>
 </head>
 <body>
@@ -822,6 +980,12 @@
     <div class="recap-section" id="recapSection">
       <div class="recap-title">📖 Scriptures in this run:</div>
       <div id="recapList"></div>
+    </div>
+
+    <!-- Volume Mastery Section -->
+    <div class="volume-mastery-section" id="volumeMasterySection" style="display: none; margin: 12px 0 16px 0;">
+      <div style="font-family: 'Cinzel', serif; font-size: 0.85rem; color: var(--gold-light); letter-spacing: 1.5px; margin-bottom: 8px; text-transform: uppercase;">Volume Mastery Breakdown</div>
+      <div id="volumeMasteryGrid" class="volume-mastery-grid"></div>
     </div>
 
     <!-- High score form -->
@@ -855,6 +1019,19 @@
   </div>
 </div>
 
+<!-- Scripture Journal Modal Overlay -->
+<div class="overlay" id="journalOverlay">
+  <div class="overlay-card" style="max-width: 650px;">
+    <h2>⭐ Scripture Journal</h2>
+    <p style="color: var(--text-dim); margin-bottom: 14px; font-size: 0.95rem;">Verses you have bookmarked during your gameplay</p>
+    <div id="journalItemsList" style="max-height: 380px; overflow-y: auto; text-align: left; margin-bottom: 16px;"></div>
+    <div style="display: flex; justify-content: center; gap: 12px; flex-wrap: wrap;">
+      <button class="overlay-share-btn" id="exportJournalBtn">Copy All to Clipboard</button>
+      <button class="btn btn-secondary" id="closeJournalBtn">Close</button>
+    </div>
+  </div>
+</div>
+
 <!-- Confetti Canvas -->
 <canvas id="confettiCanvas"></canvas>
 
@@ -867,9 +1044,14 @@
       </label>
       <span class="daily-streak-badge" id="dailyStreakBadge">🔥 0-Day Streak</span>
     </div>
-    <button class="audio-toggle-btn" id="audioToggleBtn">
-      <span id="audioIcon">🔊</span> <span id="audioText">Sound On</span>
-    </button>
+    <div style="display: flex; gap: 8px; align-items: center;">
+      <button class="journal-toggle-btn" id="journalToggleBtn" title="View your saved scriptures">
+        <span>⭐</span> <span>Journal (<span id="journalCount">0</span>)</span>
+      </button>
+      <button class="audio-toggle-btn" id="audioToggleBtn">
+        <span id="audioIcon">🔊</span> <span id="audioText">Sound On</span>
+      </button>
+    </div>
   </div>
 
   <h1>&#x2721; Scripture Sleuth</h1>
@@ -1004,7 +1186,10 @@
         </select>
       </div>
       <div class="dropdown-group">
-        <label for="bookSelect">Book</label>
+        <div class="dropdown-label-row">
+          <label for="bookSelect">Book</label>
+          <input type="text" id="bookSearchInput" class="book-search-input" placeholder="🔍 Quick find..." autocomplete="off" disabled title="Type to filter books">
+        </div>
         <select id="bookSelect" disabled>
           <option value="">— Select Book —</option>
         </select>
@@ -1322,6 +1507,16 @@ const SFX = {
     playTone(587.33, 'sine', 0.2, 0.14, 0);
     playTone(880.00, 'sine', 0.3, 0.16, 0.1);
   },
+  sonar: (diff, sameVol) => {
+    if (!sameVol) {
+      playTone(190, 'triangle', 0.2, 0.10);
+      return;
+    }
+    const freq = Math.min(1150, Math.max(320, 1000 - diff * 12));
+    playTone(freq, 'sine', 0.16, 0.12, 0);
+    playTone(freq * 1.25, 'sine', 0.14, 0.09, 0.07);
+  },
+  tick: () => playTone(880, 'triangle', 0.03, 0.04),
   warm: () => playTone(520, 'sine', 0.2, 0.12),
   cold: () => playTone(220, 'triangle', 0.25, 0.12),
   miss: () => {
@@ -1331,6 +1526,11 @@ const SFX = {
   skip: () => playTone(240, 'triangle', 0.2, 0.10),
   newBest: () => {
     [440, 554, 659, 880].forEach((f, i) => playTone(f, 'triangle', 0.4, 0.18, i * 0.1));
+  },
+  streakMilestone: () => {
+    [523.25, 659.25, 783.99, 1046.50, 1318.51].forEach((f, i) => {
+      playTone(f, 'triangle', 0.3, 0.18, i * 0.08);
+    });
   }
 };
 
@@ -1371,6 +1571,8 @@ let state = {
   loading: false,
   streak: 0,
   cluesUsedThisRound: 0,
+  eliminatedBooks: [],
+  volumeStats: { ot: { total: 0, good: 0 }, nt: { total: 0, good: 0 }, bofm: { total: 0, good: 0 }, dc: { total: 0, good: 0 }, pgp: { total: 0, good: 0 } },
   roundHistory: [],
   shareEmojis: [],
   sessionVerses: [], // For end-of-run study recap
@@ -1642,10 +1844,13 @@ function animateConfetti() {
 // =====================================================================
 // SPEED BONUS TIMER
 // =====================================================================
+let lastTickSecond = -1;
 function startSpeedTimer() {
   if (speedBonusInterval) clearInterval(speedBonusInterval);
   roundStartTime = Date.now();
+  lastTickSecond = -1;
   speedBarContainer.classList.add('active');
+  speedBarContainer.classList.remove('low-time');
   speedBarFill.style.width = '100%';
 
   const DURATION_MS = 12000; // 12 seconds for max speed bonus
@@ -1654,10 +1859,23 @@ function startSpeedTimer() {
     const remaining = Math.max(0, DURATION_MS - elapsed);
     const pct = (remaining / DURATION_MS) * 100;
     speedBarFill.style.width = pct + '%';
+
+    // Audio & visual urgency when under 3.5 seconds
+    if (remaining <= 3500 && remaining > 0) {
+      speedBarContainer.classList.add('low-time');
+      const sec = Math.ceil(remaining / 1000);
+      if (sec !== lastTickSecond) {
+        lastTickSecond = sec;
+        SFX.tick();
+      }
+    } else {
+      speedBarContainer.classList.remove('low-time');
+    }
+
     if (remaining <= 0) {
       clearInterval(speedBonusInterval);
       speedBonusInterval = null;
-      speedBarContainer.classList.remove('active');
+      speedBarContainer.classList.remove('active', 'low-time');
     }
   }, 100);
 }
@@ -1676,7 +1894,7 @@ function stopSpeedTimer() {
     clearInterval(speedBonusInterval);
     speedBonusInterval = null;
   }
-  speedBarContainer.classList.remove('active');
+  speedBarContainer.classList.remove('active', 'low-time');
 }
 
 // =====================================================================
@@ -1781,45 +1999,77 @@ function updateProximityCompass(diff, guessBook, correctBook, guessVol, correctV
     return;
   }
 
+  // Handle diff === -1 (volume and/or book selected, but not chapter/verse)
   if (diff === -1) {
-    proximityFill.style.width = '15%';
-    proximityFill.style.background = 'var(--red)';
-    proximityBadge.textContent = 'Select Chapter & Verse';
-    proximityBadge.style.color = 'var(--text-dim)';
-    proximityDesc.textContent = 'Choose book, chapter, and verse to calculate distance.';
+    if (guessVol && guessVol === correctVol) {
+      if (guessBook && guessBook === correctBook) {
+        proximityFill.style.width = '60%';
+        proximityFill.style.background = 'var(--orange)';
+        proximityBadge.textContent = '✨ Right Book!';
+        proximityBadge.style.color = 'var(--orange)';
+        proximityDesc.textContent = `Correct volume and book (${correctBook})! Pick chapter & verse to calculate distance.`;
+      } else {
+        proximityFill.style.width = '35%';
+        proximityFill.style.background = 'var(--blue)';
+        proximityBadge.textContent = '🧭 Right Volume';
+        proximityBadge.style.color = 'var(--blue)';
+        proximityDesc.textContent = `Correct volume (${VOLUMES[correctVol]?.name || correctVol})! Now choose the book and chapter.`;
+      }
+    } else {
+      proximityFill.style.width = '12%';
+      proximityFill.style.background = 'var(--red)';
+      proximityBadge.textContent = 'Select Book, Chapter & Verse';
+      proximityBadge.style.color = 'var(--text-dim)';
+      proximityDesc.textContent = 'Select book, chapter, and verse to calculate scripture distance.';
+    }
     return;
   }
 
-  // Closeness calculation (0 diff = 100%, 3000+ diff = 5%)
-  const closeness = Math.max(5, Math.min(96, Math.round(100 - (diff / 25))));
-  proximityFill.style.width = closeness + '%';
+  // IMPORTANT: Gate by Volume! If across testaments/volumes, NEVER claim Burning Hot
+  const sameVol = (guessVol === correctVol);
+  const sameBook = (guessBook === correctBook);
 
-  let color = 'var(--red)';
-  let badge = '❄️ Cold';
-  let desc = `You are ${diff} verses away.`;
-
-  if (diff <= 15) {
-    color = '#ff4d4d';
-    badge = '🔥 Burning Hot!';
-    desc = `Super close! Only ${diff} verse${diff !== 1 ? 's' : ''} away!`;
-  } else if (diff <= 80 || guessBook === correctBook) {
-    color = 'var(--orange)';
-    badge = '✨ Very Warm (Same Book)';
-    desc = `Right book! ${diff} verses away from target.`;
-  } else if (guessVol === correctVol) {
-    color = 'var(--blue)';
-    badge = '🧭 Warm (Same Volume)';
-    desc = `Same volume, ${diff} verses away.`;
-  } else {
-    color = 'var(--purple)';
-    badge = '❄️ Cold (Different Volume)';
-    desc = `${diff} verses away in another testament.`;
+  if (!sameVol) {
+    proximityFill.style.width = '12%';
+    proximityFill.style.background = 'var(--purple)';
+    proximityBadge.textContent = '❄️ Cold (Different Volume)';
+    proximityBadge.style.color = 'var(--purple)';
+    proximityDesc.textContent = `Target is in another testament/volume (${VOLUMES[correctVol]?.name || correctVol}).`;
+    return;
   }
 
-  proximityFill.style.background = color;
-  proximityBadge.textContent = badge;
-  proximityBadge.style.color = color;
-  proximityDesc.textContent = desc;
+  // Within the same volume:
+  if (sameBook) {
+    if (diff <= 5) {
+      proximityFill.style.width = '96%';
+      proximityFill.style.background = '#ff4d4d';
+      proximityBadge.textContent = '🔥 Burning Hot!';
+      proximityBadge.style.color = '#ff4d4d';
+      proximityDesc.textContent = `Right on top of it! Only ${diff} verse${diff !== 1 ? 's' : ''} away!`;
+    } else if (diff <= 25) {
+      const closeness = Math.max(70, Math.round(95 - (diff * 0.8)));
+      proximityFill.style.width = closeness + '%';
+      proximityFill.style.background = 'var(--orange)';
+      proximityBadge.textContent = '✨ Very Warm (Same Book)';
+      proximityBadge.style.color = 'var(--orange)';
+      proximityDesc.textContent = `Right book! Only ${diff} verses away from target.`;
+    } else {
+      const closeness = Math.max(50, Math.round(75 - (diff / 10)));
+      proximityFill.style.width = closeness + '%';
+      proximityFill.style.background = 'var(--gold)';
+      proximityBadge.textContent = '🧭 Warm (Same Book)';
+      proximityBadge.style.color = 'var(--gold)';
+      proximityDesc.textContent = `Right book! ${diff} verses away from target.`;
+    }
+  } else {
+    // Same volume, different book
+    const closeness = Math.max(15, Math.min(50, Math.round(50 - (diff / 100))));
+    proximityFill.style.width = closeness + '%';
+    proximityFill.style.background = 'var(--blue)';
+    proximityBadge.textContent = '🧭 Same Volume (Different Book)';
+    proximityBadge.style.color = 'var(--blue)';
+    proximityDesc.textContent = `Same volume, roughly ${diff} verses away.`;
+  }
 }
 
 // =====================================================================
@@ -1830,8 +2080,14 @@ async function loadRound() {
   state.loading = true;
   state.guesses = 0;
   state.cluesUsedThisRound = 0;
+  state.eliminatedBooks = [];
   clearFeedback();
   resetDropdowns();
+  const bSearch = document.getElementById('bookSearchInput');
+  if (bSearch) {
+    bSearch.value = '';
+    bSearch.disabled = true;
+  }
   
   if (dailyChallengeMode) {
     const dailyRef = getDailyVerseRef();
@@ -1846,7 +2102,7 @@ async function loadRound() {
       const item = await fetchVerseWithTimeout(dailyRef);
       state.currentRef = dailyRef;
       state.currentUrl = item.url;
-      state.sessionVerses.push({ ref: dailyRef, url: item.url });
+      state.sessionVerses.push({ ref: dailyRef, url: item.url, text: item.text });
       verseCard.classList.remove('loading');
       state.loading = false;
       skipBtn.disabled = false;
@@ -1890,7 +2146,7 @@ async function loadRound() {
   const nextItem = verseQueue.length > 0 ? verseQueue.shift() : { ref: pickRandomRef(), text: MASTERY_VERSES[0].text, url: null };
   state.currentRef = nextItem.ref;
   state.currentUrl = nextItem.url;
-  state.sessionVerses.push({ ref: nextItem.ref, url: nextItem.url });
+  state.sessionVerses.push({ ref: nextItem.ref, url: nextItem.url, text: nextItem.text });
 
   maintainQueue();
 
@@ -1907,6 +2163,19 @@ async function loadRound() {
 // =====================================================================
 // DROPDOWNS CASCADE LOGIC
 // =====================================================================
+function applyEliminatedBooks() {
+  if (!state.eliminatedBooks || state.eliminatedBooks.length === 0) return;
+  Array.from(bookSel.options).forEach(opt => {
+    if (state.eliminatedBooks.includes(opt.value)) {
+      opt.disabled = true;
+      opt.classList.add('eliminated-book');
+      if (!opt.textContent.startsWith('❌')) {
+        opt.textContent = `❌ ${opt.value}`;
+      }
+    }
+  });
+}
+
 volSel.addEventListener('change', () => {
   SFX.click();
   bookSel.innerHTML = '<option value="">\u2014 Select Book \u2014</option>';
@@ -1916,6 +2185,12 @@ volSel.addEventListener('change', () => {
   verseSel.disabled = true;
   bookSel.disabled = true;
   bookSel.className = chapSel.className = verseSel.className = '';
+  
+  const bSearch = document.getElementById('bookSearchInput');
+  if (bSearch) {
+    bSearch.value = '';
+    bSearch.disabled = !volSel.value;
+  }
   checkSubmit();
 
   const vol = volSel.value;
@@ -1926,9 +2201,13 @@ volSel.addEventListener('change', () => {
     opt.value = name; opt.textContent = name;
     bookSel.appendChild(opt);
   });
+  applyEliminatedBooks();
   bookSel.disabled = false;
   chapLabel.textContent = VOLUMES[vol]?.chapLabel || 'Chapter';
-  setTimeout(() => bookSel.focus(), 0);
+  setTimeout(() => {
+    if (bSearch && !bSearch.disabled) bSearch.focus();
+    else bookSel.focus();
+  }, 0);
 });
 
 bookSel.addEventListener('change', () => {
@@ -2001,30 +2280,55 @@ clueBtn.addEventListener('click', () => {
     // Clue 1: Auto-reveal and lock Volume
     volSel.value = correctVol;
     volSel.dispatchEvent(new Event('change'));
+    updateProximityCompass(-1, '', '', correctVol, correctVol);
     showFeedback(`💡 Clue: This verse is from the ${volName}! (-250 pts)`, 'partial');
   } else if (state.cluesUsedThisRound === 2) {
     // Clue 2: 50/50 Elimination of wrong books in current volume
     const books = BOOKS_BY_VOL[correctVol] || [];
     const wrongBooks = books.filter(b => b !== ref.bookName);
     const toEliminate = wrongBooks.sort(() => 0.5 - Math.random()).slice(0, Math.ceil(wrongBooks.length / 2));
+    state.eliminatedBooks = toEliminate;
     
-    Array.from(bookSel.options).forEach(opt => {
-      if (toEliminate.includes(opt.value)) {
-        opt.disabled = true;
-        opt.classList.add('eliminated-book');
-        opt.textContent = `❌ ${opt.value}`;
-      }
-    });
+    if (volSel.value !== correctVol) {
+      volSel.value = correctVol;
+      volSel.dispatchEvent(new Event('change'));
+    } else {
+      applyEliminatedBooks();
+    }
     showFeedback(`💡 Clue: Eliminated 50% of the wrong books in ${volName}!`, 'partial');
   } else {
-    // Clue 3: Highlight keywords in text
-    const words = verseText.textContent.split(' ');
-    if (words.length > 4) {
-      const mid = Math.floor(words.length / 2);
-      words[mid] = `<span class="clue-highlight">${words[mid]}</span>`;
-      verseText.innerHTML = words.join(' ');
+    // Clue 3: Smart keyword highlight (filter out common scripture stopwords)
+    const STOPWORDS = new Set([
+      'and', 'the', 'it', 'came', 'to', 'pass', 'unto', 'of', 'that', 'in', 'a', 'is', 'for', 
+      'be', 'with', 'he', 'they', 'them', 'shall', 'all', 'as', 'his', 'their', 'said', 'lord', 
+      'god', 'was', 'on', 'at', 'by', 'from', 'but', 'not', 'have', 'had', 'were', 'which', 
+      'thou', 'thee', 'thy', 'ye', 'who', 'whom', 'where', 'when', 'into', 'out', 'up', 'down', 
+      'behold', 'now', 'even', 'also', 'therefore', 'there', 'here', 'saying', 'an', 'upon', 'this',
+      'these', 'those', 'will', 'would', 'could', 'should', 'are', 'am', 'been', 'my', 'me', 'us',
+      'our', 'him', 'her', 'she', 'so', 'if', 'or', 'no', 'nor', 'then', 'hath', 'doth', 'man'
+    ]);
+
+    const rawWords = verseText.textContent.split(/\s+/);
+    const candidates = [];
+    rawWords.forEach((w, idx) => {
+      const clean = w.toLowerCase().replace(/[^a-z]/g, '');
+      if (clean.length >= 4 && !STOPWORDS.has(clean)) {
+        candidates.push({ idx, word: w, clean, score: clean.length + (w[0] === w[0].toUpperCase() ? 3 : 0) });
+      }
+    });
+
+    if (candidates.length > 0) {
+      candidates.sort((a, b) => b.score - a.score);
+      const chosen = candidates[0];
+      rawWords[chosen.idx] = `<span class="clue-highlight">${chosen.word}</span>`;
+      verseText.innerHTML = rawWords.join(' ');
+      showFeedback(`💡 Clue: Key scriptural term emphasized in verse text.`, 'partial');
+    } else if (rawWords.length > 4) {
+      const mid = Math.floor(rawWords.length / 2);
+      rawWords[mid] = `<span class="clue-highlight">${rawWords[mid]}</span>`;
+      verseText.innerHTML = rawWords.join(' ');
+      showFeedback(`💡 Clue: Distinctive phrase emphasized in verse text.`, 'partial');
     }
-    showFeedback(`💡 Clue: Key phrase emphasized in verse text.`, 'partial');
     clueBtn.disabled = true;
   }
 
@@ -2047,11 +2351,17 @@ function applyStreakBonus(gotIt) {
       state.score += bonus;
       scoreDisplay.textContent = state.score;
       streakBanner.textContent = `🔥 ${state.streak}-Round Streak! +${bonus} Bonus!`;
-      streakBanner.classList.add('show');
+      streakBanner.classList.add('show', 'streak-pulse');
+
+      // Milestone celebrations on 3, 5, 10
+      if (state.streak === 3 || state.streak === 5 || state.streak === 10) {
+        SFX.streakMilestone();
+        spawnConfetti(50);
+      }
     }
   } else {
     state.streak = 0;
-    streakBanner.classList.remove('show');
+    streakBanner.classList.remove('show', 'streak-pulse');
   }
 }
 
@@ -2094,6 +2404,8 @@ submitBtn.addEventListener('click', () => {
   }
 
   updateProximityCompass(diff, guessBook, correctBook, guessVol, correctVol);
+  const sameVol = (guessVol === correctVol);
+  if (diff !== -1) SFX.sonar(diff, sameVol);
 
   const isPerfect = (diff === 0);
   const isLastGuess = (state.guesses >= 3);
@@ -2118,16 +2430,34 @@ submitBtn.addEventListener('click', () => {
       SFX.miss();
     }
 
-    // Points calculation + Speed Bonus
+    // Volume stats tracking
+    if (state.volumeStats && state.volumeStats[correctVol]) {
+      state.volumeStats[correctVol].total++;
+      if (!failedRequirement) state.volumeStats[correctVol].good++;
+    }
+
+    // Points calculation: Tiered Scoring + Proximity + Speed Bonus
     let pts = 0;
     const speedBonus = calculateSpeedBonus();
-    if (diff === 0) {
-      pts = 2000 + speedBonus;
+
+    if (isPerfect) {
+      pts = 2500 + speedBonus;
       SFX.perfect();
-      spawnConfetti();
-    } else if (diff !== -1) {
-      pts = Math.round(10000 / (diff + 10)) + Math.round(speedBonus / 2);
-      if (!failedRequirement) SFX.good();
+      spawnConfetti(90);
+    } else if (!failedRequirement) {
+      let basePts = 0;
+      if (rightVol) basePts += 300;
+      if (rightBook) basePts += 700;
+      if (rightChap) basePts += 800;
+
+      let proxBonus = 0;
+      if (diff !== -1 && sameVol) {
+        proxBonus = Math.max(0, Math.round(5000 / (diff + 15)));
+      }
+      pts = basePts + proxBonus + Math.round(speedBonus / 2);
+      SFX.good();
+    } else {
+      if (rightVol) pts = 100;
     }
 
     state.score += pts;
@@ -2144,9 +2474,12 @@ submitBtn.addEventListener('click', () => {
     bestDisplay.textContent = state.best;
 
     const volName = VOLUMES[correctVol]?.name || correctVol;
-    const officialLink = state.currentUrl ? `<br><a href="${state.currentUrl}" target="_blank" class="recap-link" style="margin-top:6px; display:inline-block;">Open in Gospel Library ↗</a>` : "";
+    const refKey = `${correctBook} ${correctChap}:${correctVerse}`;
+    const officialLink = state.currentUrl ? `<a href="${state.currentUrl}" target="_blank" class="recap-link" style="margin-left:8px;">Open in Gospel Library ↗</a>` : "";
+    const isSaved = isVerseInJournal(refKey);
+    const journalBtnHtml = `<button class="journal-btn ${isSaved ? 'saved' : ''}" style="margin-left:8px;" onclick="toggleJournalSave('${refKey.replace(/'/g, "\\'")}', '${volName.replace(/'/g, "\\'")}', '${(state.currentUrl || '').replace(/'/g, "\\'")}', this)">${isSaved ? '★ Saved to Journal' : '☆ Save to Journal'}</button>`;
     
-    answerReveal.innerHTML = `${correctBook} ${correctChap}:${correctVerse} (${volName})${officialLink}`;
+    answerReveal.innerHTML = `<strong>${refKey} (${volName})</strong>${officialLink}${journalBtnHtml}`;
     answerReveal.classList.add('show');
 
     const wasGood = !failedRequirement;
@@ -2200,10 +2533,18 @@ skipBtn.addEventListener('click', () => {
   SFX.skip();
   
   const ref = state.currentRef;
-  const volName = VOLUMES[SCRIPTURE_DB[ref.bookName]?.vol]?.name || '';
-  const officialLink = state.currentUrl ? `<br><a href="${state.currentUrl}" target="_blank" class="recap-link" style="margin-top:6px; display:inline-block;">Open in Gospel Library ↗</a>` : "";
+  const volKey = SCRIPTURE_DB[ref.bookName]?.vol;
+  const volName = VOLUMES[volKey]?.name || '';
+  if (state.volumeStats && state.volumeStats[volKey]) {
+    state.volumeStats[volKey].total++;
+  }
+
+  const refKey = `${ref.bookName} ${ref.chapter}:${ref.verse}`;
+  const officialLink = state.currentUrl ? `<a href="${state.currentUrl}" target="_blank" class="recap-link" style="margin-left:8px;">Open in Gospel Library ↗</a>` : "";
+  const isSaved = isVerseInJournal(refKey);
+  const journalBtnHtml = `<button class="journal-btn ${isSaved ? 'saved' : ''}" style="margin-left:8px;" onclick="toggleJournalSave('${refKey.replace(/'/g, "\\'")}', '${volName.replace(/'/g, "\\'")}', '${(state.currentUrl || '').replace(/'/g, "\\'")}', this)">${isSaved ? '★ Saved to Journal' : '☆ Save to Journal'}</button>`;
   
-  answerReveal.innerHTML = `${ref.bookName} ${ref.chapter}:${ref.verse} (${volName})${officialLink}`;
+  answerReveal.innerHTML = `<strong>${refKey} (${volName})</strong>${officialLink}${journalBtnHtml}`;
   answerReveal.classList.add('show');
   
   showFeedback(`Skipped \u2014 Miss ${state.misses}/3`, 'wrong');
@@ -2330,16 +2671,66 @@ function renderRecapList() {
     const row = document.createElement('div');
     row.className = 'recap-item';
     const nameSpan = document.createElement('span');
-    nameSpan.textContent = `📖 ${item.ref.bookName} ${item.ref.chapter}:${item.ref.verse}`;
+    const refKey = `${item.ref.bookName} ${item.ref.chapter}:${item.ref.verse}`;
+    const volName = VOLUMES[SCRIPTURE_DB[item.ref.bookName]?.vol]?.name || '';
+    nameSpan.textContent = `📖 ${refKey}`;
+    
+    const actionsDiv = document.createElement('div');
+    actionsDiv.style.display = 'flex';
+    actionsDiv.style.gap = '8px';
+    actionsDiv.style.alignItems = 'center';
+
     const link = document.createElement('a');
     link.className = 'recap-link';
     link.target = '_blank';
     link.href = item.url || `https://www.churchofjesuschrist.org/study/scriptures?lang=eng`;
     link.textContent = 'Read Chapter ↗';
+
+    const isSaved = isVerseInJournal(refKey);
+    const saveBtn = document.createElement('button');
+    saveBtn.className = 'journal-btn' + (isSaved ? ' saved' : '');
+    saveBtn.textContent = isSaved ? '★ Saved' : '☆ Bookmark';
+    saveBtn.onclick = () => toggleJournalSave(refKey, volName, item.url || '', saveBtn);
+
+    actionsDiv.appendChild(saveBtn);
+    actionsDiv.appendChild(link);
     row.appendChild(nameSpan);
-    row.appendChild(link);
+    row.appendChild(actionsDiv);
     recapList.appendChild(row);
   });
+}
+
+function renderVolumeMastery() {
+  const masteryGrid = document.getElementById('volumeMasteryGrid');
+  const section = document.getElementById('volumeMasterySection');
+  if (!masteryGrid || !section) return;
+  masteryGrid.innerHTML = '';
+
+  const vols = [
+    { key: 'bofm', name: 'Book of Mormon' },
+    { key: 'nt', name: 'New Testament' },
+    { key: 'ot', name: 'Old Testament' },
+    { key: 'dc', name: 'D&C' },
+    { key: 'pgp', name: 'Pearl of Great Price' }
+  ];
+
+  let hasAny = false;
+  vols.forEach(v => {
+    const stats = state.volumeStats ? state.volumeStats[v.key] : null;
+    if (stats && stats.total > 0) {
+      hasAny = true;
+      const pct = Math.round((stats.good / stats.total) * 100);
+      const card = document.createElement('div');
+      card.className = 'volume-mastery-card';
+      card.innerHTML = `
+        <div class="vol-m-title">${v.name}</div>
+        <div class="vol-m-pct" style="color: ${pct >= 80 ? 'var(--green)' : pct >= 50 ? 'var(--gold-light)' : 'var(--red)'}">${pct}%</div>
+        <div class="vol-m-sub">${stats.good}/${stats.total} correct</div>
+      `;
+      masteryGrid.appendChild(card);
+    }
+  });
+  section.style.display = hasAny ? 'block' : 'none';
 }
 
 function showGameOver() {
@@ -2366,6 +2757,7 @@ function showLeaderboardOverlay(isGameOverMode) {
   const label = document.getElementById('gameOverScoreLabel');
   const shareBtn = document.getElementById('shareBtn');
   const form = document.getElementById('highScoreForm');
+  const vmSection = document.getElementById('volumeMasterySection');
   
   if (isGameOverMode) {
     h2.textContent = 'Game Over';
@@ -2376,6 +2768,7 @@ function showLeaderboardOverlay(isGameOverMode) {
     shareGrid.style.display = 'block';
     recapSection.style.display = 'block';
     renderRecapList();
+    renderVolumeMastery();
     
     const isGlobalHigh = !globalScores || globalScores.length < 10 || state.score > globalScores[globalScores.length - 1].score;
     if (isGlobalHigh && state.score > 0) {
@@ -2397,6 +2790,7 @@ function showLeaderboardOverlay(isGameOverMode) {
     shareGrid.style.display = 'none';
     recapSection.style.display = 'none';
     form.style.display = 'none';
+    if (vmSection) vmSection.style.display = 'none';
   }
   
   renderLeaderboardTable();
@@ -2553,6 +2947,8 @@ function startGame() {
   state.guesses= 0;
   state.streak = 0;
   state.cluesUsedThisRound = 0;
+  state.eliminatedBooks = [];
+  state.volumeStats = { ot: { total: 0, good: 0 }, nt: { total: 0, good: 0 }, bofm: { total: 0, good: 0 }, dc: { total: 0, good: 0 }, pgp: { total: 0, good: 0 } };
   state.roundHistory = [];
   state.shareEmojis = [];
   state.sessionVerses = [];
@@ -2574,7 +2970,19 @@ function startGame() {
 // =====================================================================
 document.addEventListener('keydown', (e) => {
   if (e.key === 'Enter') {
+    // Prevent Enter from restarting if focused in initials or quick-find search
+    if (document.activeElement && (document.activeElement.id === 'initialsInput' || document.activeElement.id === 'bookSearchInput')) {
+      return;
+    }
+    const journalOverlay = document.getElementById('journalOverlay');
+    if (journalOverlay && journalOverlay.classList.contains('active')) {
+      return;
+    }
     if (gameOverOverlay.classList.contains('active')) {
+      const hsForm = document.getElementById('highScoreForm');
+      if (hsForm && hsForm.style.display !== 'none') {
+        return;
+      }
       gameOverOverlay.classList.remove('active');
       startGame();
       return;
@@ -2597,6 +3005,13 @@ function focusFirstInput() {
 // =====================================================================
 // DAILY CHALLENGE & STREAKS
 // =====================================================================
+function getLocalDateString(d = new Date()) {
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
 function hashDjb2(str) {
   let hash = 5381;
   for (let i = 0; i < str.length; i++) {
@@ -2606,7 +3021,7 @@ function hashDjb2(str) {
 }
 
 function getDailyVerseRef() {
-  const dateStr = new Date().toISOString().slice(0, 10);
+  const dateStr = getLocalDateString();
   const seed = hashDjb2(dateStr);
   const idx = seed % MASTERY_VERSES.length;
   const item = MASTERY_VERSES[idx];
@@ -2614,8 +3029,7 @@ function getDailyVerseRef() {
 }
 
 function getDailyStatusKey() {
-  const dateStr = new Date().toISOString().slice(0, 10);
-  return 'scriptureSleuthDaily_' + dateStr;
+  return 'scriptureSleuthDaily_' + getLocalDateString();
 }
 function isDailyComplete() {
   return localStorage.getItem(getDailyStatusKey()) === '1';
@@ -2624,24 +3038,25 @@ function markDailyComplete() {
   localStorage.setItem(getDailyStatusKey(), '1');
 }
 function getDailyScoreKey() {
-  const dateStr = new Date().toISOString().slice(0, 10);
-  return 'scriptureSleuthDailyScore_' + dateStr;
+  return 'scriptureSleuthDailyScore_' + getLocalDateString();
 }
 function getDailyScore() {
   const raw = localStorage.getItem(getDailyScoreKey());
   return raw ? JSON.parse(raw) : null;
 }
 function saveDailyScore(score, round, misses) {
-  localStorage.setItem(getDailyScoreKey(), JSON.stringify({ score, round, misses, date: new Date().toISOString() }));
+  localStorage.setItem(getDailyScoreKey(), JSON.stringify({ score, round, misses, date: new Date().toISOString(), localDate: getLocalDateString() }));
 }
 
 function updateDailyStreakOnComplete() {
-  const today = new Date().toISOString().slice(0, 10);
+  const today = getLocalDateString();
   const lastPlay = localStorage.getItem('scriptureSleuthLastDailyDate');
   let streak = parseInt(localStorage.getItem('scriptureSleuthDailyStreak') || '0');
 
   if (lastPlay) {
-    const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+    const now = new Date();
+    const yesterdayObj = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
+    const yesterday = getLocalDateString(yesterdayObj);
     if (lastPlay === yesterday) {
       streak++;
     } else if (lastPlay !== today) {
@@ -2761,7 +3176,7 @@ function startDailyCountdown() {
   if (dailyCountdownInterval) clearInterval(dailyCountdownInterval);
   function updateCountdown() {
     const now = new Date();
-    const tomorrow = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1));
+    const tomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 0, 0, 0, 0);
     const diff = tomorrow - now;
     if (diff <= 0) {
       dailyCountdownEl.textContent = '00:00:00';
@@ -2778,7 +3193,7 @@ function startDailyCountdown() {
 }
 
 dailyShareBtn.addEventListener('click', async () => {
-  const dateStr = new Date().toISOString().slice(0, 10);
+  const dateStr = getLocalDateString();
   const emojiMap = { perfect: '🟩', good: '🟨', miss: '🟥', skip: '⬜' };
   const grid = state.shareEmojis.map(e => emojiMap[e] || '⬜').join('');
   const text = `Scripture Sleuth ✡ Daily Challenge\n${dateStr}\nScore: ${state.score} | Guesses: ${state.guesses}/3\n${grid}\n`;
@@ -2827,13 +3242,190 @@ if (initialsInput) {
     this.value = this.value.toUpperCase().replace(/[^A-Z]/g, '');
   });
   initialsInput.addEventListener('keydown', function(e) {
-    if (e.key === 'Enter') submitScriptureHighScore();
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      e.stopPropagation();
+      submitScriptureHighScore();
+    }
   });
 }
 const submitScoreBtn = document.getElementById('submitScoreBtn');
 if (submitScoreBtn) {
   submitScoreBtn.addEventListener('click', submitScriptureHighScore);
 }
+
+// =====================================================================
+// SCRIPTURE JOURNAL & BOOK QUICK-FILTER
+// =====================================================================
+function getScriptureJournal() {
+  try {
+    return JSON.parse(localStorage.getItem('scriptureSleuthJournal') || '[]');
+  } catch(e) {
+    return [];
+  }
+}
+
+function saveScriptureJournal(items) {
+  localStorage.setItem('scriptureSleuthJournal', JSON.stringify(items));
+  updateJournalCountUI();
+}
+
+function isVerseInJournal(refKey) {
+  const list = getScriptureJournal();
+  return list.some(item => item.refKey === refKey);
+}
+
+function toggleJournalSave(refKey, volName, url, btnEl) {
+  let list = getScriptureJournal();
+  const existingIdx = list.findIndex(item => item.refKey === refKey);
+  if (existingIdx !== -1) {
+    list.splice(existingIdx, 1);
+    saveScriptureJournal(list);
+    if (btnEl) {
+      btnEl.classList.remove('saved');
+      btnEl.textContent = btnEl.textContent.includes('Bookmark') ? '☆ Bookmark' : '☆ Save to Journal';
+    }
+    showToast('Removed from Journal');
+  } else {
+    list.unshift({
+      refKey,
+      volName,
+      url: url || `https://www.churchofjesuschrist.org/study/scriptures?lang=eng`,
+      date: getLocalDateString()
+    });
+    saveScriptureJournal(list);
+    if (btnEl) {
+      btnEl.classList.add('saved');
+      btnEl.textContent = btnEl.textContent.includes('Bookmark') ? '★ Saved' : '★ Saved to Journal';
+    }
+    showToast('Saved to Scripture Journal! ⭐');
+    SFX.click();
+  }
+}
+
+function updateJournalCountUI() {
+  const countEl = document.getElementById('journalCount');
+  if (countEl) {
+    const list = getScriptureJournal();
+    countEl.textContent = list.length;
+  }
+}
+
+function openJournalModal() {
+  const overlay = document.getElementById('journalOverlay');
+  const listEl = document.getElementById('journalItemsList');
+  if (!overlay || !listEl) return;
+  const list = getScriptureJournal();
+  listEl.innerHTML = '';
+  if (list.length === 0) {
+    listEl.innerHTML = '<div style="text-align:center; padding: 24px; color: var(--text-dim); font-style:italic;">No scriptures bookmarked yet. Click "☆ Save to Journal" during gameplay to save verses here!</div>';
+  } else {
+    list.forEach((item, idx) => {
+      const row = document.createElement('div');
+      row.className = 'recap-item';
+      row.innerHTML = `
+        <div>
+          <span style="font-weight:600; color:var(--gold-light);">📖 ${item.refKey}</span>
+          <span style="color:var(--text-dim); font-size:0.8rem; margin-left:6px;">(${item.volName})</span>
+          <span style="color:rgba(255,255,255,0.3); font-size:0.75rem; margin-left:6px;">${item.date}</span>
+        </div>
+        <div style="display:flex; gap:8px; align-items:center;">
+          <a href="${item.url}" target="_blank" class="recap-link">Read ↗</a>
+          <button class="journal-del-btn" onclick="removeJournalIndex(${idx})" title="Remove from Journal">✕</button>
+        </div>
+      `;
+      listEl.appendChild(row);
+    });
+  }
+  overlay.classList.add('active');
+}
+
+function removeJournalIndex(idx) {
+  let list = getScriptureJournal();
+  if (idx >= 0 && idx < list.length) {
+    list.splice(idx, 1);
+    saveScriptureJournal(list);
+    openJournalModal();
+  }
+}
+
+function showToast(msg) {
+  let toast = document.getElementById('gameToast');
+  if (!toast) {
+    toast = document.createElement('div');
+    toast.id = 'gameToast';
+    toast.className = 'game-toast';
+    document.body.appendChild(toast);
+  }
+  toast.textContent = msg;
+  toast.classList.add('show');
+  setTimeout(() => toast.classList.remove('show'), 2200);
+}
+
+// Journal modal buttons
+const journalToggleBtn = document.getElementById('journalToggleBtn');
+const closeJournalBtn  = document.getElementById('closeJournalBtn');
+const exportJournalBtn = document.getElementById('exportJournalBtn');
+const journalOverlay   = document.getElementById('journalOverlay');
+
+if (journalToggleBtn) journalToggleBtn.addEventListener('click', openJournalModal);
+if (closeJournalBtn && journalOverlay) closeJournalBtn.addEventListener('click', () => journalOverlay.classList.remove('active'));
+if (exportJournalBtn) {
+  exportJournalBtn.addEventListener('click', async () => {
+    const list = getScriptureJournal();
+    if (list.length === 0) {
+      showToast('Journal is empty');
+      return;
+    }
+    const text = "Scripture Sleuth Journal:\n" + list.map(item => `• ${item.refKey} (${item.volName}) - ${item.url}`).join('\n');
+    try {
+      await navigator.clipboard.writeText(text);
+      showToast('Journal copied to clipboard! ✓');
+    } catch(e) {
+      showToast('Could not copy to clipboard');
+    }
+  });
+}
+
+// Book quick search / typeahead
+const bookSearchInput = document.getElementById('bookSearchInput');
+if (bookSearchInput) {
+  bookSearchInput.addEventListener('input', () => {
+    const query = bookSearchInput.value.trim().toLowerCase();
+    const currentVol = volSel.value;
+    if (!currentVol) return;
+    const books = BOOKS_BY_VOL[currentVol] || [];
+    bookSel.innerHTML = '<option value="">— Select Book —</option>';
+    
+    books.forEach(name => {
+      if (!query || name.toLowerCase().includes(query)) {
+        const opt = document.createElement('option');
+        opt.value = name;
+        opt.textContent = name;
+        bookSel.appendChild(opt);
+      }
+    });
+    applyEliminatedBooks();
+
+    if (query && bookSel.options.length === 2) {
+      bookSel.value = bookSel.options[1].value;
+      bookSel.dispatchEvent(new Event('change'));
+    }
+  });
+
+  bookSearchInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' || e.key === 'Tab') {
+      if (bookSel.options.length > 1 && bookSel.options[1].value) {
+        bookSel.value = bookSel.options[1].value;
+        bookSel.dispatchEvent(new Event('change'));
+        chapSel.focus();
+        e.preventDefault();
+      }
+    }
+  });
+}
+
+updateJournalCountUI();
 
 // =====================================================================
 // INITIALIZATION
