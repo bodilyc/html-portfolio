@@ -1968,21 +1968,29 @@ async function fetchVerseWithTimeout(ref) {
 const PREFETCH_LIMIT = 3;
 let verseQueue = [];
 let isFetchingQueue = false;
+let queueGeneration = 0; // bumped on every new game so stale fetches get discarded
 
 async function maintainQueue() {
   if (isFetchingQueue || verseQueue.length >= PREFETCH_LIMIT) return;
   isFetchingQueue = true;
-  
-  while (verseQueue.length < PREFETCH_LIMIT) {
+  const myGen = queueGeneration;
+  let failures = 0;
+
+  while (verseQueue.length < PREFETCH_LIMIT && failures < 5 && myGen === queueGeneration) {
     const ref = pickRandomRef();
     try {
       const item = await fetchVerseWithTimeout(ref);
+      if (myGen !== queueGeneration) break; // mode/volume changed mid-fetch; discard
       if (item && item.text) {
         verseQueue.push({ ref, text: item.text, url: item.url });
+      } else {
+        failures++;
       }
-    } catch(e) {}
+    } catch(e) {
+      failures++;
+    }
   }
-  isFetchingQueue = false;
+  if (myGen === queueGeneration) isFetchingQueue = false;
 }
 
 // =====================================================================
@@ -2144,7 +2152,15 @@ async function loadRound() {
     waitCount++;
   }
 
-  const nextItem = verseQueue.length > 0 ? verseQueue.shift() : { ref: pickRandomRef(), text: MASTERY_VERSES[0].text, url: null };
+  let nextItem;
+  if (verseQueue.length > 0) {
+    nextItem = verseQueue.shift();
+  } else {
+    // Queue not ready yet: fetch a matching verse directly instead of using mismatched text
+    const ref = pickRandomRef();
+    const item = await fetchVerseWithTimeout(ref);
+    nextItem = { ref, text: item.text, url: item.url };
+  }
   state.currentRef = nextItem.ref;
   state.currentUrl = nextItem.url;
   state.sessionVerses.push({ ref: nextItem.ref, url: nextItem.url, text: nextItem.text });
@@ -2962,6 +2978,8 @@ function startGame() {
   renderHistory();
   gameOverOverlay.classList.remove('active');
   
+  queueGeneration++;
+  isFetchingQueue = false;
   verseQueue = [];
   loadRound();
 }
