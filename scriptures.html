@@ -804,11 +804,16 @@
   }
 
   /* Quick Book Filter */
+  .dropdown-group > label,
   .dropdown-label-row {
+    min-height: 26px;
     display: flex;
-    justify-content: space-between;
     align-items: center;
-    margin-bottom: 4px;
+  }
+  .dropdown-label-row {
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 0;
   }
   .book-search-input {
     background: var(--bg-card);
@@ -816,9 +821,10 @@
     color: var(--text);
     font-family: 'Cinzel', serif;
     font-size: 0.68rem;
-    padding: 2px 6px;
+    height: 24px;
+    padding: 2px 8px;
     border-radius: 4px;
-    width: 95px;
+    width: 135px;
     outline: none;
     transition: all 0.2s;
     letter-spacing: 0.5px;
@@ -826,7 +832,7 @@
   .book-search-input:focus {
     border-color: var(--gold);
     box-shadow: 0 0 8px rgba(201, 168, 76, 0.35);
-    width: 125px;
+    width: 150px;
   }
   .book-search-input:disabled {
     opacity: 0.3;
